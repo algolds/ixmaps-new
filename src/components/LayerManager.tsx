@@ -11,10 +11,10 @@ interface LayerManagerProps {
 
 const LayerManager: React.FC<LayerManagerProps> = ({ map, layers, onUpdate }) => {
   const [visibility, setVisibility] = useState<LayerVisibility>({
-    political: true,
+    political: false,
     climate: false,
     lakes: false,
-    rivers: false,
+    rivers: false,  
     mountains: false,
     cities: false,
     countries: true,

@@ -355,3 +355,129 @@ html, body {
   gap: 10px;
   max-width: 80%;
 }
+/* MapLayerControls.module.css */
+.layerControlContainer {
+  width: 300px;
+  max-height: 600px;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+  font-family: sans-serif;
+  overflow-y: auto;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.controlTitle {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 8px;
+}
+
+.loadingIndicator, .errorMessage {
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 4px;
+}
+
+.loadingIndicator {
+  background-color: #e7f3ff;
+  color: #0066cc;
+}
+
+.errorMessage {
+  background-color: #ffecec;
+  color: #cc0000;
+}
+
+.controlSection, .sublayerSection, .countriesSection {
+  margin-bottom: 12px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  background-color: #eaeaea;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  justify-content: space-between;
+}
+
+.expandedIcon, .collapsedIcon {
+  margin-right: 6px;
+  font-size: 10px;
+  width: 10px;
+}
+
+.quickControls {
+  display: flex;
+  gap: 5px;
+}
+
+.quickControls button {
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.quickControls button:hover {
+  background-color: #e0e0e0;
+}
+
+.layerList, .countryList {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-left: 10px;
+  padding-right: 5px;
+}
+
+.layerItem, .sublayerItem, .countryItem {
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.sublayerItem {
+  margin-left: 15px;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  flex: 1;
+}
+
+.checkboxLabel input {
+  margin-right: 8px;
+}
+
+.expandToggle {
+  cursor: pointer;
+  margin-left: 10px;
+  font-size: 10px;
+  width: 10px;
+}
+
+.searchBox {
+  margin-bottom: 10px;
+  padding: 0 5px;
+}
+
+.searchBox input {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
