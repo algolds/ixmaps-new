@@ -8,6 +8,7 @@ import { loadSVGDimensions } from '@/lib/SVGLoader';
 import dynamic from 'next/dynamic';
 import DistanceMeasurement from './DistanceMeasurement';
 import MapScale from './MapScale';
+import SVGLayerControl from './SVGLayerControl';
 
 // Import Leaflet types
 import type { Map as LeafletMap, LatLngBounds, LayerGroup, CircleMarker } from 'leaflet';
@@ -873,31 +874,43 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     }
   }, [primeMeridianSvg]);
 
-  return (
-    <div 
-      ref={mapContainerRef} 
-      id="map" 
-      style={{ 
-        width: '100%', 
-        height: '100%', 
-        backgroundColor: '#D5FFFF',
-        position: 'relative'
-      }}
-    >
-      {/* Load Leaflet only on client-side */}
-      <LeafletComponentLoader onLeafletLoad={handleMapInit} />
-      
-      {/* Add the MapScale component */}
-      {isMapReady && mapRef.current && leafletRef.current && (
-        <MapScale map={mapRef.current} L={leafletRef.current} mapConfig={mapConfig} />
-      )}
-      
-      {/* Add the distance measurement component */}
-      {isMapReady && mapRef.current && leafletRef.current && (
-        <DistanceMeasurement map={mapRef.current} L={leafletRef.current} />
-      )}
-    </div>
-  );
-};
-
-export default MapComponent;
+  
+  
+    return (
+      <div 
+        ref={mapContainerRef} 
+        id="map" 
+        style={{ 
+          width: '100%', 
+          height: '100%', 
+          backgroundColor: '#D5FFFF',
+          position: 'relative'
+        }}
+      >
+        {/* Load Leaflet only on client-side */}
+        <LeafletComponentLoader onLeafletLoad={handleMapInit} />
+        
+        {/* Add the SVG Layer Control component */}
+        {isMapReady && mapRef.current && leafletRef.current && (
+          <SVGLayerControl 
+            map={mapRef.current} 
+            L={leafletRef.current} 
+            mapConfig={mapConfig} 
+            position="topright"
+          />
+        )}
+        
+        {/* Add the MapScale component */}
+        {isMapReady && mapRef.current && leafletRef.current && (
+          <MapScale map={mapRef.current} L={leafletRef.current} mapConfig={mapConfig} />
+        )}
+        
+        {/* Add the distance measurement component */}
+        {isMapReady && mapRef.current && leafletRef.current && (
+          <DistanceMeasurement map={mapRef.current} L={leafletRef.current} />
+        )}
+      </div>
+    );
+  };
+  
+  export default MapComponent;

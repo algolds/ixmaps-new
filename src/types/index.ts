@@ -3,7 +3,7 @@
  */
 
 import { Map as LeafletMap } from 'leaflet';
-
+export * from './svg-types';  // Export SVG types
 /**
  * Map bounds configuration
  */

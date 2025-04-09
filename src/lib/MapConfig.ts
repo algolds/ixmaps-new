@@ -10,7 +10,7 @@ export const defaultMapConfig: MapConfig = {
   baseMapUrl: '/master-map.svg',
   svgWidth: 8202,
   svgHeight: 4900,
-  initialZoom: 0.5,
+  initialZoom: 1,
   minZoom: -2.0,
   maxZoom: 5.0,
   rawWidth: 8202,  // Same as svgWidth by default
