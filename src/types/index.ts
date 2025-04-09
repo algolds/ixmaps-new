@@ -45,6 +45,14 @@ export interface MapConfig {
 }
 
 /**
+ * Prime meridian reference
+ */
+export interface PrimeMeridianRef {
+  lat: number;
+  lng: number;
+}
+
+/**
  * Toast notification types
  */
 export type ToastType = 'info' | 'success' | 'warning' | 'error';
@@ -92,7 +100,7 @@ export interface CountryLabel {
 export interface DistanceResult {
   kilometers: number;
   miles: number;
-  km: number;
+  km: number; // For backward compatibility
 }
 
 // SVG dimensions interface

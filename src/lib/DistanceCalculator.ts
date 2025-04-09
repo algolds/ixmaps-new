@@ -1,8 +1,6 @@
 import { DistanceResult } from '@/types';
+import { defaultMapConfig } from '@/lib/MapConfig';
 import type { LatLng, Map } from 'leaflet';
-
-export const MILES_PER_PIXEL = 3.2;
-export const KM_PER_PIXEL = 5.15;
 
 export const calculateDistance = (
   latlng1: LatLng, 
@@ -19,8 +17,13 @@ export const calculateDistance = (
     const dy = point2.y - point1.y;
     const pixelDistance = Math.sqrt(dx * dx + dy * dy);
     
-    const miles = pixelDistance * MILES_PER_PIXEL;
-    const km = pixelDistance * KM_PER_PIXEL;
+    // Apply zoom level scaling
+    const zoom = map.getZoom();
+    const milesPerPixel = defaultMapConfig.milesPerPixel / Math.pow(2, zoom);
+    const miles = pixelDistance * milesPerPixel;
+    
+    // Convert to kilometers using the same ratio as MapConfig
+    const km = pixelDistance * (defaultMapConfig.kmPerPixel / Math.pow(2, zoom));
     
     return { miles, kilometers: km, km };
   } catch (e) {
@@ -47,16 +50,14 @@ export const coordinateSystemCalculateDistance = (
     // Calculate pixel distance
     const pixelDistance = Math.sqrt(dx * dx + dy * dy);
     
-    // Use calibrated value for this map with coord system
-    const CALIBRATED_MILES_PER_PIXEL = 2.7;
-    
-    // Apply zoom level scaling but skip latitude factor
+    // Use calibrated value from MapConfig
+    // Apply zoom level scaling
     const zoom = map.getZoom();
-    const milesPerPixel = CALIBRATED_MILES_PER_PIXEL / Math.pow(2, zoom);
+    const milesPerPixel = defaultMapConfig.milesPerPixel / Math.pow(2, zoom);
     const miles = pixelDistance * milesPerPixel;
     
-    // Convert to kilometers
-    const km = miles * 1.60934;
+    // Convert to kilometers using the same ratio as MapConfig
+    const km = pixelDistance * (defaultMapConfig.kmPerPixel / Math.pow(2, zoom));
     
     return {
       miles: miles,

@@ -6,17 +6,20 @@ export const defaultMapConfig: MapConfig = {
   baseMapUrl: '/master-map.svg',
   svgWidth: 8202,
   svgHeight: 4900,
-  initialZoom: 0,
-  minZoom: -1,
+  initialZoom: -1,
+  minZoom: -2,
   maxZoom: 5,
   rawWidth: 8202,
   rawHeight: 4900,
-  pixelsPerLongitude: 22.783333,
-  pixelsPerLatitude: 27.222222,
+  pixelsPerLongitude: 45.5666, 
+  pixelsPerLatitude: 27.2222,
   equatorY: 2450,
-  primeMeridianX: 4101,
-  milesPerPixel: 3.2,
-  kmPerPixel: 5.15,
+  // Set prime meridian to 30°E (4101 + (30/360 * 8202))
+  primeMeridianX: 4785, 
+  // Adjusted scale for 1000mi (current showing ~904.5)
+  milesPerPixel: 3.5,
+  // Calculate km value automatically using miles-to-km conversion (1 mi = 1.60934 km)
+  get kmPerPixel() { return this.milesPerPixel * 1.60934; },
   labelFontSize: 12,
   labelClassName: 'country-label',
   bounds: {
@@ -26,6 +29,12 @@ export const defaultMapConfig: MapConfig = {
     west: 0
   },
   showCountryLabels: true
+};
+
+// Update prime meridian reference point 
+export const primeMeridianRef = {
+  lat: -14.08, // Negative value for Southern hemisphere
+  lng: 30.0    // This is 30°E in geographic coordinates, but will be treated as 0°
 };
 
 // Grid style configuration

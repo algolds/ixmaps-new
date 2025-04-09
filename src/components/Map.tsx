@@ -31,6 +31,8 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const mapInitializedRef = useRef<boolean>(false);
   const resizeHandlerRef = useRef<(() => void) | null>(null);
   const leafletRef = useRef<any>(null);
+  const initialCenterAppliedRef = useRef<boolean>(false);
+  const isWrappingRef = useRef<boolean>(false); // Track if we're currently wrapping
 
   // State
   const [mapConfig, setMapConfig] = useState<MapConfig>({
@@ -115,8 +117,71 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       }
       
       mapInitializedRef.current = false;
+      initialCenterAppliedRef.current = false;
+      isWrappingRef.current = false;
     };
   }, [mapConfig.masterMapPath]);
+
+  // Handle horizontal wraparound
+  const handleMapWraparound = () => {
+    const map = mapRef.current;
+    if (!map || isWrappingRef.current) return;
+    
+    const center = map.getCenter();
+    const svgWidth = mapConfig.svgWidth;
+    
+    // If we've panned beyond the left or right edge
+    if (center.lng < 0) {
+      // We're wrapping, set the flag to prevent recursive wraparound
+      isWrappingRef.current = true;
+      
+      // Wrap to the right side
+      map.panTo([center.lat, center.lng + svgWidth], {
+        animate: false,
+        duration: 0,
+        easeLinearity: 1,
+        noMoveStart: true
+      });
+      
+      // Reset the wrapping flag after a short delay
+      setTimeout(() => {
+        isWrappingRef.current = false;
+      }, 100);
+    } else if (center.lng > svgWidth) {
+      // We're wrapping, set the flag to prevent recursive wraparound
+      isWrappingRef.current = true;
+      
+      // Wrap to the left side
+      map.panTo([center.lat, center.lng - svgWidth], {
+        animate: false,
+        duration: 0,
+        easeLinearity: 1,
+        noMoveStart: true
+      });
+      
+      // Reset the wrapping flag after a short delay
+      setTimeout(() => {
+        isWrappingRef.current = false;
+      }, 100);
+    }
+  };
+
+  // Function to center map on prime meridian
+  const centerOnPrimeMeridian = () => {
+    if (mapRef.current && primeMeridianSvg && primeMeridianSvg.x) {
+      // Center vertically in the middle of the map, horizontally at prime meridian
+      const centerY = mapConfig.svgHeight / 2;
+      isWrappingRef.current = true; // Prevent wraparound during centering
+      mapRef.current.panTo([centerY, primeMeridianSvg.x], {animate: true, duration: 1});
+      console.log('Map centered on prime meridian', primeMeridianSvg.x);
+      initialCenterAppliedRef.current = true;
+      
+      // Reset wrapping flag after animation completes
+      setTimeout(() => {
+        isWrappingRef.current = false;
+      }, 1100);
+    }
+  };
 
   // Function to handle map initialization after Leaflet is loaded
   const handleMapInit = (L: any) => {
@@ -163,9 +228,32 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       const baseMap = L.imageOverlay(mapConfig.baseMapUrl, bounds);
       baseMap.addTo(map);
 
-      // Fit to bounds and set initial view
+      // Create wraparound copies of the base map
+      const leftCopy = L.imageOverlay(
+        mapConfig.baseMapUrl,
+        L.latLngBounds(
+          L.latLng(mapConfig.bounds.south, mapConfig.bounds.west - mapConfig.svgWidth),
+          L.latLng(mapConfig.bounds.north, mapConfig.bounds.east - mapConfig.svgWidth)
+        )
+      ).addTo(map);
+      
+      const rightCopy = L.imageOverlay(
+        mapConfig.baseMapUrl,
+        L.latLngBounds(
+          L.latLng(mapConfig.bounds.south, mapConfig.bounds.west + mapConfig.svgWidth),
+          L.latLng(mapConfig.bounds.north, mapConfig.bounds.east + mapConfig.svgWidth)
+        )
+      ).addTo(map);
+
+      // Fit to bounds - don't immediately center as we'll do that later on the prime meridian
       map.fitBounds(bounds);
-      map.setMaxBounds(bounds.pad(0.5)); // Add some padding to allow slight overflow
+      
+      // Set max bounds for vertical constraint only (to allow horizontal wraparound)
+      const verticalBounds = L.latLngBounds(
+        L.latLng(mapConfig.bounds.south - 100, -Infinity), // Allow infinity in horizontal direction
+        L.latLng(mapConfig.bounds.north + 100, Infinity)
+      );
+      map.setMaxBounds(verticalBounds);
       
       // Add zoom control
       L.control.zoom({
@@ -224,10 +312,18 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
 
       map.on('moveend', () => {
         console.log('Map center:', map.getCenter());
+        // Handle wraparound
+        handleMapWraparound();
+        
         // Only try to draw grid if prime meridian is set
         if (primeMeridianSvg) {
           drawGrid(L);
         }
+      });
+      
+      // Add continuous wraparound handler during drag
+      map.on('move', () => {
+        handleMapWraparound();
       });
 
       map.on('click', (e: any) => {
@@ -249,6 +345,9 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
           try {
             drawGrid(L);
             drawPrimeMeridian(L);
+            
+            // Center on prime meridian after initial drawing
+            centerOnPrimeMeridian();
           } catch (e) {
             console.error('Error during initial grid drawing:', e);
           }
@@ -299,8 +398,8 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const svgToLatLng = (x: number, y: number): LatLng => {
     // Map y-coordinate to latitude range with proper N/S orientation
     const latRange = visibleBounds.northLat - visibleBounds.southLat;
-    // Invert latitude calculation for correct hemisphere display
-    const lat = visibleBounds.northLat - (y / mapConfig.svgHeight * latRange);
+    // Calculate latitude with southLat as the base
+    const lat = visibleBounds.southLat + ((mapConfig.svgHeight - y) / mapConfig.svgHeight * latRange);
     
     // Calculate longitude in standard way
     const lng = (x / mapConfig.svgWidth * 360) - 180;
@@ -312,7 +411,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const latLngToSvg = (lat: number, lng: number): SvgPoint => {
     // Convert latitude to y coordinate with proper orientation
     const latRange = visibleBounds.northLat - visibleBounds.southLat;
-    const y = ((visibleBounds.northLat - lat) / latRange) * mapConfig.svgHeight;
+    const y = mapConfig.svgHeight - ((lat - visibleBounds.southLat) / latRange) * mapConfig.svgHeight;
     
     // Convert longitude to x coordinate with wraparound
     const normalizedLng = ((lng + 180) % 360) / 360;
@@ -358,7 +457,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     
     return { lat, lng };
   };
-
+  
   // Format coordinate for display
   const formatCoord = (value: number, posLabel: string, negLabel: string): string => {
     const absValue = Math.abs(value);
@@ -762,54 +861,35 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     }
   };
 
-  // Use an effect to ensure prime meridian is set correctly
+  // Effect to handle prime meridian updates and centering
   useEffect(() => {
-    if (primeMeridianSvg && isLeafletLoaded && mapRef.current && gridLayerRef.current) {
-      console.log('Prime meridian updated, redrawing grid and meridian');
-      const L = window.L;
-      if (L) {
+    if (mapRef.current && primeMeridianSvg && primeMeridianSvg.x && !initialCenterAppliedRef.current) {
+      // Center on prime meridian when it changes
+      centerOnPrimeMeridian();
+      
+      // Redraw grid and meridian
+      if (leafletRef.current) {
         try {
-          drawGrid(L);
-          drawPrimeMeridian(L);
+          drawGrid(leafletRef.current);
+          drawPrimeMeridian(leafletRef.current);
         } catch (e) {
           console.error('Error redrawing after prime meridian update:', e);
         }
       }
     }
-  }, [primeMeridianSvg, isLeafletLoaded]);
+  }, [primeMeridianSvg]);
 
   return (
-    <>
-      <div 
-        ref={mapContainerRef} 
-        id="map" 
-        style={{ 
-          width: '100%', 
-          height: '100%', 
-          backgroundColor: '#D5FFFF',
-          position: 'relative'
-        }}
-      ></div>
-      
-      {!isMapReady && (
-        <div 
-          id="loading-indicator" 
-          style={{ 
-            position: 'absolute', 
-            top: '50%', 
-            left: '50%', 
-            transform: 'translate(-50%, -50%)',
-            background: 'rgba(255, 255, 255, 0.8)',
-            padding: '20px',
-            borderRadius: '8px',
-            boxShadow: '0 0 10px rgba(0, 0, 0, 0.2)',
-            zIndex: 1000
-          }}
-        >
-          Loading map...
-        </div>
-      )}
-      
+    <div 
+      ref={mapContainerRef} 
+      id="map" 
+      style={{ 
+        width: '100%', 
+        height: '100%', 
+        backgroundColor: '#D5FFFF',
+        position: 'relative'
+      }}
+    >
       {/* Load Leaflet only on client-side */}
       <LeafletComponentLoader onLeafletLoad={handleMapInit} />
       
@@ -817,7 +897,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       {isMapReady && mapRef.current && leafletRef.current && (
         <DistanceMeasurement map={mapRef.current} L={leafletRef.current} />
       )}
-    </>
+    </div>
   );
 };
 
