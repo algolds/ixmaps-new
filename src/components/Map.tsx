@@ -7,6 +7,7 @@ import { showToast, initToasts } from '@/lib/Toast';
 import { loadSVGDimensions } from '@/lib/SVGLoader';
 import dynamic from 'next/dynamic';
 import DistanceMeasurement from './DistanceMeasurement';
+import MapScale from './MapScale';
 
 // Import Leaflet types
 import type { Map as LeafletMap, LatLngBounds, LayerGroup, CircleMarker } from 'leaflet';
@@ -122,47 +123,34 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     };
   }, [mapConfig.masterMapPath]);
 
-  // Handle horizontal wraparound
+  // Function to handle horizontal wraparound
   const handleMapWraparound = () => {
     const map = mapRef.current;
-    if (!map || isWrappingRef.current) return;
-    
+    if (!map) return;
+
     const center = map.getCenter();
     const svgWidth = mapConfig.svgWidth;
-    
-    // If we've panned beyond the left or right edge
+
+    // Calculate the new center position based on the current center
+    let newCenterLng = center.lng;
+
+    // If we've panned beyond the left edge
     if (center.lng < 0) {
-      // We're wrapping, set the flag to prevent recursive wraparound
-      isWrappingRef.current = true;
-      
-      // Wrap to the right side
-      map.panTo([center.lat, center.lng + svgWidth], {
+      newCenterLng += svgWidth; // Wrap to the right side
+    } 
+    // If we've panned beyond the right edge
+    else if (center.lng > svgWidth) {
+      newCenterLng -= svgWidth; // Wrap to the left side
+    }
+
+    // Pan to the new center position
+    if (newCenterLng !== center.lng) {
+      map.panTo([center.lat, newCenterLng], {
         animate: false,
         duration: 0,
         easeLinearity: 1,
         noMoveStart: true
       });
-      
-      // Reset the wrapping flag after a short delay
-      setTimeout(() => {
-        isWrappingRef.current = false;
-      }, 100);
-    } else if (center.lng > svgWidth) {
-      // We're wrapping, set the flag to prevent recursive wraparound
-      isWrappingRef.current = true;
-      
-      // Wrap to the left side
-      map.panTo([center.lat, center.lng - svgWidth], {
-        animate: false,
-        duration: 0,
-        easeLinearity: 1,
-        noMoveStart: true
-      });
-      
-      // Reset the wrapping flag after a short delay
-      setTimeout(() => {
-        isWrappingRef.current = false;
-      }, 100);
     }
   };
 
@@ -218,6 +206,12 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
         bounceAtZoomLimits: false
       });
 
+      // Add attribution control
+      L.control.attribution({
+        position: 'bottomright',
+        prefix: '© IxMaps v4.0.0'
+      }).addTo(map);
+      
       // Calculate bounds based on SVG dimensions
       const bounds = L.latLngBounds(
         L.latLng(mapConfig.bounds.south, mapConfig.bounds.west),
@@ -250,8 +244,8 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       
       // Set max bounds for vertical constraint only (to allow horizontal wraparound)
       const verticalBounds = L.latLngBounds(
-        L.latLng(mapConfig.bounds.south - 100, -Infinity), // Allow infinity in horizontal direction
-        L.latLng(mapConfig.bounds.north + 100, Infinity)
+        L.latLng(mapConfig.bounds.south, -Infinity), // Allow infinity in horizontal direction
+        L.latLng(mapConfig.bounds.north, Infinity)   // Set vertical bounds to the SVG height
       );
       map.setMaxBounds(verticalBounds);
       
@@ -892,6 +886,11 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     >
       {/* Load Leaflet only on client-side */}
       <LeafletComponentLoader onLeafletLoad={handleMapInit} />
+      
+      {/* Add the MapScale component */}
+      {isMapReady && mapRef.current && leafletRef.current && (
+        <MapScale map={mapRef.current} L={leafletRef.current} mapConfig={mapConfig} />
+      )}
       
       {/* Add the distance measurement component */}
       {isMapReady && mapRef.current && leafletRef.current && (

@@ -2,6 +2,11 @@
 
 import { useEffect, useRef } from 'react';
 import { calculateDistance } from '@/lib/DistanceCalculator';
+import { defaultMapConfig } from '@/lib/MapConfig';
+
+// Constants for scale calculations
+const BASE_MILES_PER_PIXEL = 3.2; // Miles per pixel at base zoom
+const MILES_TO_KM = 1.60934; // Conversion factor from miles to kilometers (linear)
 
 interface DistanceMeasurementProps {
   map: any;
@@ -14,6 +19,7 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map, L }) => 
   const markersRef = useRef<any[]>([]);
   const polylineRef = useRef<any>(null);
   const measureActiveRef = useRef(false);
+  const totalMeasurePointsRef = useRef<any[]>([]);
   
   useEffect(() => {
     if (!map || !L) return;
@@ -45,6 +51,7 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map, L }) => 
         // Turn on measurement mode
         measureActiveRef.current = true;
         clearMeasurement();
+        totalMeasurePointsRef.current = [];
         map.on('click', handleMapClick);
         
         // Change cursor to crosshair
@@ -58,6 +65,43 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map, L }) => 
         if (button) {
           (button as HTMLElement).style.backgroundColor = '#f4f4f4';
         }
+        
+        // Create and show measurement instructions
+        showMeasureInstructions();
+      }
+    };
+    
+    // Show measurement instructions
+    const showMeasureInstructions = () => {
+      // Remove existing instructions
+      const existingInstructions = document.getElementById('measure-instructions');
+      if (existingInstructions) {
+        existingInstructions.remove();
+      }
+      
+      // Create new instructions
+      const instructions = document.createElement('div');
+      instructions.id = 'measure-instructions';
+      instructions.innerHTML = 'Click to add measurement points. Double-click to finish.';
+      instructions.style.position = 'absolute';
+      instructions.style.bottom = '20px';
+      instructions.style.left = '50%';
+      instructions.style.transform = 'translateX(-50%)';
+      instructions.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+      instructions.style.padding = '8px 12px';
+      instructions.style.borderRadius = '4px';
+      instructions.style.fontSize = '14px';
+      instructions.style.zIndex = '1000';
+      instructions.style.boxShadow = '0 0 5px rgba(0,0,0,0.3)';
+      
+      document.body.appendChild(instructions);
+    };
+    
+    // Hide measurement instructions
+    const hideMeasureInstructions = () => {
+      const instructions = document.getElementById('measure-instructions');
+      if (instructions) {
+        instructions.remove();
       }
     };
     
@@ -68,8 +112,21 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map, L }) => 
       polylineRef.current = null;
     };
     
+    // Show results toast
+    const showResultToast = (miles: number, km: number) => {
+      if (typeof window.showToast === 'function') {
+        const message = `Total: ${miles.toFixed(2)} mi (${km.toFixed(2)} km)`;
+        window.showToast(message, 'success', 5000);
+      } else {
+        alert(`Total: ${miles.toFixed(2)} mi (${km.toFixed(2)} km)`);
+      }
+    };
+    
     // Handle map clicks for measurement
     const handleMapClick = (e: any) => {
+      // Add point to total measurement points
+      totalMeasurePointsRef.current.push(e.latlng);
+      
       // Add marker at click location
       const marker = L.circleMarker(e.latlng, {
         radius: 4,
@@ -81,10 +138,11 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map, L }) => 
       
       markersRef.current.push(marker);
       
-      // If this is the second point, draw the line and show distance
-      if (markersRef.current.length === 2) {
-        const firstPoint = markersRef.current[0].getLatLng();
-        const secondPoint = markersRef.current[1].getLatLng();
+      // If this is not the first point, draw the line and show distance
+      if (totalMeasurePointsRef.current.length > 1) {
+        const lastIdx = totalMeasurePointsRef.current.length - 1;
+        const firstPoint = totalMeasurePointsRef.current[lastIdx - 1];
+        const secondPoint = totalMeasurePointsRef.current[lastIdx];
         
         // Draw line between points
         const line = L.polyline([firstPoint, secondPoint], {
@@ -93,10 +151,19 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map, L }) => 
           dashArray: '5,5'
         }).addTo(measureLayer);
         
-        polylineRef.current = line;
+        // Calculate distance using the new scale implementation
+        const zoom = map.getZoom();
+        const milesPerPixel = BASE_MILES_PER_PIXEL / Math.pow(2, zoom);
         
-        // Calculate distance
-        const distance = calculateDistance(firstPoint, secondPoint, map);
+        const point1 = map.latLngToContainerPoint(firstPoint);
+        const point2 = map.latLngToContainerPoint(secondPoint);
+        
+        const dx = point2.x - point1.x;
+        const dy = point2.y - point1.y;
+        const pixelDistance = Math.sqrt(dx * dx + dy * dy);
+        
+        const miles = pixelDistance * milesPerPixel;
+        const km = miles * MILES_TO_KM;
         
         // Add distance label
         const midPoint = L.latLng(
@@ -107,30 +174,60 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map, L }) => 
         const label = L.marker(midPoint, {
           icon: L.divIcon({
             className: 'distance-label',
-            html: `${distance.miles.toFixed(2)} mi<br>${distance.kilometers.toFixed(2)} km`,
+            html: `${miles.toFixed(2)} mi<br>${km.toFixed(2)} km`,
             iconSize: [80, 40],
             iconAnchor: [40, 20]
           })
         }).addTo(measureLayer);
+      }
+    };
+    
+    // Handle double click to finish measuring
+    const finishMeasurement = () => {
+      if (!measureActiveRef.current || totalMeasurePointsRef.current.length < 2) return;
+      
+      // Calculate total distance
+      let totalPixelDistance = 0;
+      
+      for (let i = 1; i < totalMeasurePointsRef.current.length; i++) {
+        const point1 = map.latLngToContainerPoint(totalMeasurePointsRef.current[i-1]);
+        const point2 = map.latLngToContainerPoint(totalMeasurePointsRef.current[i]);
         
-        markersRef.current.push(label);
-        
-        // Turn off measurement mode after completing one measurement
-        measureActiveRef.current = false;
-        map.off('click', handleMapClick);
-        
-        // Change cursor back to normal
-        const mapContainer = map.getContainer();
-        if (mapContainer) {
-          mapContainer.style.cursor = '';
-        }
-        
-        // Update button style
-        const button = document.querySelector('.measure-button');
-        if (button) {
-          (button as HTMLElement).style.backgroundColor = '';
+        if (point1 && point2) {
+          const dx = point2.x - point1.x;
+          const dy = point2.y - point1.y;
+          totalPixelDistance += Math.sqrt(dx * dx + dy * dy);
         }
       }
+      
+      // Calculate using consistent base scale
+      const zoom = map.getZoom();
+      const milesPerPixel = BASE_MILES_PER_PIXEL / Math.pow(2, zoom);
+      const totalMiles = totalPixelDistance * milesPerPixel;
+      const totalKm = totalMiles * MILES_TO_KM;
+      
+      // Show total and exit measurement mode
+      showResultToast(totalMiles, totalKm);
+      
+      // Turn off measurement mode
+      measureActiveRef.current = false;
+      map.off('click', handleMapClick);
+      map.off('dblclick', finishMeasurement);
+      
+      // Change cursor back to normal
+      const mapContainer = map.getContainer();
+      if (mapContainer) {
+        mapContainer.style.cursor = '';
+      }
+      
+      // Update button style
+      const button = document.querySelector('.measure-button');
+      if (button) {
+        (button as HTMLElement).style.backgroundColor = '';
+      }
+      
+      // Hide instructions
+      hideMeasureInstructions();
     };
     
     // Create custom control
@@ -166,12 +263,8 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map, L }) => 
     map.addControl(measureControl);
     measureControlRef.current = measureControl;
     
-    // Add double click to clear
-    map.on('dblclick', () => {
-      if (markersRef.current.length > 0) {
-        clearMeasurement();
-      }
-    });
+    // Add double click to finish measurement
+    map.on('dblclick', finishMeasurement);
     
     // Cleanup
     return () => {
@@ -185,16 +278,26 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map, L }) => 
       
       if (map) {
         map.off('click', handleMapClick);
-        map.off('dblclick');
+        map.off('dblclick', finishMeasurement);
       }
       
       if (measureLayerRef.current) {
         measureLayerRef.current.clearLayers();
       }
+      
+      hideMeasureInstructions();
     };
   }, [map, L]);
   
   return null; // This component doesn't render anything itself
 };
+
+// Add the showToast to Window interface
+declare global {
+  interface Window {
+    showToast: (message: string, type?: string, duration?: number) => string;
+    hideToast: (id: string) => void;
+  }
+}
 
 export default DistanceMeasurement;

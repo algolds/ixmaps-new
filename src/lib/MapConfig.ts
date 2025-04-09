@@ -1,25 +1,28 @@
 import { MapConfig } from '@/types';
 
+// Scale constants
+export const BASE_MILES_PER_PIXEL = 10; // Base scale at zoom level 0: 1px = 10 sq mi
+export const MILES_TO_KM = 2.59; // Conversion factor from square miles to square kilometers
+
 // Default map configuration
 export const defaultMapConfig: MapConfig = {
   masterMapPath: '/master-map.svg',
   baseMapUrl: '/master-map.svg',
   svgWidth: 8202,
   svgHeight: 4900,
-  initialZoom: -1,
-  minZoom: -2,
-  maxZoom: 5,
-  rawWidth: 8202,
-  rawHeight: 4900,
+  initialZoom: 0.5,
+  minZoom: -2.0,
+  maxZoom: 5.0,
+  rawWidth: 8202,  // Same as svgWidth by default
+  rawHeight: 4900, // Same as svgHeight by default
   pixelsPerLongitude: 45.5666, 
   pixelsPerLatitude: 27.2222,
   equatorY: 2450,
   // Set prime meridian to 30°E (4101 + (30/360 * 8202))
   primeMeridianX: 4785, 
-  // Adjusted scale for 1000mi (current showing ~904.5)
-  milesPerPixel: 3.5,
-  // Calculate km value automatically using miles-to-km conversion (1 mi = 1.60934 km)
-  get kmPerPixel() { return this.milesPerPixel * 1.60934; },
+  milesPerPixel: 10, // Base scale at zoom level 0: 1px = 10 sq mi
+  // Calculate km value automatically using miles-to-km conversion
+  get kmPerPixel() { return this.milesPerPixel * MILES_TO_KM; },
   labelFontSize: 12,
   labelClassName: 'country-label',
   bounds: {

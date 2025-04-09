@@ -1,5 +1,6 @@
 'use client';
 
+import { defaultMapConfig } from '@/lib/MapConfig';
 import React, { useEffect, useState } from 'react';
 
 interface MapScaleProps {
@@ -7,12 +8,37 @@ interface MapScaleProps {
   L: any;
   mapConfig: any;
 }
+const BASE_MILES_PER_PIXEL = defaultMapConfig.milesPerPixel; // Ensure this is set to 10 sq mi per pixel
+const MILES_TO_KM = 2.59; // Conversion factor from square miles to square kilometers
 
 const MapScale: React.FC<MapScaleProps> = ({ map, L, mapConfig }) => {
   const [scaleAdded, setScaleAdded] = useState(false);
 
   useEffect(() => {
     if (!map || !L || scaleAdded) return;
+
+    // First, remove any existing scale controls to prevent duplicates
+    const existingScaleControls = document.querySelectorAll('.custom-scale-control, .leaflet-control-scale');
+    existingScaleControls.forEach(control => {
+      try {
+        if (control.parentNode) {
+          control.parentNode.removeChild(control);
+        }
+      } catch (e) {
+        console.warn('Error removing existing scale control:', e);
+      }
+    });
+
+    // Function to calculate scale factor between raw map and display
+    const calculateScaleFactor = () => {
+      // Use the current display size vs raw map size
+      const mapWidth = map.getContainer().clientWidth;
+      
+      // Calculate width scale factor
+      const widthScale = mapConfig.svgWidth / mapConfig.rawWidth;
+      
+      return widthScale;
+    };
 
     // Create custom scale control
     const CustomScaleControl = L.Control.extend({
@@ -44,33 +70,41 @@ const MapScale: React.FC<MapScaleProps> = ({ map, L, mapConfig }) => {
         scaleBar.style.marginBottom = '5px';
         scaleBar.style.width = '100%';
         
-        // Scale values
-        const scaleValue = L.DomUtil.create('div', 'scale-value', container);
+        // Scale distance value
+        const scaleDistance = L.DomUtil.create('div', 'scale-distance', container);
+        scaleDistance.style.fontSize = '11px';
+        scaleDistance.style.marginBottom = '3px';
         
-        // Calculate scale based on map dimensions and zoom
+        // Scale ratio
+        const scaleRatio = L.DomUtil.create('div', 'scale-ratio', container);
+        scaleRatio.style.fontSize = '11px';
+        scaleRatio.style.color = '#666';
+        
+        // Function to update the scale display
         const updateScale = () => {
           if (!map) return;
           
           const zoom = map.getZoom();
-          const scale = calculateMapScale(zoom);
           
-          // Format the scale text
-          const milesText = formatDistance(scale.miles, 'mi');
-          const kmText = formatDistance(scale.km, 'km');
+          const baseMilesPerPixel = mapConfig.milesPerPixel || BASE_MILES_PER_PIXEL;
           
-          scaleValue.innerHTML = `${milesText} (${kmText})`;
+          // Calculate scale based on zoom level
+          const zoomFactor = Math.pow(2, zoom);
+          const milesPerPixel = baseMilesPerPixel / zoomFactor;
+          const kmPerPixel = milesPerPixel * MILES_TO_KM;
           
-          // Also add scale ratio
-          const scaleRatio = L.DomUtil.create('div', 'scale-ratio', container);
-          if (!container.querySelector('.scale-ratio')) {
-            container.appendChild(scaleRatio);
-          } else {
-            scaleRatio.innerHTML = '';
-          }
+          // Calculate scale for a 100px wide bar (for display purposes)
+          const scaleBarLength = 100;
+          const miles = Math.round(milesPerPixel * scaleBarLength);
+          const km = Math.round(kmPerPixel * scaleBarLength);
           
-          scaleRatio.innerHTML = `Map Scale: 1:${Math.round(scale.ratio).toLocaleString()}`;
-          scaleRatio.style.fontSize = '11px';
-          scaleRatio.style.color = '#666';
+          // Format the distance text
+          scaleDistance.innerHTML = `${miles} mi (${km} km)`;
+          
+          // Calculate and display scale ratio
+          const scaleFactor = calculateScaleFactor();
+          const ratio = Math.round(1 / scaleFactor * 1000).toLocaleString();
+          scaleRatio.innerHTML = `Map Scale: 1:${ratio}`;
         };
         
         // Initial update
@@ -88,48 +122,6 @@ const MapScale: React.FC<MapScaleProps> = ({ map, L, mapConfig }) => {
     setScaleAdded(true);
     
   }, [map, L, mapConfig, scaleAdded]);
-  
-  // Function to calculate map scale based on zoom level
-  const calculateMapScale = (zoom: number) => {
-    // Base values at zoom level 0
-    const baseWidth = 2000; // miles
-    const basePxWidth = mapConfig.svgWidth; // pixels
-    
-    // Scale factor based on zoom
-    const scaleFactor = Math.pow(2, zoom);
-    
-    // Calculate miles per pixel at current zoom
-    const milesPerPixel = baseWidth / (basePxWidth * scaleFactor);
-    
-    // Calculate actual scale (1 pixel represents x miles)
-    const scaleWidth = 150; // pixels for our scale bar
-    const miles = milesPerPixel * scaleWidth;
-    const km = miles * 1.60934;
-    
-    // Calculate scale ratio (1:x)
-    // 1 inch on screen is approximately 96 pixels
-    const inchesOnScreen = scaleWidth / 96;
-    const milesInRealWorld = miles;
-    const inchesInMile = 63360;
-    const ratio = (milesInRealWorld * inchesInMile) / inchesOnScreen;
-    
-    return {
-      miles,
-      km,
-      ratio
-    };
-  };
-  
-  // Format distance for display
-  const formatDistance = (distance: number, unit: string) => {
-    if (distance >= 1000) {
-      return `${Math.round(distance / 100) / 10}k ${unit}`;
-    } else if (distance >= 100) {
-      return `${Math.round(distance)} ${unit}`;
-    } else {
-      return `${Math.round(distance * 10) / 10} ${unit}`;
-    }
-  };
   
   return null; // Control is added directly to the map
 };
