@@ -10,9 +10,9 @@ export const defaultMapConfig: MapConfig = {
   baseMapUrl: '/master-map.svg',
   svgWidth: 8202,
   svgHeight: 4900,
-  initialZoom: 1,
-  minZoom: -2.0,
-  maxZoom: 5.0,
+  initialZoom: -2,
+  minZoom: -2,
+  maxZoom: 4.0,
   rawWidth: 8202,  // Same as svgWidth by default
   rawHeight: 4900, // Same as svgHeight by default
   pixelsPerLongitude: 45.5666, 
@@ -76,4 +76,30 @@ export const labelStyle = {
 export const visibleBounds = {
   northLat: 70,  // Northern visible limit in degrees
   southLat: -70  // Southern visible limit in degrees
+};
+
+// Coordinate conversion functions
+export const svgToLatLng = (svgX: number, svgY: number) => {
+  // Calculate latitude (y-coordinate)
+  // Note: SVG Y increases downward, latitude increases upward
+  const lat = (defaultMapConfig.equatorY - svgY) / defaultMapConfig.pixelsPerLatitude;
+  
+  // Calculate longitude (x-coordinate)
+  // Account for prime meridian offset (30°E = 0° in your system)
+  const lng = ((svgX - defaultMapConfig.primeMeridianX) / defaultMapConfig.pixelsPerLongitude) + 30;
+  
+  return { lat, lng };
+};
+
+// Convert geographic coordinates to SVG coordinates
+export const latLngToSvg = (lat: number, lng: number) => {
+  // Convert latitude to SVG Y
+  // Note: SVG Y increases downward, latitude increases upward
+  const y = defaultMapConfig.equatorY - (lat * defaultMapConfig.pixelsPerLatitude);
+  
+  // Convert longitude to SVG X
+  // Account for prime meridian offset (30°E = 0° in your system)
+  const x = defaultMapConfig.primeMeridianX + ((lng - 30) * defaultMapConfig.pixelsPerLongitude);
+  
+  return { x, y };
 };

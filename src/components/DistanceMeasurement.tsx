@@ -24,8 +24,14 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map, L }) => 
   useEffect(() => {
     if (!map || !L) return;
     
+    // Create custom pane for measurement with high z-index
+    if (!map.getPane('measure-pane')) {
+      map.createPane('measure-pane');
+      map.getPane('measure-pane').style.zIndex = 700; // Higher than grid and other elements
+    }
+    
     // Create layer for measurements
-    const measureLayer = L.layerGroup().addTo(map);
+    const measureLayer = L.layerGroup([], { pane: 'measure-pane' }).addTo(map);
     measureLayerRef.current = measureLayer;
     
     // Define the toggle measure function first
@@ -129,11 +135,12 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map, L }) => 
       
       // Add marker at click location
       const marker = L.circleMarker(e.latlng, {
-        radius: 4,
-        color: '#0078A8',
+        radius: 5,
+        color: '#FF4500', // Change to more visible orange/red
         fillColor: '#FFFFFF',
         fillOpacity: 1,
-        weight: 2
+        weight: 2,
+        pane: 'measure-pane'
       }).addTo(measureLayer);
       
       markersRef.current.push(marker);
@@ -144,12 +151,27 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map, L }) => 
         const firstPoint = totalMeasurePointsRef.current[lastIdx - 1];
         const secondPoint = totalMeasurePointsRef.current[lastIdx];
         
-        // Draw line between points
+        // Draw line between points with improved visibility
         const line = L.polyline([firstPoint, secondPoint], {
-          color: '#0078A8',
-          weight: 2,
-          dashArray: '5,5'
+          color: '#FF4500', // Make it more visible (orange/red)
+          weight: 3, // Increase weight
+          opacity: 0.8, // More opaque
+          dashArray: '8,4', // Adjusted dash pattern
+          pane: 'measure-pane' // Use the custom pane
         }).addTo(measureLayer);
+        
+        // Store the line reference for the total path
+        if (!polylineRef.current) {
+          polylineRef.current = L.polyline(totalMeasurePointsRef.current, {
+            color: '#FF4500',
+            weight: 3,
+            opacity: 0.6,
+            dashArray: '8,4',
+            pane: 'measure-pane'
+          }).addTo(measureLayer);
+        } else {
+          polylineRef.current.setLatLngs(totalMeasurePointsRef.current);
+        }
         
         // Calculate distance using the new scale implementation
         const zoom = map.getZoom();
@@ -165,7 +187,7 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map, L }) => 
         const miles = pixelDistance * milesPerPixel;
         const km = miles * MILES_TO_KM;
         
-        // Add distance label
+        // Add distance label with more visible styling
         const midPoint = L.latLng(
           (firstPoint.lat + secondPoint.lat) / 2,
           (firstPoint.lng + secondPoint.lng) / 2
@@ -174,10 +196,15 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map, L }) => 
         const label = L.marker(midPoint, {
           icon: L.divIcon({
             className: 'distance-label',
-            html: `${miles.toFixed(2)} mi<br>${km.toFixed(2)} km`,
+            html: `
+              <div style="background: rgba(255,255,255,0.9); padding: 3px 6px; border-radius: 3px; border: 1px solid #FF4500; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.3);">
+                ${miles.toFixed(2)} mi<br>${km.toFixed(2)} km
+              </div>
+            `,
             iconSize: [80, 40],
             iconAnchor: [40, 20]
-          })
+          }),
+          pane: 'measure-pane'
         }).addTo(measureLayer);
       }
     };
@@ -266,6 +293,24 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map, L }) => 
     // Add double click to finish measurement
     map.on('dblclick', finishMeasurement);
     
+    // Add styles for measurement elements
+    const addDistanceStyles = () => {
+      if (document.getElementById('distance-measurement-styles')) return;
+      
+      const style = document.createElement('style');
+      style.id = 'distance-measurement-styles';
+      style.textContent = `
+        .distance-label {
+          pointer-events: none;
+          font-size: 12px;
+          text-align: center;
+        }
+      `;
+      document.head.appendChild(style);
+    };
+    
+    addDistanceStyles();
+    
     // Cleanup
     return () => {
       if (map && measureControlRef.current) {
@@ -286,6 +331,12 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map, L }) => 
       }
       
       hideMeasureInstructions();
+      
+      // Remove added styles
+      const style = document.getElementById('distance-measurement-styles');
+      if (style) {
+        style.remove();
+      }
     };
   }, [map, L]);
   

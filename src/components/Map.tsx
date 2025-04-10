@@ -118,6 +118,18 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     };
   }, [mapConfig.masterMapPath]);
 
+  // Initialize the prime meridian SVG point once the map is ready
+  useEffect(() => {
+    if (isMapReady && mapRef.current && !primeMeridianSvg) {
+      // Initialize the prime meridian SVG point directly from the mapConfig
+      setPrimeMeridianSvg({
+        x: mapConfig.primeMeridianX,
+        y: mapConfig.equatorY
+      });
+      console.log('Initialized primeMeridianSvg:', mapConfig.primeMeridianX, mapConfig.equatorY);
+    }
+  }, [isMapReady, primeMeridianSvg, mapConfig]);
+
   // Add control panel once map is ready
   useEffect(() => {
     if (isMapReady && mapRef.current && leafletRef.current && !controlPanelAddedRef.current) {
@@ -263,6 +275,12 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
         handleMapWraparound();
       });
 
+      // Initialize the prime meridian SVG point
+      setPrimeMeridianSvg({
+        x: mapConfig.primeMeridianX,
+        y: mapConfig.equatorY
+      });
+
       // Initial map setup
       setTimeout(() => {
         setIsMapReady(true);
@@ -301,8 +319,11 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     // Calculate latitude with southLat as the base
     const lat = visibleBounds.southLat + ((mapConfig.svgHeight - y) / mapConfig.svgHeight * latRange);
     
-    // Calculate longitude in standard way
-    const lng = (x / mapConfig.svgWidth * 360) - 180;
+    // Calculate longitude with prime meridian offset (30°E)
+    // First convert to 0-360 range
+    const rawLng = (x / mapConfig.svgWidth * 360);
+    // Then shift by 30 degrees (prime meridian offset) and normalize to -180 to 180
+    const lng = ((rawLng + 30) % 360) - 180;
     
     return { lat, lng };
   };
@@ -313,9 +334,11 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     const latRange = visibleBounds.northLat - visibleBounds.southLat;
     const y = mapConfig.svgHeight - ((lat - visibleBounds.southLat) / latRange) * mapConfig.svgHeight;
     
-    // Convert longitude to x coordinate with wraparound
-    const normalizedLng = ((lng + 180) % 360) / 360;
-    const x = normalizedLng * mapConfig.svgWidth;
+    // Convert longitude to x coordinate with wraparound and prime meridian adjustment
+    // First shift to 0-360 range with prime meridian (30°E) at 0
+    const adjustedLng = ((lng - 30 + 540) % 360);
+    // Then normalize to 0-1 range and scale to SVG width
+    const x = (adjustedLng / 360) * mapConfig.svgWidth;
     
     return { x, y };
   };
@@ -335,7 +358,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       <LeafletComponentLoader onLeafletLoad={handleMapInit} />
       
       {/* Add the GridComponent */}
-      {isMapReady && mapRef.current && leafletRef.current && primeMeridianSvg && (
+      {isMapReady && mapRef.current && leafletRef.current && (
         <GridComponent 
           map={mapRef.current}
           L={leafletRef.current}
@@ -363,7 +386,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
         />
       )}
       
-      {/* Add the SVGLayerControl (not visible) */}
+      {/* Add the SVGLayerControl */}
       {isMapReady && mapRef.current && leafletRef.current && (
         <SVGLayerControl 
           ref={layerControlRef}
