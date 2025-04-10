@@ -37,19 +37,32 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
     political: true,
     climate: false,
     lakes: false,
-    rivers: false,
-    'altitude-layers': false
+    rivers: false
   });
 
   // Priority layers for ordering
-  const priorityLayers = ['political', 'climate', 'lakes', 'rivers', 'altitude-layers'];
+  const priorityLayers = ['political', 'climate', 'lakes', 'rivers'];
+
+  // Make sure altitude layer is initialized
+  useEffect(() => {
+    if (layerControlRef?.current) {
+      // Force altitude layer to be added to the map but hidden initially
+      console.log("Initializing altitude layer");
+      layerControlRef.current.toggleLayer('altitude-layers', false);
+    }
+  }, [layerControlRef]);
 
   // Sync layer visibility with SVGLayerControl
   useEffect(() => {
     if (layerControlRef?.current) {
       // Get current visibility state from layer control
       const currentVisibility = layerControlRef.current.getVisibility();
-      setLayerVisibility(currentVisibility);
+      
+      // Filter out altitude-layers since we manage it separately
+      const filteredVisibility = { ...currentVisibility };
+      delete filteredVisibility['altitude-layers'];
+      
+      setLayerVisibility(filteredVisibility);
     }
   }, [layerControlRef]);
 
@@ -75,7 +88,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
     };
   }, [map]);
 
-  // Handle layer toggle
+  // Handle layer toggle with special handling for political layer
   const handleLayerToggle = (layerId: string, checked: boolean) => {
     // Update local state
     setLayerVisibility(prev => ({
@@ -85,12 +98,48 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
     
     // Use the layerControlRef to toggle the layer
     if (layerControlRef?.current) {
+      // Toggle the selected layer
       layerControlRef.current.toggleLayer(layerId, checked);
+      
+      // Special handling for political layer
+      if (layerId === 'political') {
+        const shouldShowAltitude = !checked;
+        console.log(`Political toggled to ${checked}, setting altitude-layers to ${shouldShowAltitude}`);
+        
+        // Force toggle altitude layer with a small delay to ensure it's processed after political
+        setTimeout(() => {
+          layerControlRef.current?.toggleLayer('altitude-layers', shouldShowAltitude);
+          console.log(`Altitude layer visibility set to ${shouldShowAltitude}`);
+        }, 50);
+      }
+      
       console.log(`ControlPanel toggled layer: ${layerId} to ${checked}`);
     } else {
       console.warn('Layer control reference not available');
     }
   };
+
+  // Add component did mount effect to initialize altitude layer visibility
+  useEffect(() => {
+    // Wait for everything to be initialized
+    const timer = setTimeout(() => {
+      if (layerControlRef?.current && layerVisibility.political === false) {
+        console.log("Initial render: Political is off, showing altitude layer");
+        layerControlRef.current.toggleLayer('altitude-layers', true);
+      }
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Watch for political layer changes to update altitude layer
+  useEffect(() => {
+    if (layerControlRef?.current) {
+      const shouldShowAltitude = !layerVisibility.political;
+      console.log(`Political changed to ${layerVisibility.political}, altitude should be ${shouldShowAltitude}`);
+      layerControlRef.current.toggleLayer('altitude-layers', shouldShowAltitude);
+    }
+  }, [layerVisibility.political, layerControlRef]);
 
   useEffect(() => {
     if (!map || !L || controlAdded) return;
@@ -262,7 +311,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
         // Layer groups
         const layerGroups: Record<string, string[]> = {
           'Base Layers': ['political', 'climate'],
-          'Geographic Features': ['lakes', 'rivers', 'altitude-layers']
+          'Geographic Features': ['lakes', 'rivers']
         };
         
         // Add layer groups
