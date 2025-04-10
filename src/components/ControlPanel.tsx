@@ -11,6 +11,7 @@ interface ControlPanelProps {
   onToggleLabels: (visible: boolean) => void;
   onTogglePrimeMeridian: (visible: boolean) => void;
   onTogglePosition: (visible: boolean) => void;
+  onToggleCountryLabels: (visible: boolean) => void; // Add this line
   mapConfig?: any;
   layerControlRef?: React.RefObject<any>;
 }

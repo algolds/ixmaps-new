@@ -56,6 +56,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const [showCoordinates, setShowCoordinates] = useState<boolean>(true);
   const [showPrimeMeridian, setShowPrimeMeridian] = useState<boolean>(false);
   const [showLabels, setShowLabels] = useState<boolean>(true);
+  const [showCountryLabels, setShowCountryLabels] = useState<boolean>(true);
   const [currentZoom, setCurrentZoom] = useState<number>(mapConfig.initialZoom);
   const [currentLODLevel, setCurrentLODLevel] = useState(getCurrentLODLevel(mapConfig.initialZoom));
 
@@ -409,6 +410,11 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const toggleLabels = (visible: boolean) => {
     setShowLabels(visible);
   };
+  
+  const toggleCountryLabels = (visible: boolean) => {
+    setShowCountryLabels(visible);
+    console.log('Country labels visibility toggled to:', visible);
+  };
 
   // Convert SVG coordinates to geographic coordinates - helper function
   const svgToLatLng = (x: number, y: number): LatLng => {
@@ -504,6 +510,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
           onToggleLabels={toggleLabels}
           onTogglePrimeMeridian={togglePrimeMeridian}
           onTogglePosition={toggleCoordinates}
+          onToggleCountryLabels={toggleCountryLabels}
           mapConfig={mapConfig}
           layerControlRef={layerControlRef}
         />

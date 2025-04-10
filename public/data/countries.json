@@ -1,0 +1,1484 @@
+{
+  "countries": [
+    {
+      "id": "Kagazi",
+      "name": "Kagazi",
+      "centerpoint": {
+        "x": 3297,
+        "y": 995
+      }
+    },
+    {
+      "id": "Ugarit",
+      "name": "Ugarit",
+      "centerpoint": {
+        "x": 1705,
+        "y": 1661
+      }
+    },
+    {
+      "id": "Rhotia",
+      "name": "Rhotia",
+      "centerpoint": {
+        "x": 2413,
+        "y": 839
+      }
+    },
+    {
+      "id": "Housatonic",
+      "name": "Housatonic",
+      "centerpoint": {
+        "x": 199,
+        "y": 555
+      }
+    },
+    {
+      "id": "Cao",
+      "name": "Cao (DX)",
+      "centerpoint": {
+        "x": 220,
+        "y": 767
+      }
+    },
+    {
+      "id": "Atavia",
+      "name": "Atavia (UR)",
+      "centerpoint": {
+        "x": 280,
+        "y": 652
+      }
+    },
+    {
+      "id": "New_Harren",
+      "name": "New Harren",
+      "centerpoint": {
+        "x": 214,
+        "y": 622
+      }
+    },
+    {
+      "id": "Chenango_Confederacy",
+      "name": "Chenango Confederacy",
+      "centerpoint": {
+        "x": 231,
+        "y": 595
+      }
+    },
+    {
+      "id": "Netansett",
+      "name": "Netansett",
+      "centerpoint": {
+        "x": 131,
+        "y": 641
+      }
+    },
+    {
+      "id": "Porfiria",
+      "name": "Porfiria (KR)",
+      "centerpoint": {
+        "x": 162,
+        "y": 716
+      }
+    },
+    {
+      "id": "Little_Caldera",
+      "name": "Little Caldera",
+      "centerpoint": {
+        "x": 35,
+        "y": 657
+      }
+    },
+    {
+      "id": "Canespa",
+      "name": "Canespa",
+      "centerpoint": {
+        "x": 32,
+        "y": 588
+      }
+    },
+    {
+      "id": "Thystara",
+      "name": "Thystara (KR)",
+      "centerpoint": {
+        "x": 50,
+        "y": 564
+      }
+    },
+    {
+      "id": "Borealia",
+      "name": "Borealia (NH)",
+      "centerpoint": {
+        "x": 190,
+        "y": 527
+      }
+    },
+    {
+      "id": "Caracua",
+      "name": "Caracua",
+      "centerpoint": {
+        "x": 79,
+        "y": 533
+      }
+    },
+    {
+      "id": "Algosh_Republic",
+      "name": "Algosh Republic",
+      "centerpoint": {
+        "x": 208,
+        "y": 569
+      }
+    },
+    {
+      "id": "Venua_tino",
+      "name": "Mandatory Venua'tino",
+      "centerpoint": {
+        "x": 444,
+        "y": 484
+      }
+    },
+    {
+      "id": "Otisco",
+      "name": "Otisco (UR)",
+      "centerpoint": {
+        "x": 399,
+        "y": 615
+      }
+    },
+    {
+      "id": "Shenendehowa_Bay",
+      "name": "Shenendehowa Bay (CP)",
+      "centerpoint": {
+        "x": 333,
+        "y": 602
+      }
+    },
+    {
+      "id": "nature_preserve",
+      "name": "Int'l. Nature Preserve (LoN)",
+      "centerpoint": {
+        "x": 500,
+        "y": 439
+      }
+    },
+    {
+      "id": "East_Arctic_Mandate",
+      "name": "East Arctic Mandate",
+      "centerpoint": {
+        "x": 672,
+        "y": 433
+      }
+    },
+    {
+      "id": "Alpachnees",
+      "name": "Alpachnees",
+      "centerpoint": {
+        "x": 653,
+        "y": 474
+      }
+    },
+    {
+      "id": "Copake",
+      "name": "Copake",
+      "centerpoint": {
+        "x": 477,
+        "y": 540
+      }
+    },
+    {
+      "id": "Atrassica",
+      "name": "Atrassica (KR)",
+      "centerpoint": {
+        "x": 763,
+        "y": 673
+      }
+    },
+    {
+      "id": "Quetzenkel",
+      "name": "Quetzenkel",
+      "centerpoint": {
+        "x": 467,
+        "y": 710
+      }
+    },
+    {
+      "id": "New_Veltorina",
+      "name": "New Veltorina",
+      "centerpoint": {
+        "x": 342,
+        "y": 720
+      }
+    },
+    {
+      "id": "Seneca_Islands",
+      "name": "Seneca Islands (UR)",
+      "centerpoint": {
+        "x": 277,
+        "y": 900
+      }
+    },
+    {
+      "id": "Xisheng",
+      "name": "Xisheng (DX)",
+      "centerpoint": {
+        "x": 470,
+        "y": 588
+      }
+    },
+    {
+      "id": "Varshan",
+      "name": "Varshan",
+      "centerpoint": {
+        "x": 371,
+        "y": 762
+      }
+    },
+    {
+      "id": "Mid-Atrassic_States",
+      "name": "Mid-Atrassic States",
+      "centerpoint": {
+        "x": 591,
+        "y": 599
+      }
+    },
+    {
+      "id": "Chakailan",
+      "name": "Chakailan",
+      "centerpoint": {
+        "x": 703,
+        "y": 854
+      }
+    },
+    {
+      "id": "Kelekona",
+      "name": "Kelekona",
+      "centerpoint": {
+        "x": 712,
+        "y": 969
+      }
+    },
+    {
+      "id": "Arcerion",
+      "name": "Arcerion",
+      "centerpoint": {
+        "x": 777,
+        "y": 967
+      }
+    },
+    {
+      "id": "New_Archduchy",
+      "name": "New Archduchy",
+      "centerpoint": {
+        "x": 863,
+        "y": 954
+      }
+    },
+    {
+      "id": "New_Asiland",
+      "name": "New Asiland",
+      "centerpoint": {
+        "x": 870,
+        "y": 969
+      }
+    },
+    {
+      "id": "Paulastra",
+      "name": "Paulastra",
+      "centerpoint": {
+        "x": 749,
+        "y": 971
+      }
+    },
+    {
+      "id": "The_Cape",
+      "name": "The Cape",
+      "centerpoint": {
+        "x": 964,
+        "y": 1131
+      }
+    },
+    {
+      "id": "Aeonara",
+      "name": "Aeonara (KR)",
+      "centerpoint": {
+        "x": 1077,
+        "y": 1239
+      }
+    },
+    {
+      "id": "Ceylonia",
+      "name": "Ceylonia",
+      "centerpoint": {
+        "x": 886,
+        "y": 1265
+      }
+    },
+    {
+      "id": "Istrenya",
+      "name": "Istrenya",
+      "centerpoint": {
+        "x": 697,
+        "y": 1097
+      }
+    },
+    {
+      "id": "Malentina",
+      "name": "Malentina",
+      "centerpoint": {
+        "x": 719,
+        "y": 1086
+      }
+    },
+    {
+      "id": "Tierrador",
+      "name": "Tierrador",
+      "centerpoint": {
+        "x": 582,
+        "y": 984
+      }
+    },
+    {
+      "id": "Concordia",
+      "name": "Concordia",
+      "centerpoint": {
+        "x": 620,
+        "y": 1111
+      }
+    },
+    {
+      "id": "Betlands",
+      "name": "Betlands",
+      "centerpoint": {
+        "x": 588,
+        "y": 1117
+      }
+    },
+    {
+      "id": "Porlos",
+      "name": "Porlos",
+      "centerpoint": {
+        "x": 552,
+        "y": 1054
+      }
+    },
+    {
+      "id": "Veraise",
+      "name": "Veraise (AL)",
+      "centerpoint": {
+        "x": 539,
+        "y": 995
+      }
+    },
+    {
+      "id": "Ormatia",
+      "name": "Ormatia",
+      "centerpoint": {
+        "x": 478,
+        "y": 946
+      }
+    },
+    {
+      "id": "path74-9",
+      "name": "unnamed",
+      "centerpoint": {
+        "x": 429,
+        "y": 1014
+      }
+    },
+    {
+      "id": "Mierria",
+      "name": "Mierria (AL)",
+      "centerpoint": {
+        "x": 472,
+        "y": 1062
+      }
+    },
+    {
+      "id": "Pur__pec",
+      "name": "Purépec (AL)",
+      "centerpoint": {
+        "x": 445,
+        "y": 935
+      }
+    },
+    {
+      "id": "Alstin",
+      "name": "Alstin",
+      "centerpoint": {
+        "x": 288,
+        "y": 1156
+      }
+    },
+    {
+      "id": "Sarolasta",
+      "name": "Sarolasta (KR)",
+      "centerpoint": {
+        "x": 830,
+        "y": 1399
+      }
+    },
+    {
+      "id": "Solemia",
+      "name": "Solemia (CA)",
+      "centerpoint": {
+        "x": 671,
+        "y": 1316
+      }
+    },
+    {
+      "id": "Sevaronsa",
+      "name": "Sevaronsa (KR)",
+      "centerpoint": {
+        "x": 533,
+        "y": 1304
+      }
+    },
+    {
+      "id": "Zhijun",
+      "name": "Zhijun (DX)",
+      "centerpoint": {
+        "x": 725,
+        "y": 1532
+      }
+    },
+    {
+      "id": "Timbia",
+      "name": "Timbia",
+      "centerpoint": {
+        "x": 602,
+        "y": 1611
+      }
+    },
+    {
+      "id": "Teschego",
+      "name": "Teschego (TI)",
+      "centerpoint": {
+        "x": 715,
+        "y": 1642
+      }
+    },
+    {
+      "id": "Samalosi",
+      "name": "Samalosi (CS)",
+      "centerpoint": {
+        "x": 664,
+        "y": 1746
+      }
+    },
+    {
+      "id": "Rototornicia",
+      "name": "Rototornicia",
+      "centerpoint": {
+        "x": 499,
+        "y": 1691
+      }
+    },
+    {
+      "id": "Tebelvonia",
+      "name": "Tebelvonia",
+      "centerpoint": {
+        "x": 596,
+        "y": 1800
+      }
+    },
+    {
+      "id": "Freda_Island__PX_",
+      "name": "Freda Island (PX)",
+      "centerpoint": {
+        "x": 683,
+        "y": 1893
+      }
+    },
+    {
+      "id": "Baclovia",
+      "name": "Baclovia",
+      "centerpoint": {
+        "x": 607,
+        "y": 1790
+      }
+    },
+    {
+      "id": "Cardo",
+      "name": "Cardo",
+      "centerpoint": {
+        "x": 496,
+        "y": 1997
+      }
+    },
+    {
+      "id": "Mavya",
+      "name": "Mavya",
+      "centerpoint": {
+        "x": 392,
+        "y": 1858
+      }
+    },
+    {
+      "id": "Castadilla",
+      "name": "Castadilla",
+      "centerpoint": {
+        "x": 1413,
+        "y": 1343
+      }
+    },
+    {
+      "id": "Almadaria",
+      "name": "Almadaria",
+      "centerpoint": {
+        "x": 1347,
+        "y": 1352
+      }
+    },
+    {
+      "id": "Arona",
+      "name": "Arona",
+      "centerpoint": {
+        "x": 1308,
+        "y": 1326
+      }
+    },
+    {
+      "id": "Vespera",
+      "name": "Vespera",
+      "centerpoint": {
+        "x": 1381,
+        "y": 1341
+      }
+    },
+    {
+      "id": "Porta_Bianca",
+      "name": "Porta Bianca",
+      "centerpoint": {
+        "x": 1480,
+        "y": 1310
+      }
+    },
+    {
+      "id": "Equatorial_Ostiecia",
+      "name": "Equatorial Ostiecia (BG)",
+      "centerpoint": {
+        "x": 1489,
+        "y": 1197
+      }
+    },
+    {
+      "id": "path108-4",
+      "name": "Eileada (FA)",
+      "centerpoint": {
+        "x": 1523,
+        "y": 1208
+      }
+    },
+    {
+      "id": "Vallejar",
+      "name": "Vallejar",
+      "centerpoint": {
+        "x": 1393,
+        "y": 1489
+      }
+    },
+    {
+      "id": "Takatta_Loa",
+      "name": "Takatta Loa",
+      "centerpoint": {
+        "x": 1329,
+        "y": 1495
+      }
+    },
+    {
+      "id": "Escal",
+      "name": "Escal (CP)",
+      "centerpoint": {
+        "x": 743,
+        "y": 1825
+      }
+    },
+    {
+      "id": "path112-6",
+      "name": "unnamed",
+      "centerpoint": {
+        "x": 911,
+        "y": 1590
+      }
+    },
+    {
+      "id": "Sudmoll",
+      "name": "Sudmoll (BG)",
+      "centerpoint": {
+        "x": 873,
+        "y": 1637
+      }
+    },
+    {
+      "id": "Rapa_Rapa",
+      "name": "Rapa Rapa (UR)",
+      "centerpoint": {
+        "x": 948,
+        "y": 1562
+      }
+    },
+    {
+      "id": "Saukhin",
+      "name": "Saukhin (TI)",
+      "centerpoint": {
+        "x": 930,
+        "y": 1548
+      }
+    },
+    {
+      "id": "Truk",
+      "name": "Truk (DX)",
+      "centerpoint": {
+        "x": 1042,
+        "y": 1556
+      }
+    },
+    {
+      "id": "path116-7",
+      "name": "unnamed",
+      "centerpoint": {
+        "x": 1040,
+        "y": 1553
+      }
+    },
+    {
+      "id": "Krasoa_Islands_",
+      "name": "Krasoa Islands (KR)",
+      "centerpoint": {
+        "x": 1499,
+        "y": 1650
+      }
+    },
+    {
+      "id": "Port_de_Vent_",
+      "name": "Port de Vent (BG)",
+      "centerpoint": {
+        "x": 1524,
+        "y": 1638
+      }
+    },
+    {
+      "id": "Lucrecia",
+      "name": "Lucrecia",
+      "centerpoint": {
+        "x": 1549,
+        "y": 1593
+      }
+    },
+    {
+      "id": "Maristella",
+      "name": "Maristella (CP)",
+      "centerpoint": {
+        "x": 1619,
+        "y": 1586
+      }
+    },
+    {
+      "id": "Puertego",
+      "name": "Puertego",
+      "centerpoint": {
+        "x": 1550,
+        "y": 1453
+      }
+    },
+    {
+      "id": "Amaniaris",
+      "name": "Amaniaris (CP)",
+      "centerpoint": {
+        "x": 1677,
+        "y": 1434
+      }
+    },
+    {
+      "id": "St._Kennera___Pribalter",
+      "name": "St. Kennera & Pribalter (KR)",
+      "centerpoint": {
+        "x": 1713,
+        "y": 1281
+      }
+    },
+    {
+      "id": "Ventotene",
+      "name": "Ventotene (UR)",
+      "centerpoint": {
+        "x": 1677,
+        "y": 1347
+      }
+    },
+    {
+      "id": "Cartadania",
+      "name": "Cartadania",
+      "centerpoint": {
+        "x": 1787,
+        "y": 1024
+      }
+    },
+    {
+      "id": "Lariana",
+      "name": "Lariana",
+      "centerpoint": {
+        "x": 2141,
+        "y": 1263
+      }
+    },
+    {
+      "id": "Pelaxia",
+      "name": "Pelaxia",
+      "centerpoint": {
+        "x": 1597,
+        "y": 1485
+      }
+    },
+    {
+      "id": "Volonia",
+      "name": "Volonia",
+      "centerpoint": {
+        "x": 1938,
+        "y": 1564
+      }
+    },
+    {
+      "id": "New_Ardmore_",
+      "name": "New Ardmore (KR)",
+      "centerpoint": {
+        "x": 2167,
+        "y": 1085
+      }
+    },
+    {
+      "id": "Herciana",
+      "name": "Herciana (UR)",
+      "centerpoint": {
+        "x": 2258,
+        "y": 1388
+      }
+    },
+    {
+      "id": "Halfway",
+      "name": "Halfway (UR)",
+      "centerpoint": {
+        "x": 2284,
+        "y": 1352
+      }
+    },
+    {
+      "id": "Urcea",
+      "name": "Urcea",
+      "centerpoint": {
+        "x": 2256,
+        "y": 1078
+      }
+    },
+    {
+      "id": "Yonderre",
+      "name": "Yonderre",
+      "centerpoint": {
+        "x": 2306,
+        "y": 811
+      }
+    },
+    {
+      "id": "Hollona",
+      "name": "Hollona and Diorisia",
+      "centerpoint": {
+        "x": 2391,
+        "y": 894
+      }
+    },
+    {
+      "id": "Suderavia",
+      "name": "Suderavia (KR)",
+      "centerpoint": {
+        "x": 2121,
+        "y": 687
+      }
+    },
+    {
+      "id": "Scapa",
+      "name": "Scapa (KR)",
+      "centerpoint": {
+        "x": 2179,
+        "y": 667
+      }
+    },
+    {
+      "id": "Lapody",
+      "name": "Lapody",
+      "centerpoint": {
+        "x": 2452,
+        "y": 884
+      }
+    },
+    {
+      "id": "Hendalarsk",
+      "name": "Hendalarsk",
+      "centerpoint": {
+        "x": 2084,
+        "y": 712
+      }
+    },
+    {
+      "id": "Fiannria",
+      "name": "Fiannria",
+      "centerpoint": {
+        "x": 2361,
+        "y": 632
+      }
+    },
+    {
+      "id": "Caergwynn",
+      "name": "Caergwynn",
+      "centerpoint": {
+        "x": 2243,
+        "y": 568
+      }
+    },
+    {
+      "id": "Sorhaithe",
+      "name": "Sorhaithe (FA)",
+      "centerpoint": {
+        "x": 2387,
+        "y": 607
+      }
+    },
+    {
+      "id": "Wintergen",
+      "name": "Wintergen (BG)",
+      "centerpoint": {
+        "x": 2174,
+        "y": 628
+      }
+    },
+    {
+      "id": "Gibetia",
+      "name": "Gibetia",
+      "centerpoint": {
+        "x": 2281,
+        "y": 851
+      }
+    },
+    {
+      "id": "Ardmore",
+      "name": "Ardmore",
+      "centerpoint": {
+        "x": 2215,
+        "y": 1118
+      }
+    },
+    {
+      "id": "Carnland",
+      "name": "Carnland",
+      "centerpoint": {
+        "x": 2251,
+        "y": 1039
+      }
+    },
+    {
+      "id": "Asiland",
+      "name": "Asiland",
+      "centerpoint": {
+        "x": 2012,
+        "y": 860
+      }
+    },
+    {
+      "id": "Cistan",
+      "name": "Cistan",
+      "centerpoint": {
+        "x": 1949,
+        "y": 664
+      }
+    },
+    {
+      "id": "path131-2",
+      "name": "unnamed",
+      "centerpoint": {
+        "x": 2293,
+        "y": 387
+      }
+    },
+    {
+      "id": "Vonein",
+      "name": "Vonein (VI)",
+      "centerpoint": {
+        "x": 2469,
+        "y": 580
+      }
+    },
+    {
+      "id": "path130-2",
+      "name": "unnamed",
+      "centerpoint": {
+        "x": 2235,
+        "y": 521
+      }
+    },
+    {
+      "id": "path132-6",
+      "name": "unnamed",
+      "centerpoint": {
+        "x": 2192,
+        "y": 383
+      }
+    },
+    {
+      "id": "Pelia",
+      "name": "Pelia",
+      "centerpoint": {
+        "x": 1939,
+        "y": 1693
+      }
+    },
+    {
+      "id": "Calto",
+      "name": "Calto",
+      "centerpoint": {
+        "x": 1956,
+        "y": 1639
+      }
+    },
+    {
+      "id": "Cogenia",
+      "name": "Cogenia",
+      "centerpoint": {
+        "x": 1910,
+        "y": 1384
+      }
+    },
+    {
+      "id": "Xelphia",
+      "name": "Xelphia",
+      "centerpoint": {
+        "x": 2205,
+        "y": 1416
+      }
+    },
+    {
+      "id": "Avamax",
+      "name": "Avamax",
+      "centerpoint": {
+        "x": 2262,
+        "y": 1549
+      }
+    },
+    {
+      "id": "Xalesia",
+      "name": "Xalesia",
+      "centerpoint": {
+        "x": 2088,
+        "y": 1579
+      }
+    },
+    {
+      "id": "Manuncia",
+      "name": "Manuncia",
+      "centerpoint": {
+        "x": 2294,
+        "y": 1440
+      }
+    },
+    {
+      "id": "Sydona_Islands",
+      "name": "Sydona Islands (KR)",
+      "centerpoint": {
+        "x": 2274,
+        "y": 1739
+      }
+    },
+    {
+      "id": "Greater_Salesia",
+      "name": "Greater Salesia",
+      "centerpoint": {
+        "x": 2138,
+        "y": 1590
+      }
+    },
+    {
+      "id": "South_Solis",
+      "name": "South Solis",
+      "centerpoint": {
+        "x": 2051,
+        "y": 1629
+      }
+    },
+    {
+      "id": "North_Solis",
+      "name": "North Solis",
+      "centerpoint": {
+        "x": 2314,
+        "y": 1476
+      }
+    },
+    {
+      "id": "Melian_Islands",
+      "name": "Melian Islands (KR)",
+      "centerpoint": {
+        "x": 2537,
+        "y": 1428
+      }
+    },
+    {
+      "id": "path159-7",
+      "name": "unnamed",
+      "centerpoint": {
+        "x": 2515,
+        "y": 1478
+      }
+    },
+    {
+      "id": "Soirwind",
+      "name": "Soirwind",
+      "centerpoint": {
+        "x": 3180,
+        "y": 1075
+      }
+    },
+    {
+      "id": "Antilles",
+      "name": "Antilles (BG)",
+      "centerpoint": {
+        "x": 3120,
+        "y": 1133
+      }
+    },
+    {
+      "id": "Hezikian_Isles",
+      "name": "Hezikian Isles (FI)",
+      "centerpoint": {
+        "x": 3014,
+        "y": 1031
+      }
+    },
+    {
+      "id": "Zaclaria",
+      "name": "Zaclaria",
+      "centerpoint": {
+        "x": 3185,
+        "y": 1150
+      }
+    },
+    {
+      "id": "Alcairet",
+      "name": "Alcairet (BG)",
+      "centerpoint": {
+        "x": 3144,
+        "y": 1265
+      }
+    },
+    {
+      "id": "Sacatia",
+      "name": "Sacatia",
+      "centerpoint": {
+        "x": 3210,
+        "y": 831
+      }
+    },
+    {
+      "id": "Jazee",
+      "name": "Jazee",
+      "centerpoint": {
+        "x": 3384,
+        "y": 999
+      }
+    },
+    {
+      "id": "Devonta",
+      "name": "Devonta",
+      "centerpoint": {
+        "x": 3372,
+        "y": 1096
+      }
+    },
+    {
+      "id": "Argaea",
+      "name": "Argaea (BG)",
+      "centerpoint": {
+        "x": 2905,
+        "y": 1998
+      }
+    },
+    {
+      "id": "Thervala",
+      "name": "Thervala",
+      "centerpoint": {
+        "x": 3566,
+        "y": 1049
+      }
+    },
+    {
+      "id": "Oyashima",
+      "name": "Oyashima",
+      "centerpoint": {
+        "x": 3674,
+        "y": 1020
+      }
+    },
+    {
+      "id": "Metzetta",
+      "name": "Metzetta",
+      "centerpoint": {
+        "x": 3697,
+        "y": 1108
+      }
+    },
+    {
+      "id": "Nauta_Normand",
+      "name": "Nauta Normand (BG)",
+      "centerpoint": {
+        "x": 1521,
+        "y": 494
+      }
+    },
+    {
+      "id": "Eusa",
+      "name": "Eusa (KR)",
+      "centerpoint": {
+        "x": 1705,
+        "y": 961
+      }
+    },
+    {
+      "id": "Kiravia",
+      "name": "Kiravia",
+      "centerpoint": {
+        "x": 1355,
+        "y": 235
+      }
+    },
+    {
+      "id": "Daxia",
+      "name": "Daxia",
+      "centerpoint": {
+        "x": 3611,
+        "y": 1233
+      }
+    },
+    {
+      "id": "Huoxia",
+      "name": "Huoxia",
+      "centerpoint": {
+        "x": 3389,
+        "y": 1224
+      }
+    },
+    {
+      "id": "Canbei",
+      "name": "Canbei",
+      "centerpoint": {
+        "x": 3119,
+        "y": 1219
+      }
+    },
+    {
+      "id": "Ankivara",
+      "name": "Ankivara",
+      "centerpoint": {
+        "x": 3119,
+        "y": 1191
+      }
+    },
+    {
+      "id": "Rusana",
+      "name": "Rusana",
+      "centerpoint": {
+        "x": 3475,
+        "y": 1362
+      }
+    },
+    {
+      "id": "The_Holding",
+      "name": "The Holding",
+      "centerpoint": {
+        "x": 3401,
+        "y": 1328
+      }
+    },
+    {
+      "id": "Dhavastu",
+      "name": "Dhavastu",
+      "centerpoint": {
+        "x": 3326,
+        "y": 1383
+      }
+    },
+    {
+      "id": "Tapakdore",
+      "name": "Tapakdore",
+      "centerpoint": {
+        "x": 3172,
+        "y": 1302
+      }
+    },
+    {
+      "id": "Kandara",
+      "name": "Kandara",
+      "centerpoint": {
+        "x": 3270,
+        "y": 1139
+      }
+    },
+    {
+      "id": "Pukhgandi",
+      "name": "Pukhgandi",
+      "centerpoint": {
+        "x": 3193,
+        "y": 1290
+      }
+    },
+    {
+      "id": "Umardwal",
+      "name": "Umardwal",
+      "centerpoint": {
+        "x": 3130,
+        "y": 1369
+      }
+    },
+    {
+      "id": "Pukhtunistan",
+      "name": "Pukhtunistan",
+      "centerpoint": {
+        "x": 3254,
+        "y": 1393
+      }
+    },
+    {
+      "id": "Yanuban",
+      "name": "Yanuban",
+      "centerpoint": {
+        "x": 3121,
+        "y": 1517
+      }
+    },
+    {
+      "id": "Bulkh",
+      "name": "Bulkh",
+      "centerpoint": {
+        "x": 2999,
+        "y": 1397
+      }
+    },
+    {
+      "id": "Battganuur",
+      "name": "Battganuur",
+      "centerpoint": {
+        "x": 3047,
+        "y": 1314
+      }
+    },
+    {
+      "id": "Chaukhira",
+      "name": "Chaukhira (BG)",
+      "centerpoint": {
+        "x": 2900,
+        "y": 1466
+      }
+    },
+    {
+      "id": "Sotsial",
+      "name": "Sotsial (AL)",
+      "centerpoint": {
+        "x": 3910,
+        "y": 964
+      }
+    },
+    {
+      "id": "Isidar",
+      "name": "Isidar (AL)",
+      "centerpoint": {
+        "x": 3928,
+        "y": 918
+      }
+    },
+    {
+      "id": "path188-4",
+      "name": "unnamed",
+      "centerpoint": {
+        "x": 3932,
+        "y": 874
+      }
+    },
+    {
+      "id": "Iles_Evangeline",
+      "name": "Iles Evangeline (BG)",
+      "centerpoint": {
+        "x": 3942,
+        "y": 884
+      }
+    },
+    {
+      "id": "Huadao",
+      "name": "Huadao (UR)",
+      "centerpoint": {
+        "x": 3652,
+        "y": 1875
+      }
+    },
+    {
+      "id": "path190-4",
+      "name": "unnamed",
+      "centerpoint": {
+        "x": 3614,
+        "y": 1621
+      }
+    },
+    {
+      "id": "Sakhalins",
+      "name": "Sakhalins (KR)",
+      "centerpoint": {
+        "x": 1885,
+        "y": 1977
+      }
+    },
+    {
+      "id": "Jinju",
+      "name": "Jinju (MZ)",
+      "centerpoint": {
+        "x": 470,
+        "y": 1628
+      }
+    },
+    {
+      "id": "path193-5",
+      "name": "unnamed",
+      "centerpoint": {
+        "x": 1408,
+        "y": 997
+      }
+    },
+    {
+      "id": "Howland_Governorate",
+      "name": "Howland Governorate (AR)",
+      "centerpoint": {
+        "x": 762,
+        "y": 499
+      }
+    },
+    {
+      "id": "Lotoa",
+      "name": "Lotoa (CA)",
+      "centerpoint": {
+        "x": 976,
+        "y": 1698
+      }
+    },
+    {
+      "id": "Burgundie",
+      "name": "Burgundie",
+      "centerpoint": {
+        "x": 2583,
+        "y": 984
+      }
+    },
+    {
+      "id": "Torlen",
+      "name": "Torlen (BG)",
+      "centerpoint": {
+        "x": 2789,
+        "y": 974
+      }
+    },
+    {
+      "id": "Orenstia",
+      "name": "Orenstia",
+      "centerpoint": {
+        "x": 2624,
+        "y": 751
+      }
+    },
+    {
+      "id": "unnamed",
+      "name": "unnamed",
+      "centerpoint": {
+        "x": 3014,
+        "y": 536
+      }
+    },
+    {
+      "id": "Eileada",
+      "name": "Eileada (FA)",
+      "centerpoint": {
+        "x": 1523,
+        "y": 1208
+      }
+    },
+    {
+      "id": "Medimeria",
+      "name": "Medimeria (UR)",
+      "centerpoint": {
+        "x": 3426,
+        "y": 658
+      }
+    },
+    {
+      "id": "Titechaxha",
+      "name": "Titechaxha",
+      "centerpoint": {
+        "x": 728,
+        "y": 870
+      }
+    },
+    {
+      "id": "Telonaticolan",
+      "name": "Telonaticolan",
+      "centerpoint": {
+        "x": 698,
+        "y": 750
+      }
+    },
+    {
+      "id": "Caphiria",
+      "name": "Caphiria",
+      "centerpoint": {
+        "x": 1757,
+        "y": 1257
+      }
+    },
+    {
+      "id": "Avonia",
+      "name": "Avonia",
+      "centerpoint": {
+        "x": 2400,
+        "y": 1003
+      }
+    },
+    {
+      "id": "Faneria",
+      "name": "Faneria",
+      "centerpoint": {
+        "x": 1968,
+        "y": 621
+      }
+    },
+    {
+      "id": "Int_l_Canal_Zone",
+      "name": "Int'l Canal Zone",
+      "centerpoint": {
+        "x": 2165,
+        "y": 752
+      }
+    },
+    {
+      "id": "path18-6",
+      "name": "Telokona",
+      "centerpoint": {
+        "x": 603,
+        "y": 945
+      }
+    },
+    {
+      "id": "Alba_Concordia__LoN_",
+      "name": "Alba Concordia (LoN)",
+      "centerpoint": {
+        "x": 2627,
+        "y": 983
+      }
+    },
+    {
+      "id": "Pursat",
+      "name": "Pursat",
+      "centerpoint": {
+        "x": 3021,
+        "y": 1477
+      }
+    }
+  ]
+}
