@@ -419,10 +419,6 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     setShowCountryLabels(visible); 
     console.log('Country labels visibility toggled to:', visible);
   };
-
-  // NOTE: Removed the svgToLatLng and latLngToSvg definitions from here
-  // They should be imported from '@/lib/MapConfig' if needed elsewhere in this component
-
   return (
     <div 
       ref={mapContainerRef} 
@@ -463,9 +459,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
           svgHeight={mapConfig.svgHeight}
           primeMeridianSvg={primeMeridianSvg}
           setPrimeMeridianSvg={setPrimeMeridianSvg}
-          // Pass conversion functions if needed by CoordinatesComponent
-          // svgToLatLng={svgToLatLng} 
-          // latLngToSvg={latLngToSvg}
+
         />
       )}
       
