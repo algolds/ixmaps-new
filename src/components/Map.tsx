@@ -2,16 +2,19 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { MapConfig, LatLng, SvgPoint } from '@/types';
-import { defaultMapConfig, gridStyle, visibleBounds } from '@/lib/MapConfig';
+import { defaultMapConfig, visibleBounds } from '@/lib/MapConfig';
 import { showToast, initToasts } from '@/lib/Toast';
 import { loadSVGDimensions } from '@/lib/SVGLoader';
 import dynamic from 'next/dynamic';
 import DistanceMeasurement from './DistanceMeasurement';
 import MapScale from './MapScale';
 import SVGLayerControl from './SVGLayerControl';
+import GridComponent from './GridComponent';
+import CoordinatesComponent from './CoordinatesComponent';
+import ControlPanel from './ControlPanel';
 
 // Import Leaflet types
-import type { Map as LeafletMap, LatLngBounds, LayerGroup, CircleMarker } from 'leaflet';
+import type { Map as LeafletMap, LatLngBounds, CircleMarker } from 'leaflet';
 
 // Client-side only imports
 const LeafletComponentLoader = dynamic(
@@ -27,14 +30,13 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   // Refs
   const mapRef = useRef<LeafletMap | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const gridLayerRef = useRef<LayerGroup | null>(null);
-  const primeMeridianLayerRef = useRef<LayerGroup | null>(null);
   const clickMarkerRef = useRef<CircleMarker | null>(null);
   const mapInitializedRef = useRef<boolean>(false);
   const resizeHandlerRef = useRef<(() => void) | null>(null);
   const leafletRef = useRef<any>(null);
   const initialCenterAppliedRef = useRef<boolean>(false);
   const isWrappingRef = useRef<boolean>(false); // Track if we're currently wrapping
+  const controlPanelAddedRef = useRef<boolean>(false);
 
   // State
   const [mapConfig, setMapConfig] = useState<MapConfig>({
@@ -44,6 +46,9 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const [primeMeridianSvg, setPrimeMeridianSvg] = useState<SvgPoint | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
   const [isLeafletLoaded, setIsLeafletLoaded] = useState(false);
+  const [showGrid, setShowGrid] = useState<boolean>(true);
+  const [showCoordinates, setShowCoordinates] = useState<boolean>(true);
+  const [showPrimeMeridian, setShowPrimeMeridian] = useState<boolean>(false);
 
   // Init the prime meridian with default values immediately to prevent race conditions
   useEffect(() => {
@@ -121,8 +126,19 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       mapInitializedRef.current = false;
       initialCenterAppliedRef.current = false;
       isWrappingRef.current = false;
+      controlPanelAddedRef.current = false;
     };
   }, [mapConfig.masterMapPath]);
+
+  // Add control panel once map is ready
+  useEffect(() => {
+    if (isMapReady && mapRef.current && leafletRef.current && !controlPanelAddedRef.current) {
+      // Add control panel
+      controlPanelAddedRef.current = true;
+      
+      console.log('Adding control panel to map');
+    }
+  }, [isMapReady]);
 
   // Function to handle horizontal wraparound
   const handleMapWraparound = () => {
@@ -255,65 +271,20 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
         position: 'topleft'
       }).addTo(map);
 
-      // Create layer groups
-      const gridLayer = L.layerGroup().addTo(map);
-      const primeMeridianLayer = L.layerGroup().addTo(map);
-
       // Store refs
       mapRef.current = map;
-      gridLayerRef.current = gridLayer;
-      primeMeridianLayerRef.current = primeMeridianLayer;
 
       console.log('Map initialized successfully');
-
-      // Add coordinates display control
-      const CoordDisplay = L.Control.extend({
-        options: {
-          position: 'bottomleft'
-        },
-        
-        onAdd: function() {
-          const container = L.DomUtil.create('div', 'coordinates-display');
-          container.innerHTML = 'Coordinates: Hover over the map';
-          return container;
-        }
-      });
-      
-      // Add the coordinates display to the map
-      const coordDisplay = new CoordDisplay();
-      coordDisplay.addTo(map);
-      
-      // Update coordinates on mousemove
-      map.on('mousemove', (e: { latlng: { lng: number; lat: number; }; }) => {
-        try {
-          const customCoord = svgToCustomLatLng(e.latlng.lng, e.latlng.lat);
-          const container = document.querySelector('.coordinates-display');
-          if (container) {
-            container.innerHTML = `Coordinates:<br>Lat: ${formatCoord(customCoord.lat, 'N', 'S')}, Lng: ${formatCoord(customCoord.lng, 'E', 'W')}`;
-          }
-        } catch (err) {
-          console.warn('Error updating coordinates:', err);
-        }
-      });
 
       // Set up event handlers
       map.on('zoomend', () => {
         console.log('Map zoom level:', map.getZoom());
-        // Only try to draw grid if prime meridian is set
-        if (primeMeridianSvg) {
-          drawGrid(L);
-        }
       });
 
       map.on('moveend', () => {
         console.log('Map center:', map.getCenter());
         // Handle wraparound
         handleMapWraparound();
-        
-        // Only try to draw grid if prime meridian is set
-        if (primeMeridianSvg) {
-          drawGrid(L);
-        }
       });
       
       // Add continuous wraparound handler during drag
@@ -333,20 +304,11 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
         });
       }
 
-      // Initial draw with a slight delay to ensure the map is fully ready
+      // Initial centering with a slight delay to ensure the map is fully ready
       setTimeout(() => {
-        // Only draw if prime meridian is ready
-        if (primeMeridianSvg) {
-          try {
-            drawGrid(L);
-            drawPrimeMeridian(L);
-            
-            // Center on prime meridian after initial drawing
-            centerOnPrimeMeridian();
-          } catch (e) {
-            console.error('Error during initial grid drawing:', e);
-          }
-        }
+        // Center on prime meridian after initial drawing
+        centerOnPrimeMeridian();
+        
         setIsMapReady(true);
         showToast('Map initialized successfully!', 'success', 3000);
       }, 1000);
@@ -356,37 +318,6 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       showToast(`Map initialization failed: ${error}`, 'error', 5000);
       mapInitializedRef.current = false; // Reset so we can try again
     }
-  };
-
-  // Check if a new label position would overlap with existing ones
-  const isLabelPositionSafe = (position: number, labeledPositions: number[], minDistance: number): boolean => {
-    for (let i = 0; i < labeledPositions.length; i++) {
-      if (Math.abs(position - labeledPositions[i]) < minDistance) {
-        return false;
-      }
-    }
-    return true;
-  };
-
-  // Helper function to add a longitude label and track its position
-  const addLongitudeLabel = (
-    L: any, 
-    gridLayer: any, 
-    labelPos: any, 
-    labelText: string, 
-    labeledPositions: number[], 
-    xPosition: number
-  ): void => {
-    L.marker(labelPos, {
-      icon: L.divIcon({
-        className: 'grid-label',
-        html: labelText,
-        iconSize: [40, 20],
-        iconAnchor: [20, 0]
-      })
-    }).addTo(gridLayer);
-    
-    labeledPositions.push(xPosition);
   };
 
   // Convert SVG coordinates to geographic coordinates
@@ -504,413 +435,99 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     }
   };
 
-  // Draw coordinate grid based on zoom level
-  const drawGrid = (L: any) => {
-    const map = mapRef.current;
-    const gridLayer = gridLayerRef.current;
-    
-    if (!map || !gridLayer || !primeMeridianSvg) {
-      console.log("Cannot draw grid: Map, grid layer, or prime meridian not initialized", {
-        map: !!map,
-        gridLayer: !!gridLayer,
-        primeMeridianSvg: !!primeMeridianSvg
-      });
-      return;
-    }
-
-    try {
-      // Clear existing grid
-      gridLayer.clearLayers();
-      
-      const zoom = map.getZoom();
-      
-      // Adjust grid spacing based on zoom
-      let spacing = 30; // Default 30 degree spacing
-      if (zoom > 3) spacing = 15; // At higher zoom, use 15 degrees
-      if (zoom > 4) spacing = 10; // Even higher zoom, use 10 degrees
-      if (zoom > 5) spacing = 5;  // At highest zoom, use 5 degrees
-      
-      // Prime meridian is our 0° longitude reference
-      const primeMeridianX = primeMeridianSvg.x;
-      
-      // Get visible bounds in SVG coordinates
-      const southPoint = latLngToSvg(visibleBounds.southLat, 0);
-      const northPoint = latLngToSvg(visibleBounds.northLat, 0);
-      
-      // Get current view bounds for clipping
-      const bounds = map.getBounds();
-      const visibleWest = bounds.getWest();
-      const visibleEast = bounds.getEast();
-      
-      // Add buffer to ensure grid lines appear smoothly when scrolling
-      const bufferWidth = mapConfig.svgWidth * 0.1; // 10% buffer
-      
-      // Calculate pixels per degree for longitude
-      const pixelsPerDegree = mapConfig.svgWidth / 360;
-      
-      // Track labeled positions to prevent overlap
-      const labeledPositions: number[] = [];
-      const LABEL_MIN_DISTANCE = 50; // Minimum distance between labels in pixels
-      
-      // Draw the prime meridian (0°) and its wrapped instances
-      const drawMeridian = (xPosition: number): void => {
-        if (xPosition >= visibleWest - bufferWidth && xPosition <= visibleEast + bufferWidth) {
-          L.polyline([
-            [southPoint.y, xPosition], // Bottom of visible map
-            [northPoint.y, xPosition]  // Top of visible map
-          ], {
-            color: '#FF8000', // Orange for prime meridian
-            weight: 2,
-            opacity: 0.8,
-            dashArray: '8,6'
-          }).addTo(gridLayer);
-          
-          // Prime meridian label
-          const meridianLabelPos = L.latLng(southPoint.y + 20, xPosition);
-          // Add label only if it won't overlap with existing ones
-          if (isLabelPositionSafe(xPosition, labeledPositions, LABEL_MIN_DISTANCE)) {
-            L.marker(meridianLabelPos, {
-              icon: L.divIcon({
-                className: 'grid-label prime-meridian-label',
-                html: '0°',
-                iconSize: [40, 20],
-                iconAnchor: [20, 0]
-              })
-            }).addTo(gridLayer);
-            
-            // Record this position
-            labeledPositions.push(xPosition);
-          }
-        }
-      };
-      
-      // Draw all instances of prime meridian
-      drawMeridian(primeMeridianX);
-      drawMeridian(primeMeridianX + mapConfig.svgWidth);  // Right wraparound
-      drawMeridian(primeMeridianX - mapConfig.svgWidth);  // Left wraparound
-      
-      // Calculate how many grid lines we need
-      const maxLines = Math.ceil(360 / spacing);
-      
-      // First pass: Draw all grid lines
-      // Draw lines east of prime meridian
-      for (let i = 1; i <= maxLines; i++) {
-        const lng = i * spacing;
-        const isMajor = lng % 30 === 0;
-        
-        // Calculate pixels from prime meridian
-        const offsetPixels = lng * pixelsPerDegree;
-        
-        // Draw original line and wraparounds
-        const svgX = primeMeridianX + offsetPixels;
-        
-        // Draw lines without labels first
-        L.polyline([
-          [southPoint.y, svgX], // Bottom of visible map
-          [northPoint.y, svgX]  // Top of visible map
-        ], {
-          color: gridStyle.GRID_COLOR,
-          weight: isMajor ? gridStyle.MAJOR_LINE_WEIGHT : gridStyle.MINOR_LINE_WEIGHT,
-          opacity: gridStyle.LINE_OPACITY,
-          dashArray: isMajor ? undefined : gridStyle.DASH_ARRAY
-        }).addTo(gridLayer);
-        
-        L.polyline([
-          [southPoint.y, svgX - mapConfig.svgWidth], // Bottom of visible map
-          [northPoint.y, svgX - mapConfig.svgWidth]  // Top of visible map
-        ], {
-          color: gridStyle.GRID_COLOR,
-          weight: isMajor ? gridStyle.MAJOR_LINE_WEIGHT : gridStyle.MINOR_LINE_WEIGHT,
-          opacity: gridStyle.LINE_OPACITY,
-          dashArray: isMajor ? undefined : gridStyle.DASH_ARRAY
-        }).addTo(gridLayer);
-        
-        L.polyline([
-          [southPoint.y, svgX + mapConfig.svgWidth], // Bottom of visible map
-          [northPoint.y, svgX + mapConfig.svgWidth]  // Top of visible map
-        ], {
-          color: gridStyle.GRID_COLOR,
-          weight: isMajor ? gridStyle.MAJOR_LINE_WEIGHT : gridStyle.MINOR_LINE_WEIGHT,
-          opacity: gridStyle.LINE_OPACITY,
-          dashArray: isMajor ? undefined : gridStyle.DASH_ARRAY
-        }).addTo(gridLayer);
-      }
-      
-      // Draw lines west of prime meridian
-      for (let i = 1; i <= maxLines; i++) {
-        const lng = i * spacing;
-        const isMajor = lng % 30 === 0;
-        
-        // Calculate pixels from prime meridian
-        const offsetPixels = lng * pixelsPerDegree;
-        
-        // Draw original line and wraparounds
-        const svgX = primeMeridianX - offsetPixels;
-        
-        // Draw lines without labels first
-        L.polyline([
-          [southPoint.y, svgX], // Bottom of visible map
-          [northPoint.y, svgX]  // Top of visible map
-        ], {
-          color: gridStyle.GRID_COLOR,
-          weight: isMajor ? gridStyle.MAJOR_LINE_WEIGHT : gridStyle.MINOR_LINE_WEIGHT,
-          opacity: gridStyle.LINE_OPACITY,
-          dashArray: isMajor ? undefined : gridStyle.DASH_ARRAY
-        }).addTo(gridLayer);
-        
-        L.polyline([
-          [southPoint.y, svgX - mapConfig.svgWidth], // Bottom of visible map
-          [northPoint.y, svgX - mapConfig.svgWidth]  // Top of visible map
-        ], {
-          color: gridStyle.GRID_COLOR,
-          weight: isMajor ? gridStyle.MAJOR_LINE_WEIGHT : gridStyle.MINOR_LINE_WEIGHT,
-          opacity: gridStyle.LINE_OPACITY,
-          dashArray: isMajor ? undefined : gridStyle.DASH_ARRAY
-        }).addTo(gridLayer);
-        
-        L.polyline([
-          [southPoint.y, svgX + mapConfig.svgWidth], // Bottom of visible map
-          [northPoint.y, svgX + mapConfig.svgWidth]  // Top of visible map
-        ], {
-          color: gridStyle.GRID_COLOR,
-          weight: isMajor ? gridStyle.MAJOR_LINE_WEIGHT : gridStyle.MINOR_LINE_WEIGHT,
-          opacity: gridStyle.LINE_OPACITY,
-          dashArray: isMajor ? undefined : gridStyle.DASH_ARRAY
-        }).addTo(gridLayer);
-      }
-      
-      // Second pass: Add labels with overlap prevention
-      // Draw labels for east lines
-      for (let i = 1; i <= maxLines; i++) {
-        const lng = i * spacing;
-        const isMajor = lng % 30 === 0;
-        if (!isMajor) continue;
-        
-        const offsetPixels = lng * pixelsPerDegree;
-        const svgX = primeMeridianX + offsetPixels;
-        
-        // Try all three possible positions (original, left wrap, right wrap)
-        // in order of visibility priority
-        if (svgX >= visibleWest && svgX <= visibleEast && isLabelPositionSafe(svgX, labeledPositions, LABEL_MIN_DISTANCE)) {
-          const labelPos = L.latLng(southPoint.y + 20, svgX);
-          addLongitudeLabel(L, gridLayer, labelPos, `${lng}° E`, labeledPositions, svgX);
-        } else if (svgX - mapConfig.svgWidth >= visibleWest && svgX - mapConfig.svgWidth <= visibleEast && 
-                 isLabelPositionSafe(svgX - mapConfig.svgWidth, labeledPositions, LABEL_MIN_DISTANCE)) {
-          const labelPos = L.latLng(southPoint.y + 20, svgX - mapConfig.svgWidth);
-          addLongitudeLabel(L, gridLayer, labelPos, `${lng}° E`, labeledPositions, svgX - mapConfig.svgWidth);
-        } else if (svgX + mapConfig.svgWidth >= visibleWest && svgX + mapConfig.svgWidth <= visibleEast && 
-                 isLabelPositionSafe(svgX + mapConfig.svgWidth, labeledPositions, LABEL_MIN_DISTANCE)) {
-          const labelPos = L.latLng(southPoint.y + 20, svgX + mapConfig.svgWidth);
-          addLongitudeLabel(L, gridLayer, labelPos, `${lng}° E`, labeledPositions, svgX + mapConfig.svgWidth);
-        }
-      }
-      
-      // Draw labels for west lines
-      for (let i = 1; i <= maxLines; i++) {
-        const lng = i * spacing;
-        const isMajor = lng % 30 === 0;
-        if (!isMajor) continue;
-        
-        const offsetPixels = lng * pixelsPerDegree;
-        const svgX = primeMeridianX - offsetPixels;
-        
-        // Try all three possible positions (original, left wrap, right wrap)
-        // in order of visibility priority
-        if (svgX >= visibleWest && svgX <= visibleEast && isLabelPositionSafe(svgX, labeledPositions, LABEL_MIN_DISTANCE)) {
-          const labelPos = L.latLng(southPoint.y + 20, svgX);
-          addLongitudeLabel(L, gridLayer, labelPos, `${lng}° W`, labeledPositions, svgX);
-        } else if (svgX - mapConfig.svgWidth >= visibleWest && svgX - mapConfig.svgWidth <= visibleEast && 
-                 isLabelPositionSafe(svgX - mapConfig.svgWidth, labeledPositions, LABEL_MIN_DISTANCE)) {
-          const labelPos = L.latLng(southPoint.y + 20, svgX - mapConfig.svgWidth);
-          addLongitudeLabel(L, gridLayer, labelPos, `${lng}° W`, labeledPositions, svgX - mapConfig.svgWidth);
-        } else if (svgX + mapConfig.svgWidth >= visibleWest && svgX + mapConfig.svgWidth <= visibleEast && 
-                 isLabelPositionSafe(svgX + mapConfig.svgWidth, labeledPositions, LABEL_MIN_DISTANCE)) {
-          const labelPos = L.latLng(southPoint.y + 20, svgX + mapConfig.svgWidth);
-          addLongitudeLabel(L, gridLayer, labelPos, `${lng}° W`, labeledPositions, svgX + mapConfig.svgWidth);
-        }
-      }
-      
-      // Draw latitude lines - only within visible bounds
-      for (let lat = Math.ceil(visibleBounds.southLat / spacing) * spacing; 
-           lat <= visibleBounds.northLat; 
-           lat += spacing) {
-        
-        const isMajor = lat % 30 === 0;
-        const isEquator = Math.abs(lat) < 0.001;
-        
-        // Get SVG coordinates for this latitude
-        const svgY = latLngToSvg(lat, 0).y;
-        
-        // Draw the line across the full visible width
-        const visibleWidth = visibleEast - visibleWest + (2 * bufferWidth);
-        const lineStart = visibleWest - bufferWidth;
-        
-        L.polyline([
-          [svgY, lineStart], // Left side of visible area with buffer
-          [svgY, lineStart + visibleWidth] // Right side of visible area with buffer
-        ], {
-          color: isEquator ? gridStyle.EQUATOR_COLOR : gridStyle.GRID_COLOR,
-          weight: (isMajor || isEquator) ? gridStyle.MAJOR_LINE_WEIGHT : gridStyle.MINOR_LINE_WEIGHT,
-          opacity: gridStyle.LINE_OPACITY,
-          dashArray: (isMajor || isEquator) ? undefined : gridStyle.DASH_ARRAY
-        }).addTo(gridLayer);
-        
-        // Add label if needed
-        if ((isMajor || isEquator)) {
-          const labelPos = L.latLng(svgY, visibleWest + 20);
-          
-          // The display of N/S labels
-          L.marker(labelPos, {
-            icon: L.divIcon({
-              className: 'grid-label',
-              html: `${Math.abs(lat)}° ${lat >= 0 ? 'N' : 'S'}`,
-              iconSize: [40, 20],
-              iconAnchor: [0, 10]
-            })
-          }).addTo(gridLayer);
-        }
-      }
-    } catch (error) {
-      console.error('Error drawing grid:', error);
-    }
-  };
-
-  // Draw prime meridian with proper wraparound
-  const drawPrimeMeridian = (L: any) => {
-    const map = mapRef.current;
-    const primeMeridianLayer = primeMeridianLayerRef.current;
-    
-    if (!map || !primeMeridianLayer || !primeMeridianSvg) {
-      console.log("Cannot draw prime meridian: Map, layer, or prime meridian not initialized", {
-        map: !!map,
-        primeMeridianLayer: !!primeMeridianLayer,
-        primeMeridianSvg: !!primeMeridianSvg
-      });
-      return;
-    }
-
-    try {
-      // Clear existing layers
-      primeMeridianLayer.clearLayers();
-      
-      // Get SVG coordinates for visible bounds
-      const southPoint = latLngToSvg(visibleBounds.southLat, 0);
-      const northPoint = latLngToSvg(visibleBounds.northLat, 0);
-      
-      // Get current map view bounds
-      const bounds = map.getBounds();
-      const westBound = bounds.getWest();
-      const eastBound = bounds.getEast();
-      
-      // Add buffer for smooth appearance/disappearance
-      const bufferWidth = mapConfig.svgWidth * 0.1;
-      
-      // Function to draw a meridian instance
-      const drawMeridianLine = (xPosition: number): void => {
-        // Only draw if in visible area (with buffer)
-        if (xPosition >= westBound - bufferWidth && xPosition <= eastBound + bufferWidth) {
-          // Draw the meridian line
-          L.polyline([
-            [southPoint.y, xPosition], 
-            [northPoint.y, xPosition]
-          ], {
-            color: gridStyle.PRIME_MERIDIAN_COLOR,
-            weight: gridStyle.PRIME_MERIDIAN_WEIGHT,
-            opacity: gridStyle.PRIME_MERIDIAN_OPACITY,
-            dashArray: gridStyle.PRIME_MERIDIAN_DASH_ARRAY
-          }).addTo(primeMeridianLayer);
-          
-          // Add meridian label
-          L.marker(L.latLng(southPoint.y - 20, xPosition), {
-            icon: L.divIcon({
-              className: 'prime-meridian-label',
-              html: 'Prime Meridian (0°)',
-              iconSize: [120, 30],
-              iconAnchor: [60, 15]
-            })
-          }).addTo(primeMeridianLayer);
-          
-          // Add reference point marker
-          const markerY = primeMeridianSvg.y;
-          if (markerY >= southPoint.y && markerY <= northPoint.y) {
-            L.circleMarker(L.latLng(markerY, xPosition), {
-              radius: 8,
-              color: gridStyle.PRIME_MERIDIAN_COLOR,
-              fillColor: '#FFFF00',
-              fillOpacity: 0.7,
-              weight: 2
-            }).bindPopup(`
-              <strong>Prime Meridian Reference</strong><br>
-              Map Reference: 0° Longitude
-            `).addTo(primeMeridianLayer);
-          }
-        }
-      };
-      
-      // Draw all instances of the meridian
-      drawMeridianLine(primeMeridianSvg.x);  // Original
-      drawMeridianLine(primeMeridianSvg.x + mapConfig.svgWidth);  // Right wraparound
-      drawMeridianLine(primeMeridianSvg.x - mapConfig.svgWidth);  // Left wraparound
-    } catch (error) {
-      console.error('Error drawing prime meridian:', error);
-    }
-  };
-
   // Effect to handle prime meridian updates and centering
   useEffect(() => {
     if (mapRef.current && primeMeridianSvg && primeMeridianSvg.x && !initialCenterAppliedRef.current) {
       // Center on prime meridian when it changes
       centerOnPrimeMeridian();
-      
-      // Redraw grid and meridian
-      if (leafletRef.current) {
-        try {
-          drawGrid(leafletRef.current);
-          drawPrimeMeridian(leafletRef.current);
-        } catch (e) {
-          console.error('Error redrawing after prime meridian update:', e);
-        }
-      }
     }
   }, [primeMeridianSvg]);
 
-  
-  
-    return (
-      <div 
-        ref={mapContainerRef} 
-        id="map" 
-        style={{ 
-          width: '100%', 
-          height: '100%', 
-          backgroundColor: '#D5FFFF',
-          position: 'relative'
-        }}
-      >
-        {/* Load Leaflet only on client-side */}
-        <LeafletComponentLoader onLeafletLoad={handleMapInit} />
-        
-        {/* Add the SVG Layer Control component */}
-        {isMapReady && mapRef.current && leafletRef.current && (
-          <SVGLayerControl 
-            map={mapRef.current} 
-            L={leafletRef.current} 
-            mapConfig={mapConfig} 
-            position="topright"
-          />
-        )}
-        
-        {/* Add the MapScale component */}
-        {isMapReady && mapRef.current && leafletRef.current && (
-          <MapScale map={mapRef.current} L={leafletRef.current} mapConfig={mapConfig} />
-        )}
-        
-        {/* Add the distance measurement component */}
-        {isMapReady && mapRef.current && leafletRef.current && (
-          <DistanceMeasurement map={mapRef.current} L={leafletRef.current} />
-        )}
-      </div>
-    );
+  // Toggle handlers for controls
+  const toggleGrid = (visible: boolean) => {
+    setShowGrid(visible);
+  };
+
+  const toggleCoordinates = (visible: boolean) => {
+    setShowCoordinates(visible);
+  };
+
+  const togglePrimeMeridian = (visible: boolean) => {
+    setShowPrimeMeridian(visible);
   };
   
-  export default MapComponent;
+  return (
+    <div 
+      ref={mapContainerRef} 
+      id="map" 
+      style={{ 
+        width: '100%', 
+        height: '100%', 
+        backgroundColor: '#D5FFFF',
+        position: 'relative'
+      }}
+    >
+      {/* Load Leaflet only on client-side */}
+      <LeafletComponentLoader onLeafletLoad={handleMapInit} />
+      
+      {/* Add the GridComponent */}
+      {isMapReady && mapRef.current && leafletRef.current && primeMeridianSvg && (
+        <GridComponent 
+          map={mapRef.current}
+          L={leafletRef.current}
+          primeMeridianSvg={primeMeridianSvg}
+          svgToLatLng={svgToLatLng}
+          latLngToSvg={latLngToSvg}
+          visible={showGrid}
+          svgWidth={mapConfig.svgWidth}
+          svgHeight={mapConfig.svgHeight}
+        />
+      )}
+      
+      {/* Add the CoordinatesComponent */}
+      {isMapReady && mapRef.current && leafletRef.current && primeMeridianSvg && (
+        <CoordinatesComponent
+          map={mapRef.current}
+          L={leafletRef.current}
+          svgToCustomLatLng={svgToCustomLatLng}
+          formatCoord={formatCoord}
+          visible={showCoordinates}
+        />
+      )}
+      
+      {/* Add the SVG Layer Control component */}
+      {isMapReady && mapRef.current && leafletRef.current && (
+        <SVGLayerControl 
+          map={mapRef.current} 
+          L={leafletRef.current} 
+          mapConfig={mapConfig} 
+          position="topright"
+        />
+      )}
+      
+      {/* Add the ControlPanel */}
+      {isMapReady && mapRef.current && leafletRef.current && (
+        <ControlPanel
+          map={mapRef.current}
+          L={leafletRef.current}
+          onToggleGrid={toggleGrid}
+          onToggleLabels={() => {}}
+          onTogglePrimeMeridian={togglePrimeMeridian}
+          onTogglePosition={toggleCoordinates}
+        />
+      )}
+      
+      {/* Add the MapScale component */}
+      {isMapReady && mapRef.current && leafletRef.current && (
+        <MapScale map={mapRef.current} L={leafletRef.current} mapConfig={mapConfig} />
+      )}
+      
+      {/* Add the distance measurement component */}
+      {isMapReady && mapRef.current && leafletRef.current && (
+        <DistanceMeasurement map={mapRef.current} L={leafletRef.current} />
+      )}
+    </div>
+  );
+};
+
+export default MapComponent;

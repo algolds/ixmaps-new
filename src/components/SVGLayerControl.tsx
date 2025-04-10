@@ -30,8 +30,7 @@ const SVGLayerControl: React.FC<SVGLayerControlProps> = ({
     climate: false,
     lakes: false,
     rivers: false,
-    'altitude-layers': false,
-    icecaps: false
+    'altitude-layers': false
   });
   
   // Refs for layer overlays and control
@@ -95,7 +94,7 @@ const SVGLayerControl: React.FC<SVGLayerControlProps> = ({
       const overlays: Record<string, any> = {};
       
       // Sort layers by priority (keeping important ones at the top)
-      const priorityLayers = ['political', 'climate', 'lakes', 'rivers', 'altitude-layers', 'icecaps'];
+      const priorityLayers = ['political', 'climate', 'lakes', 'rivers', 'altitude-layers'];
       const sortedLayerKeys = Object.keys(layers).sort((a, b) => {
         const indexA = priorityLayers.indexOf(a);
         const indexB = priorityLayers.indexOf(b);
@@ -218,7 +217,7 @@ const SVGLayerControl: React.FC<SVGLayerControlProps> = ({
           // Layer group categories
           const layerGroups: Record<string, string[]> = {
             'Base Layers': ['political', 'climate'],
-            'Geographic Features': ['lakes', 'rivers', 'altitude-layers', 'icecaps']
+            'Geographic Features': ['lakes', 'rivers', 'altitude-layers']
           };
           
           // Add layer groups
