@@ -14,7 +14,7 @@ import CoordinatesComponent from './CoordinatesComponent';
 import ControlPanel from './ControlPanel';
 
 // Import Leaflet types
-import type { Map as LeafletMap, LatLngBounds, CircleMarker } from 'leaflet';
+import type { Map as LeafletMap, LatLngBounds, CircleMarker, LatLng as LeafletLatLng } from 'leaflet';
 
 // Client-side only imports
 const LeafletComponentLoader = dynamic(
@@ -347,14 +347,14 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   };
 
   // Convert SVG coordinates to custom lat/lng using prime meridian as reference
-  const svgToCustomLatLng = (x: number, y: number): LatLng => {
+  const svgToCustomLatLng = (x: number, y: number): LeafletLatLng => {
     // Calculate standard lat/lng first
     const standardLatLng = svgToLatLng(x, y);
     
     // Ensure prime meridian reference exists
     if (!primeMeridianSvg || !primeMeridianSvg.x) {
       console.error("Prime meridian reference not initialized");
-      return standardLatLng;
+      return leafletRef.current.latLng(standardLatLng.lat, standardLatLng.lng); // Return as Leaflet LatLng
     }
     
     // The latitude remains the same
@@ -381,7 +381,8 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     const lngScale = 360 / mapConfig.svgWidth;
     const lng = lngOffset * lngScale;
     
-    return { lat, lng };
+    // Return as a Leaflet LatLng instead of a custom LatLng
+    return leafletRef.current.latLng(lat, lng);
   };
   
   // Format coordinate for display

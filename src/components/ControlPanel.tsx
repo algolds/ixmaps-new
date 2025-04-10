@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { SVGLayer } from '@/types/svg-types';
 
 interface ControlPanelProps {
   map: any;
@@ -9,6 +10,8 @@ interface ControlPanelProps {
   onToggleLabels: (visible: boolean) => void;
   onTogglePrimeMeridian: (visible: boolean) => void;
   onTogglePosition: (visible: boolean) => void;
+  mapConfig?: any;
+  layers?: Record<string, SVGLayer>;
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = ({
@@ -17,19 +20,33 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   onToggleGrid,
   onToggleLabels,
   onTogglePrimeMeridian,
-  onTogglePosition
+  onTogglePosition,
+  mapConfig,
+  layers
 }) => {
   const [collapsed, setCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState<'display' | 'layers'>('display');
   const [showPosition, setShowPosition] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
   const [showPrimeMeridian, setShowPrimeMeridian] = useState(false);
   const [controlAdded, setControlAdded] = useState(false);
+  const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({
+    political: true,
+    climate: false,
+    lakes: false,
+    rivers: false,
+    'altitude-layers': false
+  });
+  const layerOverlaysRef = useRef<Record<string, any>>({});
+
+  // Priority layers for ordering
+  const priorityLayers = ['political', 'climate', 'lakes', 'rivers', 'altitude-layers'];
 
   // Remove any existing control panel before adding a new one
   useEffect(() => {
     // Remove any existing control panels first
-    const existingControlPanels = document.querySelectorAll('.coordinate-control');
+    const existingControlPanels = document.querySelectorAll('.ixmap-control-panel');
     existingControlPanels.forEach(panel => {
       if (panel.parentNode) {
         panel.parentNode.removeChild(panel);
@@ -41,13 +58,13 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
     if (!map || !L || controlAdded) return;
 
     // Create control
-    const CoordinateControl = L.Control.extend({
+    const IxMapControl = L.Control.extend({
       options: {
         position: 'topright'
       },
       
       onAdd: function() {
-        const container = L.DomUtil.create('div', 'leaflet-control coordinate-control');
+        const container = L.DomUtil.create('div', 'leaflet-control ixmap-control-panel');
         container.style.backgroundColor = 'white';
         container.style.padding = '0';
         container.style.margin = '10px';
@@ -55,8 +72,10 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
         container.style.borderRadius = '4px';
         container.style.boxShadow = '0 1px 7px rgba(0,0,0,0.4)';
         container.style.cursor = 'auto';
-        container.style.width = '200px';
+        container.style.width = '250px';
         container.style.transition = 'all 0.3s ease';
+        container.style.maxHeight = '80vh';
+        container.style.overflowY = 'auto';
         
         // Toggle button
         const toggleButton = L.DomUtil.create('div', 'toggle-button', container);
@@ -88,19 +107,74 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
         
         // Title
         const title = L.DomUtil.create('div', 'control-title', content);
-        title.innerHTML = 'Coordinates';
+        title.innerHTML = 'IxMaps Controls';
         title.style.fontWeight = 'bold';
-        title.style.fontSize = '14px';
+        title.style.fontSize = '16px';
         title.style.padding = '10px';
         title.style.borderBottom = '1px solid #ccc';
+        title.style.textAlign = 'center';
         
-        // Controls
-        const controlsContainer = L.DomUtil.create('div', 'controls-container', content);
-        controlsContainer.style.padding = '10px';
+        // Tab navigation
+        const tabNav = L.DomUtil.create('div', 'tab-navigation', content);
+        tabNav.style.display = 'flex';
+        tabNav.style.borderBottom = '1px solid #ccc';
+        
+        const displayTab = L.DomUtil.create('div', 'tab', tabNav);
+        displayTab.innerHTML = 'Display';
+        displayTab.style.flex = '1';
+        displayTab.style.padding = '8px';
+        displayTab.style.textAlign = 'center';
+        displayTab.style.cursor = 'pointer';
+        displayTab.style.backgroundColor = activeTab === 'display' ? '#f0f0f0' : 'transparent';
+        displayTab.style.fontWeight = activeTab === 'display' ? 'bold' : 'normal';
+        
+        const layersTab = L.DomUtil.create('div', 'tab', tabNav);
+        layersTab.innerHTML = 'Layers';
+        layersTab.style.flex = '1';
+        layersTab.style.padding = '8px';
+        layersTab.style.textAlign = 'center';
+        layersTab.style.cursor = 'pointer';
+        layersTab.style.backgroundColor = activeTab === 'layers' ? '#f0f0f0' : 'transparent';
+        layersTab.style.fontWeight = activeTab === 'layers' ? 'bold' : 'normal';
+        
+        displayTab.addEventListener('click', () => {
+          setActiveTab('display');
+          displayTab.style.backgroundColor = '#f0f0f0';
+          displayTab.style.fontWeight = 'bold';
+          layersTab.style.backgroundColor = 'transparent';
+          layersTab.style.fontWeight = 'normal';
+          displayContent.style.display = 'block';
+          layersContent.style.display = 'none';
+        });
+        
+        layersTab.addEventListener('click', () => {
+          setActiveTab('layers');
+          layersTab.style.backgroundColor = '#f0f0f0';
+          layersTab.style.fontWeight = 'bold';
+          displayTab.style.backgroundColor = 'transparent';
+          displayTab.style.fontWeight = 'normal';
+          displayContent.style.display = 'none';
+          layersContent.style.display = 'block';
+        });
+        
+        // Display tab content
+        const displayContent = L.DomUtil.create('div', 'display-content', content);
+        displayContent.style.display = activeTab === 'display' ? 'block' : 'none';
+        displayContent.style.padding = '10px';
+        
+        // Section: Coordinates
+        const coordSection = L.DomUtil.create('div', 'control-section', displayContent);
+        coordSection.style.marginBottom = '15px';
+        
+        const coordTitle = L.DomUtil.create('div', 'section-title', coordSection);
+        coordTitle.innerHTML = 'Coordinates';
+        coordTitle.style.fontWeight = 'bold';
+        coordTitle.style.marginBottom = '8px';
+        coordTitle.style.fontSize = '14px';
         
         // Position control
-        const positionControl = createControlItem(
-          controlsContainer,
+        createControlItem(
+          coordSection,
           'Show Position',
           showPosition,
           (checked) => {
@@ -110,8 +184,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
         );
         
         // Grid control
-        const gridControl = createControlItem(
-          controlsContainer,
+        createControlItem(
+          coordSection,
           'Show Grid',
           showGrid,
           (checked) => {
@@ -121,8 +195,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
         );
         
         // Labels control
-        const labelsControl = createControlItem(
-          controlsContainer,
+        createControlItem(
+          coordSection,
           'Show Labels',
           showLabels,
           (checked) => {
@@ -131,21 +205,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
           }
         );
         
-        // Prime Meridian section
-        const meridianSection = L.DomUtil.create('div', 'meridian-section', content);
-        meridianSection.style.padding = '10px';
-        meridianSection.style.borderTop = '1px solid #ccc';
-        
-        // Prime Meridian title
-        const meridianTitle = L.DomUtil.create('div', 'meridian-title', meridianSection);
-        meridianTitle.innerHTML = 'Prime Meridian';
-        meridianTitle.style.fontWeight = 'bold';
-        meridianTitle.style.fontSize = '14px';
-        meridianTitle.style.marginBottom = '10px';
-        
         // Prime Meridian control
-        const meridianControl = createControlItem(
-          meridianSection,
+        createControlItem(
+          coordSection,
           'Show Prime Meridian',
           showPrimeMeridian,
           (checked) => {
@@ -154,6 +216,53 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
           }
         );
         
+        // Layers tab content
+        const layersContent = L.DomUtil.create('div', 'layers-content', content);
+        layersContent.style.display = activeTab === 'layers' ? 'block' : 'none';
+        layersContent.style.padding = '10px';
+        
+        // Layer groups
+        const layerGroups: Record<string, string[]> = {
+          'Base Layers': ['political', 'climate'],
+          'Geographic Features': ['lakes', 'rivers', 'altitude-layers']
+        };
+        
+        // Add layer groups
+        Object.entries(layerGroups).forEach(([groupName, groupLayerIds]) => {
+          // Create group container
+          const groupContainer = L.DomUtil.create('div', 'layer-group', layersContent);
+          groupContainer.style.marginBottom = '15px';
+          
+          // Group title
+          const groupTitle = L.DomUtil.create('div', 'group-title', groupContainer);
+          groupTitle.innerHTML = groupName;
+          groupTitle.style.fontWeight = 'bold';
+          groupTitle.style.marginBottom = '8px';
+          groupTitle.style.fontSize = '14px';
+          
+          // Add layers in this group
+          groupLayerIds.forEach(layerId => {
+            // Format layer name
+            const name = layerId.charAt(0).toUpperCase() + layerId.slice(1).replace(/-/g, ' ');
+            
+            // Create layer item
+            const layerItem = L.DomUtil.create('div', 'layer-item', groupContainer);
+            layerItem.style.marginBottom = '8px';
+            layerItem.style.marginLeft = '10px';
+            
+            // Create checkbox control for this layer
+            createControlItem(
+              layerItem,
+              name,
+              layerVisibility[layerId] || false,
+              (checked) => {
+                handleLayerToggle(layerId, checked);
+              },
+              false // No margin bottom
+            );
+          });
+        });
+        
         L.DomEvent.disableClickPropagation(container);
         L.DomEvent.disableScrollPropagation(container);
         
@@ -161,9 +270,11 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       }
     });
     
-    function createControlItem(container: HTMLElement, label: string, checked: boolean, onChange: (checked: boolean) => void) {
+    function createControlItem(container: HTMLElement, label: string, checked: boolean, onChange: (checked: boolean) => void, addMargin = true) {
       const controlItem = L.DomUtil.create('div', 'control-item', container);
-      controlItem.style.marginBottom = '10px';
+      if (addMargin) {
+        controlItem.style.marginBottom = '10px';
+      }
       controlItem.style.display = 'flex';
       controlItem.style.alignItems = 'center';
       
@@ -179,7 +290,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       labelElement.innerHTML = label;
       labelElement.style.cursor = 'pointer';
       
-      checkbox.addEventListener('change', (e: { target: HTMLInputElement; }) => {
+      checkbox.addEventListener('change', (e: Event) => {
         const target = e.target as HTMLInputElement;
         onChange(target.checked);
       });
@@ -188,9 +299,11 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
     }
     
     // Add control to map
-    map.addControl(new CoordinateControl());
+    map.addControl(new IxMapControl());
     setControlAdded(true);
-  }, [map, L, collapsed, controlAdded, onToggleGrid, onToggleLabels, onTogglePrimeMeridian, onTogglePosition, showGrid, showLabels, showPosition, showPrimeMeridian]);
+  }, [map, L, collapsed, activeTab, controlAdded, onToggleGrid, onToggleLabels, 
+      onTogglePrimeMeridian, onTogglePosition, showGrid, showLabels, showPosition, 
+      showPrimeMeridian, layerVisibility]);
 
   // Update control visibility when state changes
   useEffect(() => {
@@ -203,13 +316,50 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       toggleButton.innerHTML = collapsed ? '≫' : '≪';
       content.style.display = collapsed ? 'none' : 'block';
     }
-  }, [collapsed, controlAdded]);
+    
+    const displayContent = document.querySelector('.display-content') as HTMLElement;
+    const layersContent = document.querySelector('.layers-content') as HTMLElement;
+    
+    if (displayContent && layersContent) {
+      displayContent.style.display = activeTab === 'display' ? 'block' : 'none';
+      layersContent.style.display = activeTab === 'layers' ? 'block' : 'none';
+    }
+    
+    const displayTab = document.querySelector('.tab:first-child') as HTMLElement;
+    const layersTab = document.querySelector('.tab:last-child') as HTMLElement;
+    
+    if (displayTab && layersTab) {
+      displayTab.style.backgroundColor = activeTab === 'display' ? '#f0f0f0' : 'transparent';
+      displayTab.style.fontWeight = activeTab === 'display' ? 'bold' : 'normal';
+      layersTab.style.backgroundColor = activeTab === 'layers' ? '#f0f0f0' : 'transparent';
+      layersTab.style.fontWeight = activeTab === 'layers' ? 'bold' : 'normal';
+    }
+  }, [collapsed, activeTab, controlAdded]);
+
+  // Handle layer toggle
+  const handleLayerToggle = (layerId: string, checked: boolean) => {
+    setLayerVisibility(prev => ({
+      ...prev,
+      [layerId]: checked
+    }));
+    
+    // Here you would handle the layer visibility in the map
+    // This would interact with SVGLayerControl or other layer systems
+    if (map && layerOverlaysRef.current[layerId]) {
+      const overlay = layerOverlaysRef.current[layerId];
+      if (checked) {
+        overlay.addTo(map);
+      } else {
+        overlay.remove();
+      }
+    }
+  };
 
   // Cleanup when component unmounts
   useEffect(() => {
     return () => {
-      // Remove control when component unmounts
-      const controlPanels = document.querySelectorAll('.coordinate-control');
+      // Remove control panel when component unmounts
+      const controlPanels = document.querySelectorAll('.ixmap-control-panel');
       controlPanels.forEach(panel => {
         if (panel.parentNode) {
           panel.parentNode.removeChild(panel);
