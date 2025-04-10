@@ -9,12 +9,13 @@ interface ControlPanelProps {
   L: any;
   onToggleGrid: (visible: boolean) => void;
   onToggleLabels: (visible: boolean) => void;
+  onToggleCountryLabels: (visible: boolean) => void; // Add this line
   onTogglePrimeMeridian: (visible: boolean) => void;
   onTogglePosition: (visible: boolean) => void;
-  onToggleCountryLabels: (visible: boolean) => void; // Add this line
   mapConfig?: any;
   layerControlRef?: React.RefObject<any>;
 }
+
 
 const ControlPanel: React.FC<ControlPanelProps> = ({
   map,
@@ -40,6 +41,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
     lakes: false,
     rivers: false
   });
+  const [showCountryLabels, setShowCountryLabels] = useState(true);
 
   // Priority layers for ordering
   const priorityLayers = ['political', 'climate', 'lakes', 'rivers'];
@@ -236,7 +238,11 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
           setShowPrimeMeridian(checked); 
           onTogglePrimeMeridian(checked); 
         });
-        
+
+        createControlItem(coordSection, 'Show Country Labels', showCountryLabels, (checked) => { 
+          setShowCountryLabels(checked); 
+          onToggleLabels(checked); 
+        });
         // == Layers tab content ==
         const layerGroups: Record<string, string[]> = {
           'Base Layers': ['political', 'climate'],
@@ -392,7 +398,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       updateCheckbox('show-grid', showGrid);
       updateCheckbox('show-labels', showLabels);
       updateCheckbox('show-prime-meridian', showPrimeMeridian);
-      
+      updateCheckbox('show-country-labels', showCountryLabels);
+
       // Update layer visibility
       Object.entries(layerVisibility).forEach(([layerId, isVisible]) => {
         updateCheckbox(layerId, isVisible);

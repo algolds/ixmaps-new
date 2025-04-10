@@ -18,6 +18,7 @@ import SVGLayerControl, { SVGLayerControlRef } from './SVGLayerControl';
 import GridComponent from './GridComponent';
 import CoordinatesComponent from './CoordinatesComponent';
 import ControlPanel from './ControlPanel';
+import CountryLabelsComponent from './CountryLabelsComponent';
 
 // Import Leaflet types
 import type { Map as LeafletMap, LatLngBounds, CircleMarker, LatLng as LeafletLatLng } from 'leaflet';
