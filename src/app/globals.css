@@ -233,65 +233,247 @@ html, body {
   border: 1px solid #ccc;
 }
 
-/* Control Panel Styles */
-.control-panel {
+/* ---- Improved Control Panel Styles ---- */
+
+/* Base control panel container */
+.ixmap-control-panel {
   position: absolute;
   top: 10px;
   right: 10px;
   z-index: 1000;
   background: white;
-  padding: 10px;
-  border-radius: 5px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  padding: 0;
+  border-radius: 4px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+  transition: all 0.3s ease;
   max-width: 250px;
   max-height: 80vh;
-  overflow-y: auto;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  color: #333;
 }
 
-.control-panel.hidden {
-  transform: translateX(calc(100% + 10px));
-  opacity: 0;
+/* Control panel when expanded */
+.ixmap-control-panel.expanded {
+  border: 1px solid rgba(0,0,0,0.2);
+  width: 250px;
 }
 
-.control-panel h3 {
-  margin-top: 0;
-  margin-bottom: 10px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+/* Control panel when collapsed (looking like a standard Leaflet control) */
+.ixmap-control-panel.collapsed {
+  width: 36px;
+  height: 36px;
+  border: 2px solid rgba(0,0,0,0.2);
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: hidden;
 }
 
-.control-panel h4 {
-  margin: 5px 0;
-  font-size: 14px;
-}
-
-.control-toggle-button {
-  text-decoration: none !important;
-  font-size: 18px !important;
-  width: 30px !important;
-  height: 30px !important;
-  line-height: 30px !important;
+/* Toggle button styling */
+.toggle-button {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  line-height: 36px;
+  background-color: white;
+  color: #333;
+  font-size: 16px;
   text-align: center;
-  font-weight: bold;
-  display: flex !important;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.layer-toggle {
-  margin-bottom: 8px;
+.toggle-button:hover {
+  background-color: #f4f4f4;
 }
 
-.layer-group {
-  margin-bottom: 15px;
-  padding-bottom: 10px;
+.toggle-button .cog-icon {
+  font-style: normal;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* Control content wrapper */
+.control-content {
+  display: block;
+  overflow-y: auto;
+  max-height: calc(80vh - 30px);
+}
+
+.control-content.hidden {
+  display: none;
+}
+
+/* Control title */
+.control-title {
+  font-weight: bold;
+  font-size: 14px;
+  padding: 8px 10px;
+  background-color: #f8f8f8;
   border-bottom: 1px solid #eee;
+  text-align: center;
 }
 
-.layer-group:last-child {
-  border-bottom: none;
+/* Tab navigation */
+.tab-navigation {
+  display: flex;
+  border-bottom: 1px solid #ddd;
+}
+
+.tab {
+  flex: 1;
+  padding: 8px 0;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-right: 1px solid #eee;
+}
+
+.tab:last-child {
+  border-right: none;
+}
+
+.tab:hover {
+  background-color: #f0f0f0;
+}
+
+.tab.active {
+  background-color: #f4f4f4;
+  font-weight: bold;
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,0.2);
+}
+
+/* Tab content sections */
+.tab-content {
+  padding: 10px;
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* Section styling */
+.control-section, .layer-group {
+  margin-bottom: 12px;
+}
+
+.section-title, .group-title {
+  font-weight: bold;
+  margin-bottom: 8px;
+  font-size: 13px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* Control items with checkbox */
+.control-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 4px 0;
+}
+
+.control-item input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.control-item label {
+  cursor: pointer;
+  flex: 1;
+  user-select: none;
+}
+
+/* Layer items */
+.layer-item {
+  margin-bottom: 8px;
+  margin-left: 10px;
+}
+
+/* Control panel when it's collapsed */
+.ixmap-control-panel.collapsed-state {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* Adjust the toggle button style when inside the collapsed box */
+.ixmap-control-panel.collapsed-state .toggle-button {
+  margin: 0;
+  padding: 0;
+  line-height: 36px;
+  width: 100%;
+  text-align: center;
+}
+
+/* MapLayerControls */
+.layerControlContainer {
+  width: 300px;
+  max-height: 600px;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+  font-family: sans-serif;
+  overflow-y: auto;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.controlTitle {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 8px;
+}
+
+.loadingIndicator, .errorMessage {
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 4px;
+}
+
+.loadingIndicator {
+  background-color: #e7f3ff;
+  color: #0066cc;
+}
+
+.errorMessage {
+  background-color: #ffecec;
+  color: #cc0000;
+}
+
+/* Tailwind components */
+@layer components {
+  /* Keep Tailwind components as they were */
+}
+
+/* Toast container */
+#toast-container {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 80%;
 }
 
 /* Country Label Styles */
@@ -340,246 +522,4 @@ html, body {
 /* Adjust label size based on zoom level */
 .leaflet-zoom-animated .country-label {
   transition: font-size 0.3s ease;
-}
-
-/* Toast container */
-#toast-container {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  max-width: 80%;
-}
-/* MapLayerControls.module.css */
-.layerControlContainer {
-  width: 300px;
-  max-height: 600px;
-  background-color: #f5f5f5;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 10px;
-  font-family: sans-serif;
-  overflow-y: auto;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.controlTitle {
-  margin-top: 0;
-  margin-bottom: 12px;
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-  border-bottom: 1px solid #ddd;
-  padding-bottom: 8px;
-}
-
-.loadingIndicator, .errorMessage {
-  padding: 10px;
-  margin: 10px 0;
-  border-radius: 4px;
-}
-
-.loadingIndicator {
-  background-color: #e7f3ff;
-  color: #0066cc;
-}
-
-.errorMessage {
-  background-color: #ffecec;
-  color: #cc0000;
-}
-
-.controlSection, .sublayerSection, .countriesSection {
-  margin-bottom: 12px;
-}
-
-.sectionHeader {
-  display: flex;
-  align-items: center;
-  padding: 8px;
-  background-color: #eaeaea;
-  border-radius: 4px;
-  margin-bottom: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  justify-content: space-between;
-}
-
-.expandedIcon, .collapsedIcon {
-  margin-right: 6px;
-  font-size: 10px;
-  width: 10px;
-}
-
-.quickControls {
-  display: flex;
-  gap: 5px;
-}
-
-.quickControls button {
-  background-color: #f5f5f5;
-  border: 1px solid #ddd;
-  border-radius: 3px;
-  padding: 2px 6px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.quickControls button:hover {
-  background-color: #e0e0e0;
-}
-
-.layerList, .countryList {
-  max-height: 300px;
-  overflow-y: auto;
-  margin-left: 10px;
-  padding-right: 5px;
-}
-
-.layerItem, .sublayerItem, .countryItem {
-  display: flex;
-  align-items: center;
-  padding: 4px 0;
-}
-
-.sublayerItem {
-  margin-left: 15px;
-}
-
-.checkboxLabel {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  flex: 1;
-}
-
-.checkboxLabel input {
-  margin-right: 8px;
-}
-
-.expandToggle {
-  cursor: pointer;
-  margin-left: 10px;
-  font-size: 10px;
-  width: 10px;
-}
-
-.searchBox {
-  margin-bottom: 10px;
-  padding: 0 5px;
-}
-
-.searchBox input {
-  width: 100%;
-  padding: 6px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-@layer components {
-  .ixmap-control-panel {
-    @apply absolute right-2.5 z-[1000] bg-white p-0 m-2.5 border-2 border-black rounded shadow-lg cursor-auto w-[250px] transition-all duration-300 ease-in-out max-h-[80vh] overflow-y-auto;
-    top: 0.625rem;
-    --tw-border-opacity: 0.2;
-  }
-
-  .toggle-button {
-    @apply absolute -left-4 bg-white border-2 border-black rounded w-5 h-5 text-center leading-4 cursor-pointer z-[1000];
-    top: 0.625rem;
-    --tw-border-opacity: 0.2;
-  }
-
-  .control-content {
-    @apply block; /* Default state */
-  }
-
-  .control-content.hidden {
-     @apply hidden; /* State when collapsed */
-  }
-
-  .control-title {
-    @apply font-bold text-base p-2.5 border-b border-gray-300 text-center;
-  }
-
-  .tab-navigation {
-    @apply flex border-b border-gray-300;
-  }
-
-  .tab {
-    @apply flex-1 p-2 text-center cursor-pointer transition-colors duration-200;
-  }
-
-  .tab.active {
-    @apply bg-gray-100 font-bold;
-  }
-
-  .tab-content {
-     @apply p-2.5 hidden; /* Hidden by default */
-  }
-  .tab-content.active {
-      @apply block; /* Visible when active */
-  }
-
-  .control-section, .layer-group {
-    @apply mb-4;
-  }
-
-  .section-title, .group-title {
-    @apply font-bold mb-2 text-sm;
-  }
-
-  .layer-item {
-      @apply mb-2 ml-2.5;
-  }
-
-  .control-item {
-    @apply flex items-center mb-2.5;
-  }
-}
-/* Styles for the control panel when it's collapsed */
-.ixmap-control-panel.collapsed-state {
-  /* Make it look like a compact box */
-  background-color: white; /* Or your theme's background */
-  border: 1px solid #ccc; /* Standard Leaflet control border */
-  border-radius: 4px; /* Standard Leaflet control radius */
-  padding: 0; /* Remove padding to fit button snugly */
-  width: 30px; /* Match Leaflet default control size */
-  height: 30px; /* Match Leaflet default control size */
-  box-shadow: 0 1px 5px rgba(0,0,0,0.2); /* Subtle shadow */
-
-  /* Center the toggle button inside */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden; /* Ensure content doesn't spill */
-}
-
-/* Adjust the toggle button style when inside the collapsed box */
-.ixmap-control-panel.collapsed-state .toggle-button {
-  /* Remove any default margins/paddings if necessary */
-  margin: 0;
-  padding: 0;
-  line-height: 30px; /* Vertically center text if needed */
-  width: 100%; /* Ensure it fills the small box */
-  text-align: center;
-}
-
-/* Ensure the expanded state looks correct (it should by default) */
-.ixmap-control-panel {
-  /* Reset width/height if set by collapsed state */
-   width: auto;
-   height: auto;
-   /* Other default styles for expanded panel */
-}
-
-
-/* Style for the content area when expanded */
-.ixmap-control-panel .control-content {
-   display: block; /* Or flex, grid etc. depending on layout */
 }
