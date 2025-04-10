@@ -501,7 +501,15 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
           position="topright"
         />
       )}
-      
+      {/* Add the CountryLabelsComponent */}
+{isMapReady && mapRef.current && leafletRef.current && (
+  <CountryLabelsComponent
+    map={mapRef.current}
+    L={leafletRef.current}
+    visible={showCountryLabels}
+    mapConfig={mapConfig}
+  />
+)}
       {/* Add the ControlPanel with layer control reference */}
       {isMapReady && mapRef.current && leafletRef.current && (
         <ControlPanel

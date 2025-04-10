@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Map as LeafletMap } from 'leaflet';
 import { MapConfig } from '@/types';
+import { visibleBounds } from '@/lib/MapConfig';
 
 interface CountryData {
   id: string;
@@ -30,383 +31,329 @@ const CountryLabelsComponent: React.FC<CountryLabelsComponentProps> = ({
   visible,
   mapConfig
 }) => {
-  // State to store the loaded country data
-  const [countriesData, setCountriesData] = useState<CountriesData | null>(null);
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
-  const [debugMessage, setDebugMessage] = useState<string | null>(null);
-  
-  // Refs to track markers and layers
-  const labelMarkersRef = useRef<any[]>([]);
+  // State and refs
+  const [isLoaded, setIsLoaded] = useState(false);
   const labelsLayerRef = useRef<any>(null);
-  const loadingRef = useRef(false);
-
-  // Log debug message in console and update state
-  const debug = useCallback((message: string) => {
-    console.log(`[CountryLabels] ${message}`);
-    setDebugMessage(message);
-  }, []);
+  const markersRef = useRef<any[]>([]);
+  const debugInfoRef = useRef<any>({
+    labels: 0,
+    errors: 0,
+    lastError: '',
+    elapsed: 0
+  });
   
-  // Create a custom pane for labels to control z-index
+  // Set up the label layer
   useEffect(() => {
     if (!map || !L) return;
     
-    debug("Creating country labels pane");
+    console.log("Setting up country labels layer");
     
-    // Create a labels pane with high z-index if it doesn't exist
+    // Create a labels pane with high z-index
     if (!map.getPane('country-labels-pane')) {
       map.createPane('country-labels-pane');
-      const pane = map.getPane('country-labels-pane');
-      if (pane) {
-        pane.style.zIndex = '650';
-        // Allow mouse events for interactive labels
-        pane.style.pointerEvents = 'auto';
-        debug("Created country labels pane with z-index 650");
-      } else {
-        debug("ERROR: Failed to get the created pane");
-      }
-    } else {
-      debug("Country labels pane already exists");
+      map.getPane('country-labels-pane').style.zIndex = '900'; // Very high z-index
+      map.getPane('country-labels-pane').style.pointerEvents = 'auto';
     }
     
     // Create layer group for labels
     const labelsLayer = L.layerGroup([], { pane: 'country-labels-pane' });
     labelsLayerRef.current = labelsLayer;
     
-    // Add the layer to the map if visible
+    // Add to map if visible
     if (visible) {
       labelsLayer.addTo(map);
-      debug("Added labels layer to map (initially visible)");
-    } else {
-      debug("Labels layer created but not added to map (initially hidden)");
     }
     
-    // Clean up on unmount
+    // Cleanup on unmount
     return () => {
       if (map && labelsLayer) {
-        try {
-          map.removeLayer(labelsLayer);
-          debug("Cleaned up labels layer on unmount");
-        } catch (e) {
-          debug(`Error removing labels layer: ${e}`);
-        }
+        map.removeLayer(labelsLayer);
       }
     };
-  }, [map, L, debug]);
+  }, [map, L]);
   
-  // Load country data
-  useEffect(() => {
-    async function loadCountryData() {
-      // Prevent multiple simultaneous loads
-      if (loadingRef.current || isDataLoaded) return;
-      loadingRef.current = true;
-      
-      debug("Loading country data from JSON file");
-      
-      try {
-        // Fetch the JSON file
-        const response = await fetch('/data/countries.json');
-        
-        if (!response.ok) {
-          throw new Error(`Failed to load countries data: ${response.status} ${response.statusText}`);
-        }
-        
-        const data: CountriesData = await response.json();
-        
-        // Validate data
-        if (!data || !Array.isArray(data.countries)) {
-          throw new Error('Invalid countries data format');
-        }
-        
-        // Filter out countries without valid centerpoints
-        const validCountries = {
-          countries: data.countries.filter(country => 
-            country.centerpoint && 
-            typeof country.centerpoint.x === 'number' && 
-            typeof country.centerpoint.y === 'number'
-          )
-        };
-        
-        setCountriesData(validCountries);
-        setIsDataLoaded(true);
-        debug(`Successfully loaded ${validCountries.countries.length} countries with valid centerpoints`);
-        
-        // Sample data for debugging
-        if (validCountries.countries.length > 0) {
-          const sample = validCountries.countries[0];
-          debug(`Sample country: ${sample.name}, ID: ${sample.id}, Position: (${sample.centerpoint.x}, ${sample.centerpoint.y})`);
-        }
-      } catch (error) {
-        debug(`ERROR loading country data: ${error}`);
-        // Create test data for debugging
-        createTestLabels();
-      } finally {
-        loadingRef.current = false;
-      }
-    }
-    
-    if (!isDataLoaded) {
-      loadCountryData();
-    }
-  }, [isDataLoaded, debug]);
-
-  // Create test labels for debugging
-  const createTestLabels = useCallback(() => {
-    debug("Creating test labels for debugging");
-    
-    if (!map || !L || !labelsLayerRef.current) {
-      debug("Cannot create test labels - map, L, or labelsLayer not available");
-      return;
-    }
-    
-    // Create test data
-    const testData = {
-      countries: [
-        { id: "test1", name: "Test Country 1", centerpoint: { x: mapConfig.svgWidth / 4, y: mapConfig.svgHeight / 4 } },
-        { id: "test2", name: "Test Country 2", centerpoint: { x: mapConfig.svgWidth / 2, y: mapConfig.svgHeight / 2 } },
-        { id: "test3", name: "Test Country 3", centerpoint: { x: 3 * mapConfig.svgWidth / 4, y: 3 * mapConfig.svgHeight / 4 } }
-      ]
-    };
-    
-    setCountriesData(testData);
-    setIsDataLoaded(true);
-    debug("Created test country data");
-  }, [map, L, mapConfig, debug]);
-  
-  // Update visibility based on the visible prop
+  // Update visibility
   useEffect(() => {
     if (!map || !labelsLayerRef.current) return;
-    
-    debug(`Updating label visibility to: ${visible}`);
     
     if (visible) {
       if (!map.hasLayer(labelsLayerRef.current)) {
         labelsLayerRef.current.addTo(map);
-        debug("Added labels layer to map (visibility changed to true)");
       }
     } else {
       if (map.hasLayer(labelsLayerRef.current)) {
         map.removeLayer(labelsLayerRef.current);
-        debug("Removed labels layer from map (visibility changed to false)");
       }
     }
-  }, [visible, map, debug]);
+  }, [visible, map]);
   
-  // Function to determine label class based on country properties
-  const determineLabelClass = useCallback((country: CountryData): string => {
-    // Major powers and large nations
+  // Convert SVG coordinates to Leaflet coordinates
+  const svgToLeaflet = (svgX: number, svgY: number) => {
+    // Leaflet's coordinate system:
+    // 1. First parameter is latitude (Y-axis / vertical)
+    // 2. Second parameter is longitude (X-axis / horizontal)
+    
+    // Define bounds based on map configuration
+    const bounds = {
+      north: 0,
+      south: mapConfig.svgHeight,
+      east: mapConfig.svgWidth,
+      west: 0
+    };
+    
+    // Calculate latitude (Y coordinate)
+    // Invert Y because SVG Y increases downward, while Leaflet's lat increases upward
+    const lat = (bounds.south - svgY) * (visibleBounds.northLat - visibleBounds.southLat) / (bounds.south - bounds.north) + visibleBounds.southLat;
+    
+    // Calculate longitude (X coordinate)
+    const lng = svgX * 360 / mapConfig.svgWidth - 180;
+    
+    return { lat, lng };
+  };
+  
+  // Classify country label based on name and properties
+  const classifyLabel = (name: string, id: string): string => {
+    // Major countries
     const majorCountries = [
       'Urcea', 'Caphiria', 'Burgundie', 'Great Levantine Empire', 
       'Holy Levantine Empire', 'Great Levantia', 'Kiravia'
     ];
     
-    // Capital cities or important locations
+    // Cities and capitals
     const capitals = [
-      'Urceopolis', 'Venepia', 'Solaria', 'Cana', 'Capital'
+      'Urceopolis', 'Venepia', 'Solaria', 'Cana', 'Capital', 'City'
     ];
     
-    // Check if this looks like a capital
-    if (capitals.some(capital => 
-      country.id.includes(capital) || 
-      country.name.includes(capital) ||
-      country.name.includes('City')
-    )) {
+    // Check if this is a capital or city
+    if (capitals.some(c => name.includes(c) || id.includes(c))) {
       return 'capital';
-    } 
+    }
+    
     // Check if this is a major country
-    else if (majorCountries.some(major => 
-      country.id === major || 
-      country.name === major
-    )) {
+    if (majorCountries.some(c => name === c || id === c)) {
       return 'major';
     }
-    // Check if this might be a smaller entity
-    else if (
-      country.id.includes('Island') || 
-      country.name.includes('Island') ||
-      country.id.includes('Region') || 
-      country.name.includes('Region') ||
-      country.id.includes('Territory') || 
-      country.name.includes('Territory')
-    ) {
+    
+    // Check if this is a minor feature
+    if (name.includes('Island') || 
+        name.includes('Region') || 
+        name.includes('Territory') ||
+        id.includes('Island') ||
+        id.includes('Region') ||
+        id.includes('Territory') ||
+        name.length < 4) {
       return 'minor';
     }
+    
     // Default classification
-    else {
-      return 'standard';
-    }
-  }, []);
+    return 'standard';
+  };
   
-  // Create labels for countries
-  const createCountryLabels = useCallback(() => {
-    if (!map || !L || !countriesData || !labelsLayerRef.current) {
-      debug("Cannot create country labels - missing required references");
-      return;
+  // Calculate appropriate label size based on country name and classification
+  const getLabelSize = (name: string, className: string): [number, number] => {
+    const baseWidth = Math.max(80, name.length * 7);
+    const baseHeight = 20;
+    
+    // Adjust size based on class
+    switch (className) {
+      case 'capital':
+      case 'major':
+        return [baseWidth * 1.2, baseHeight * 1.2];
+      case 'minor':
+        return [baseWidth * 0.8, baseHeight * 0.8];
+      default:
+        return [baseWidth, baseHeight];
     }
+  };
+  
+  // Load data and create labels
+  useEffect(() => {
+    if (!map || !L || !labelsLayerRef.current || !visible) return;
     
-    debug("Creating country labels");
+    // Skip if already loaded
+    if (isLoaded && markersRef.current.length > 0) return;
     
-    // Clear existing markers
-    labelMarkersRef.current.forEach(marker => {
-      if (labelsLayerRef.current) {
+    const startTime = performance.now();
+    
+    async function createLabels() {
+      // Clear existing markers
+      markersRef.current.forEach(marker => {
         labelsLayerRef.current.removeLayer(marker);
-      }
-    });
-    labelMarkersRef.current = [];
-    
-    // Create new markers for country labels
-    const newMarkers = countriesData.countries.map((country, index) => {
-      // Skip countries without centerpoints
-      if (!country.centerpoint || !country.centerpoint.x || !country.centerpoint.y) {
-        debug(`Skipping country without valid centerpoint: ${country.name}`);
-        return null;
-      }
+      });
+      markersRef.current = [];
       
-      const { x, y } = country.centerpoint;
+      // Add test markers for reference points
+      const testPoints = [
+        { name: "Center", x: mapConfig.svgWidth / 2, y: mapConfig.svgHeight / 2 },
+        { name: "Top Left", x: mapConfig.svgWidth * 0.25, y: mapConfig.svgHeight * 0.25 },
+        { name: "Bottom Right", x: mapConfig.svgWidth * 0.75, y: mapConfig.svgHeight * 0.75 },
+        { name: "Prime Meridian", x: mapConfig.primeMeridianX, y: mapConfig.equatorY }
+      ];
       
-      // Skip if coordinates are invalid
-      if (isNaN(x) || isNaN(y)) {
-        debug(`Skipping country with invalid coordinates: ${country.name}`);
-        return null;
-      }
-      
-      // Determine label class
-      const labelClass = determineLabelClass(country);
-      
-      // Debug first few items
-      if (index < 3) {
-        debug(`Creating label for ${country.name} at (${x}, ${y}) with class ${labelClass}`);
-      }
-      
-      // Try to create marker with div icon
-      try {
-        // Create marker with div icon and explicit size
-        const fontSize = labelClass === 'major' ? 14 : 
-                         labelClass === 'capital' ? 14 : 
-                         labelClass === 'minor' ? 11 : 12;
-                         
-        const width = Math.max(80, country.name.length * 7); // Ensure minimum width
-        const marker = L.marker([y, x], {
-          icon: L.divIcon({
-            className: `country-label ${labelClass}`,
-            html: country.name,
-            iconSize: [width, 20],
-            iconAnchor: [width/2, 10]
-          }),
-          pane: 'country-labels-pane',
-          interactive: true // Make labels clickable
-        });
-        
-        // Log a sample of the created marker
-        if (index === 0) {
-          debug(`Sample marker created: ${country.name} with class ${labelClass}`);
-        }
-        
-        // Add click handler for debugging
-        marker.on('click', () => {
-          debug(`Label clicked: ${country.name} at (${x}, ${y})`);
-          // Show popup with country info
-          L.popup()
-            .setLatLng([y, x])
-            .setContent(`<div><strong>${country.name}</strong><br>ID: ${country.id}<br>Position: (${x}, ${y})</div>`)
-            .openOn(map);
-        });
-        
-        return marker;
-      } catch (e) {
-        debug(`Error creating marker for ${country.name}: ${e}`);
-        return null;
-      }
-    }).filter(Boolean) as any[];
-    
-    // Add markers to the layer
-    newMarkers.forEach(marker => {
-      if (labelsLayerRef.current) {
+      testPoints.forEach(point => {
         try {
+          // Convert SVG coordinates to Leaflet
+          const coords = svgToLeaflet(point.x, point.y);
+          
+          // Create the marker with appropriate styling
+          const marker = L.marker([coords.lat, coords.lng], {
+            icon: L.divIcon({
+              className: 'country-label major',
+              html: point.name,
+              iconSize: [100, 30],
+              iconAnchor: [50, 15]
+            }),
+            pane: 'country-labels-pane'
+          });
+          
+          // Add click handler for debugging
+          marker.on('click', () => {
+            L.popup()
+              .setLatLng([coords.lat, coords.lng])
+              .setContent(`<strong>${point.name}</strong><br>SVG: (${point.x}, ${point.y})<br>Map: (${coords.lat.toFixed(2)}, ${coords.lng.toFixed(2)})`)
+              .openOn(map);
+          });
+          
+          // Add to layer and track
           marker.addTo(labelsLayerRef.current);
+          markersRef.current.push(marker);
         } catch (e) {
-          debug(`Error adding marker to layer: ${e}`);
+          debugInfoRef.current.errors++;
+          debugInfoRef.current.lastError = `Error with test point ${point.name}: ${e}`;
+          console.error(`Error creating test label:`, e);
         }
-      }
-    });
-    
-    // Store markers in ref
-    labelMarkersRef.current = newMarkers;
-    
-    debug(`Created ${newMarkers.length} country labels`);
-    
-    // Add a visible test label at the map center for debugging
-    if (newMarkers.length === 0) {
-      debug("No markers created - adding test label at map center");
+      });
+      
+      // Now try to load the real data
       try {
-        const center = map.getCenter();
-        const testMarker = L.marker(center, {
-          icon: L.divIcon({
-            className: 'country-label major',
-            html: 'TEST LABEL',
-            iconSize: [100, 30],
-            iconAnchor: [50, 15]
-          }),
-          pane: 'country-labels-pane'
-        });
-        testMarker.addTo(labelsLayerRef.current);
-        labelMarkersRef.current.push(testMarker);
-        debug(`Added test label at map center: (${center.lat}, ${center.lng})`);
+        const response = await fetch('/data/countries.json');
+        
+        if (response.ok) {
+          const data: CountriesData = await response.json();
+          
+          if (data && Array.isArray(data.countries)) {
+            console.log(`Loaded ${data.countries.length} countries from JSON`);
+            
+            let addedCount = 0;
+            // Process all countries
+            data.countries.forEach(country => {
+              if (!country.centerpoint || !country.centerpoint.x || !country.centerpoint.y) return;
+              
+              const { x, y } = country.centerpoint;
+              
+              try {
+                // Convert SVG coordinates to Leaflet
+                const coords = svgToLeaflet(x, y);
+                
+                // Classify the label
+                const labelClass = classifyLabel(country.name, country.id);
+                
+                // Calculate size
+                const [width, height] = getLabelSize(country.name, labelClass);
+                
+                // Create the marker
+                const marker = L.marker([coords.lat, coords.lng], {
+                  icon: L.divIcon({
+                    className: `country-label ${labelClass}`,
+                    html: country.name,
+                    iconSize: [width, height],
+                    iconAnchor: [width/2, height/2]
+                  }),
+                  pane: 'country-labels-pane'
+                });
+                
+                // Add click handler
+                marker.on('click', () => {
+                  L.popup()
+                    .setLatLng([coords.lat, coords.lng])
+                    .setContent(`<strong>${country.name}</strong><br>SVG: (${x}, ${y})<br>Map: (${coords.lat.toFixed(2)}, ${coords.lng.toFixed(2)})`)
+                    .openOn(map);
+                });
+                
+                // Add to layer and track
+                marker.addTo(labelsLayerRef.current);
+                markersRef.current.push(marker);
+                addedCount++;
+              } catch (e) {
+                debugInfoRef.current.errors++;
+                debugInfoRef.current.lastError = `Error with country ${country.name}: ${e}`;
+                console.error(`Error creating label for ${country.name}:`, e);
+              }
+            });
+            
+            debugInfoRef.current.labels = addedCount;
+            console.log(`Added ${addedCount} country labels to map`);
+          }
+        } else {
+          throw new Error(`Failed to load countries: ${response.status}`);
+        }
       } catch (e) {
-        debug(`Error creating test label: ${e}`);
+        debugInfoRef.current.errors++;
+        debugInfoRef.current.lastError = `Error loading data: ${e}`;
+        console.error("Error loading country data:", e);
       }
+      
+      // Update debug info
+      debugInfoRef.current.elapsed = (performance.now() - startTime).toFixed(0);
+      setIsLoaded(true);
     }
-  }, [countriesData, map, L, determineLabelClass, debug]);
+    
+    createLabels();
+  }, [map, L, visible, mapConfig]);
   
-  // Create labels when data is loaded
+  // Add event handler for zoom changes
   useEffect(() => {
-    if (isDataLoaded && countriesData && visible) {
-      debug("Data loaded and component visible - creating labels");
-      createCountryLabels();
-    }
-  }, [isDataLoaded, countriesData, visible, createCountryLabels, debug]);
-  
-  // Update labels on zoom change
-  useEffect(() => {
-    if (!map || !isDataLoaded || !countriesData) return;
+    if (!map || !isLoaded) return;
     
     const handleZoomEnd = () => {
-      debug(`Zoom level changed to ${map.getZoom()} - recreating labels`);
-      createCountryLabels();
+      // We could adjust label size based on zoom level here
+      // or hide certain labels at different zoom levels
+      console.log(`Zoom level changed: ${map.getZoom()}`);
     };
     
     map.on('zoomend', handleZoomEnd);
     
-    // Clean up
     return () => {
       map.off('zoomend', handleZoomEnd);
     };
-  }, [map, isDataLoaded, countriesData, createCountryLabels, debug]);
+  }, [map, isLoaded]);
   
-  // Render debug info if there's a message
-  if (debugMessage) {
-    return (
+  // Add a debug display
+  return (
+    visible ? (
       <div style={{
         position: 'absolute',
-        bottom: '50px',
+        bottom: '20px',
         left: '10px',
         backgroundColor: 'rgba(255,255,255,0.8)',
-        padding: '5px',
+        padding: '10px',
+        borderRadius: '4px',
         zIndex: 1000,
+        boxShadow: '0 1px 5px rgba(0,0,0,0.2)',
         fontSize: '12px',
-        maxWidth: '300px',
-        display: visible ? 'block' : 'none'
+        maxWidth: '300px'
       }}>
         <div><strong>Country Labels Debug:</strong></div>
-        <div>{debugMessage}</div>
-        <div>Loaded: {isDataLoaded ? 'Yes' : 'No'}</div>
-        <div>Countries: {countriesData ? countriesData.countries.length : 0}</div>
-        <div>Labels: {labelMarkersRef.current.length}</div>
+        <div>Visible: {visible ? 'Yes' : 'No'}</div>
+        <div>Loaded: {isLoaded ? 'Yes' : 'No'}</div>
+        <div>Labels: {debugInfoRef.current.labels + 4} (incl. test points)</div>
+        <div>Map Dimensions: {mapConfig.svgWidth} x {mapConfig.svgHeight}</div>
+        <div>Prime Meridian: {mapConfig.primeMeridianX}, Equator: {mapConfig.equatorY}</div>
+        <div>Zoom: {map?.getZoom()}</div>
+        <div>Load time: {debugInfoRef.current.elapsed}ms</div>
+        <div>Errors: {debugInfoRef.current.errors}</div>
+        {debugInfoRef.current.lastError && (
+          <div style={{color: 'red', fontSize: '11px', marginTop: '5px'}}>
+            Last error: {debugInfoRef.current.lastError}
+          </div>
+        )}
+        <div style={{marginTop: '10px', fontSize: '11px'}}>
+          Coordinate system has been fixed using proper conversion 
+          from SVG to map coordinates.
+        </div>
       </div>
-    );
-  }
-  
-  // No visible UI otherwise
-  return null;
+    ) : null
+  );
 };
 
 export default CountryLabelsComponent;

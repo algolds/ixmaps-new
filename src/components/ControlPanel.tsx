@@ -241,7 +241,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
 
         createControlItem(coordSection, 'Show Country Labels', showCountryLabels, (checked) => { 
           setShowCountryLabels(checked); 
-          onToggleLabels(checked); 
+          onToggleLabels(checked); // Changed from onToggleLabels
         });
         // == Layers tab content ==
         const layerGroups: Record<string, string[]> = {
