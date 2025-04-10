@@ -8,7 +8,7 @@ import { loadSVGDimensions } from '@/lib/SVGLoader';
 import dynamic from 'next/dynamic';
 import DistanceMeasurement from './DistanceMeasurement';
 import MapScale from './MapScale';
-import SVGLayerControl from './SVGLayerControl';
+import SVGLayerControl, { SVGLayerControlRef } from './SVGLayerControl';
 import GridComponent from './GridComponent';
 import CoordinatesComponent from './CoordinatesComponent';
 import ControlPanel from './ControlPanel';
@@ -33,6 +33,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const mapInitializedRef = useRef<boolean>(false);
   const resizeHandlerRef = useRef<(() => void) | null>(null);
   const leafletRef = useRef<any>(null);
+  const layerControlRef = useRef<SVGLayerControlRef>(null);
   const isWrappingRef = useRef<boolean>(false); // Track if we're currently wrapping
   const controlPanelAddedRef = useRef<boolean>(false);
 
@@ -47,6 +48,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const [showGrid, setShowGrid] = useState<boolean>(true);
   const [showCoordinates, setShowCoordinates] = useState<boolean>(true);
   const [showPrimeMeridian, setShowPrimeMeridian] = useState<boolean>(false);
+  const [showLabels, setShowLabels] = useState<boolean>(true);
 
   useEffect(() => {
     // Initialize toasts
@@ -285,6 +287,37 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
 
   const togglePrimeMeridian = (visible: boolean) => {
     setShowPrimeMeridian(visible);
+    console.log('Prime Meridian visibility toggled to:', visible);
+  };
+  
+  const toggleLabels = (visible: boolean) => {
+    setShowLabels(visible);
+  };
+
+  // Convert SVG coordinates to geographic coordinates - helper function
+  const svgToLatLng = (x: number, y: number): LatLng => {
+    // Map y-coordinate to latitude range with proper N/S orientation
+    const latRange = visibleBounds.northLat - visibleBounds.southLat;
+    // Calculate latitude with southLat as the base
+    const lat = visibleBounds.southLat + ((mapConfig.svgHeight - y) / mapConfig.svgHeight * latRange);
+    
+    // Calculate longitude in standard way
+    const lng = (x / mapConfig.svgWidth * 360) - 180;
+    
+    return { lat, lng };
+  };
+
+  // Convert geographic coordinates to SVG coordinates - helper function
+  const latLngToSvg = (lat: number, lng: number): SvgPoint => {
+    // Convert latitude to y coordinate with proper orientation
+    const latRange = visibleBounds.northLat - visibleBounds.southLat;
+    const y = mapConfig.svgHeight - ((lat - visibleBounds.southLat) / latRange) * mapConfig.svgHeight;
+    
+    // Convert longitude to x coordinate with wraparound
+    const normalizedLng = ((lng + 180) % 360) / 360;
+    const x = normalizedLng * mapConfig.svgWidth;
+    
+    return { x, y };
   };
   
   return (
@@ -307,21 +340,8 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
           map={mapRef.current}
           L={leafletRef.current}
           primeMeridianSvg={primeMeridianSvg}
-          svgToLatLng={(x, y) => {
-            // Just a stub that will be replaced by the CoordinatesComponent's function
-            const latRange = visibleBounds.northLat - visibleBounds.southLat;
-            const lat = visibleBounds.southLat + ((mapConfig.svgHeight - y) / mapConfig.svgHeight * latRange);
-            const lng = (x / mapConfig.svgWidth * 360) - 180;
-            return { lat, lng };
-          }}
-          latLngToSvg={(lat, lng) => {
-            // Just a stub that will be replaced by the CoordinatesComponent's function
-            const latRange = visibleBounds.northLat - visibleBounds.southLat;
-            const y = mapConfig.svgHeight - ((lat - visibleBounds.southLat) / latRange) * mapConfig.svgHeight;
-            const normalizedLng = ((lng + 180) % 360) / 360;
-            const x = normalizedLng * mapConfig.svgWidth;
-            return { x, y };
-          }}
+          svgToLatLng={svgToLatLng}
+          latLngToSvg={latLngToSvg}
           visible={showGrid}
           svgWidth={mapConfig.svgWidth}
           svgHeight={mapConfig.svgHeight}
@@ -343,9 +363,10 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
         />
       )}
       
-      {/* Add the SVG Layer Control component */}
+      {/* Add the SVGLayerControl (not visible) */}
       {isMapReady && mapRef.current && leafletRef.current && (
         <SVGLayerControl 
+          ref={layerControlRef}
           map={mapRef.current} 
           L={leafletRef.current} 
           mapConfig={mapConfig} 
@@ -353,15 +374,17 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
         />
       )}
       
-      {/* Add the ControlPanel */}
+      {/* Add the ControlPanel with layer control reference */}
       {isMapReady && mapRef.current && leafletRef.current && (
         <ControlPanel
           map={mapRef.current}
           L={leafletRef.current}
           onToggleGrid={toggleGrid}
-          onToggleLabels={() => {}}
+          onToggleLabels={toggleLabels}
           onTogglePrimeMeridian={togglePrimeMeridian}
           onTogglePosition={toggleCoordinates}
+          mapConfig={mapConfig}
+          layerControlRef={layerControlRef}
         />
       )}
       

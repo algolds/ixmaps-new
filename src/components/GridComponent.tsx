@@ -26,52 +26,40 @@ const GridComponent: React.FC<GridComponentProps> = ({
   svgHeight
 }) => {
   const gridLayerRef = useRef<any>(null);
-  const primeMeridianLayerRef = useRef<any>(null);
   
   // Initialize grid layers when component mounts
   useEffect(() => {
     if (!map || !L) return;
     
-    // Create custom panes with very high z-index to ensure they're on top
+    // Create custom pane with very high z-index to ensure it's on top
     // Leaflet default panes are typically 400-700, so we go well above that
     const gridPane = 'grid-pane';
-    const meridianPane = 'meridian-pane';
     
     if (!map.getPane(gridPane)) {
       map.createPane(gridPane);
       map.getPane(gridPane).style.zIndex = 650; // Very high z-index
     }
     
-    if (!map.getPane(meridianPane)) {
-      map.createPane(meridianPane);
-      map.getPane(meridianPane).style.zIndex = 651; // Even higher z-index
-    }
-    
-    // Create layer groups in these panes
+    // Create layer group in this pane
     const gridLayer = L.layerGroup([], { pane: gridPane });
-    const primeMeridianLayer = L.layerGroup([], { pane: meridianPane });
     
     // Only add to map if visible
     if (visible) {
       gridLayer.addTo(map);
-      primeMeridianLayer.addTo(map);
     }
     
     gridLayerRef.current = gridLayer;
-    primeMeridianLayerRef.current = primeMeridianLayer;
     
     // Set up event handlers for dynamic updates
     map.on('zoomend', () => {
       if (visible && primeMeridianSvg) {
         drawGrid();
-        drawPrimeMeridian();
       }
     });
 
     map.on('moveend', () => {
       if (visible && primeMeridianSvg) {
         drawGrid();
-        drawPrimeMeridian();
       }
     });
     
@@ -89,7 +77,6 @@ const GridComponent: React.FC<GridComponentProps> = ({
     if (visible && primeMeridianSvg) {
       setTimeout(() => {
         drawGrid();
-        drawPrimeMeridian();
       }, 100);
     }
     
@@ -99,38 +86,29 @@ const GridComponent: React.FC<GridComponentProps> = ({
       map.off('moveend');
       map.off('move');
       
-      // Remove layers
+      // Remove layer
       if (gridLayerRef.current) {
         map.removeLayer(gridLayerRef.current);
-      }
-      
-      if (primeMeridianLayerRef.current) {
-        map.removeLayer(primeMeridianLayerRef.current);
       }
     };
   }, [map, L, visible, primeMeridianSvg, svgWidth, svgHeight]);
   
   // Update when visibility changes
   useEffect(() => {
-    if (!map || !gridLayerRef.current || !primeMeridianLayerRef.current) return;
+    if (!map || !gridLayerRef.current) return;
     
     if (visible) {
-      // Add layers to map if they aren't already
+      // Add layer to map if it isn't already
       if (!map.hasLayer(gridLayerRef.current)) {
         gridLayerRef.current.addTo(map);
-      }
-      if (!map.hasLayer(primeMeridianLayerRef.current)) {
-        primeMeridianLayerRef.current.addTo(map);
       }
       
       if (primeMeridianSvg) {
         drawGrid();
-        drawPrimeMeridian();
       }
     } else {
-      // Remove layers from map
+      // Remove layer from map
       gridLayerRef.current.removeFrom(map);
-      primeMeridianLayerRef.current.removeFrom(map);
     }
   }, [visible, map, primeMeridianSvg]);
 
@@ -184,7 +162,7 @@ const GridComponent: React.FC<GridComponentProps> = ({
           color: '#FF8000', // Orange for prime meridian
           weight: 2,
           opacity: 0.8,
-          dashArray: '8,6',
+          // Remove dashArray for solid line
           pane: 'grid-pane'
         }).addTo(gridLayerRef.current);
         
@@ -348,74 +326,6 @@ const GridComponent: React.FC<GridComponentProps> = ({
       }
     } catch (error) {
       console.error('Error drawing grid:', error);
-    }
-  };
-  
-  // Draw prime meridian with proper wraparound
-  const drawPrimeMeridian = () => {
-    if (!map || !primeMeridianLayerRef.current || !primeMeridianSvg || !visible) return;
-
-    try {
-      // Clear existing layers
-      primeMeridianLayerRef.current.clearLayers();
-      
-      // Get SVG coordinates for visible bounds
-      const southPoint = latLngToSvg(visibleBounds.southLat, 0);
-      const northPoint = latLngToSvg(visibleBounds.northLat, 0);
-      
-      // Function to draw a meridian instance
-      const drawMeridianLine = (xPosition: number): void => {
-        // Draw the meridian line
-        L.polyline([
-          [southPoint.y, xPosition], 
-          [northPoint.y, xPosition]
-        ], {
-          color: gridStyle.PRIME_MERIDIAN_COLOR,
-          weight: gridStyle.PRIME_MERIDIAN_WEIGHT,
-          opacity: gridStyle.PRIME_MERIDIAN_OPACITY,
-          dashArray: gridStyle.PRIME_MERIDIAN_DASH_ARRAY,
-          pane: 'meridian-pane'
-        }).addTo(primeMeridianLayerRef.current);
-        
-        // Get current view bounds
-        const bounds = map.getBounds();
-        const southBound = bounds.getSouth();
-        const northBound = bounds.getNorth();
-        
-        // Add meridian label
-        L.marker(L.latLng(southBound + (northBound - southBound) * 0.1, xPosition), {
-          icon: L.divIcon({
-            className: 'prime-meridian-label',
-            html: 'Prime Meridian (0°)',
-            iconSize: [120, 30],
-            iconAnchor: [60, 15]
-          }),
-          pane: 'meridian-pane'
-        }).addTo(primeMeridianLayerRef.current);
-        
-        // Add reference point marker if in view
-        const markerY = primeMeridianSvg.y;
-        if (markerY >= southBound && markerY <= northBound) {
-          L.circleMarker(L.latLng(markerY, xPosition), {
-            radius: 8,
-            color: gridStyle.PRIME_MERIDIAN_COLOR,
-            fillColor: '#FFFF00',
-            fillOpacity: 0.7,
-            weight: 2,
-            pane: 'meridian-pane'
-          }).bindPopup(`
-            <strong>Prime Meridian Reference</strong><br>
-            Map Reference: 0° Longitude
-          `).addTo(primeMeridianLayerRef.current);
-        }
-      };
-      
-      // Draw all instances of the meridian
-      drawMeridianLine(primeMeridianSvg.x);           // Original
-      drawMeridianLine(primeMeridianSvg.x + svgWidth); // Right wraparound
-      drawMeridianLine(primeMeridianSvg.x - svgWidth); // Left wraparound
-    } catch (error) {
-      console.error('Error drawing prime meridian:', error);
     }
   };
   

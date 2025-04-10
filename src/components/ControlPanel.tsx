@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { SVGLayer } from '@/types/svg-types';
+import { SVGLayerControlRef } from './SVGLayerControl';
 
 interface ControlPanelProps {
   map: any;
@@ -11,7 +12,7 @@ interface ControlPanelProps {
   onTogglePrimeMeridian: (visible: boolean) => void;
   onTogglePosition: (visible: boolean) => void;
   mapConfig?: any;
-  layers?: Record<string, SVGLayer>;
+  layerControlRef?: React.RefObject<any>;
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = ({
@@ -22,8 +23,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   onTogglePrimeMeridian,
   onTogglePosition,
   mapConfig,
-  layers
+  layerControlRef
 }) => {
+  // State
   const [collapsed, setCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<'display' | 'layers'>('display');
   const [showPosition, setShowPosition] = useState(true);
@@ -38,10 +40,18 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
     rivers: false,
     'altitude-layers': false
   });
-  const layerOverlaysRef = useRef<Record<string, any>>({});
 
   // Priority layers for ordering
   const priorityLayers = ['political', 'climate', 'lakes', 'rivers', 'altitude-layers'];
+
+  // Sync layer visibility with SVGLayerControl
+  useEffect(() => {
+    if (layerControlRef?.current) {
+      // Get current visibility state from layer control
+      const currentVisibility = layerControlRef.current.getVisibility();
+      setLayerVisibility(currentVisibility);
+    }
+  }, [layerControlRef]);
 
   // Remove any existing control panel before adding a new one
   useEffect(() => {
@@ -52,7 +62,35 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
         panel.parentNode.removeChild(panel);
       }
     });
-  }, []);
+    
+    // Cleanup when component unmounts
+    return () => {
+      // Remove control panel when component unmounts
+      const controlPanels = document.querySelectorAll('.ixmap-control-panel');
+      controlPanels.forEach(panel => {
+        if (panel.parentNode) {
+          panel.parentNode.removeChild(panel);
+        }
+      });
+    };
+  }, [map]);
+
+  // Handle layer toggle
+  const handleLayerToggle = (layerId: string, checked: boolean) => {
+    // Update local state
+    setLayerVisibility(prev => ({
+      ...prev,
+      [layerId]: checked
+    }));
+    
+    // Use the layerControlRef to toggle the layer
+    if (layerControlRef?.current) {
+      layerControlRef.current.toggleLayer(layerId, checked);
+      console.log(`ControlPanel toggled layer: ${layerId} to ${checked}`);
+    } else {
+      console.warn('Layer control reference not available');
+    }
+  };
 
   useEffect(() => {
     if (!map || !L || controlAdded) return;
@@ -334,39 +372,23 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       layersTab.style.backgroundColor = activeTab === 'layers' ? '#f0f0f0' : 'transparent';
       layersTab.style.fontWeight = activeTab === 'layers' ? 'bold' : 'normal';
     }
-  }, [collapsed, activeTab, controlAdded]);
 
-  // Handle layer toggle
-  const handleLayerToggle = (layerId: string, checked: boolean) => {
-    setLayerVisibility(prev => ({
-      ...prev,
-      [layerId]: checked
-    }));
-    
-    // Here you would handle the layer visibility in the map
-    // This would interact with SVGLayerControl or other layer systems
-    if (map && layerOverlaysRef.current[layerId]) {
-      const overlay = layerOverlaysRef.current[layerId];
-      if (checked) {
-        overlay.addTo(map);
-      } else {
-        overlay.remove();
-      }
+    // Update the checkbox state for the Prime Meridian control to match the component state
+    const primeMeridianCheckbox = document.querySelector('input[data-control="show-prime-meridian"]') as HTMLInputElement;
+    if (primeMeridianCheckbox) {
+      primeMeridianCheckbox.checked = showPrimeMeridian;
     }
-  };
+  }, [collapsed, activeTab, controlAdded, showPrimeMeridian]);
 
-  // Cleanup when component unmounts
+  // Update state when props change
   useEffect(() => {
-    return () => {
-      // Remove control panel when component unmounts
-      const controlPanels = document.querySelectorAll('.ixmap-control-panel');
-      controlPanels.forEach(panel => {
-        if (panel.parentNode) {
-          panel.parentNode.removeChild(panel);
-        }
-      });
-    };
-  }, []);
+    // This effect synchronizes the internal state with the parent component
+    // For example, if the Prime Meridian state changes elsewhere, update the checkbox
+    const primeMeridianCheckbox = document.querySelector('input[data-control="show-prime-meridian"]') as HTMLInputElement;
+    if (primeMeridianCheckbox && primeMeridianCheckbox.checked !== showPrimeMeridian) {
+      primeMeridianCheckbox.checked = showPrimeMeridian;
+    }
+  }, [showPrimeMeridian]);
 
   // This component doesn't render anything in the DOM tree
   return null;

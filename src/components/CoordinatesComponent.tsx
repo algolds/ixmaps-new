@@ -33,6 +33,7 @@ const CoordinatesComponent: React.FC<CoordinatesComponentProps> = ({
   const clickMarkerRef = useRef<any>(null);
   const isWrappingRef = useRef<boolean>(false);
   const initialCenterAppliedRef = useRef<boolean>(false);
+  const primeMeridianLayerRef = useRef<any>(null);
   
   // Initialize prime meridian coordinates if not already set
   useEffect(() => {
@@ -204,6 +205,131 @@ const CoordinatesComponent: React.FC<CoordinatesComponentProps> = ({
     };
   }, [map, primeMeridianSvg]);
 
+  // Effect to handle Prime Meridian visibility
+  useEffect(() => {
+    if (!map || !primeMeridianSvg || !primeMeridianLayerRef.current) return;
+    
+    // Toggle visibility based on showPrimeMeridian prop
+    if (showPrimeMeridian) {
+      // Make sure the Prime Meridian layer is added to the map
+      if (!map.hasLayer(primeMeridianLayerRef.current)) {
+        primeMeridianLayerRef.current.addTo(map);
+      }
+      console.log('Showing Prime Meridian');
+    } else {
+      // Remove the Prime Meridian layer from the map
+      if (map.hasLayer(primeMeridianLayerRef.current)) {
+        primeMeridianLayerRef.current.removeFrom(map);
+      }
+      console.log('Hiding Prime Meridian');
+    }
+  }, [showPrimeMeridian, map, primeMeridianSvg]);
+
+  // Create Prime Meridian layer
+  useEffect(() => {
+    if (!map || !L || !primeMeridianSvg) return;
+    
+    // Create Prime Meridian layer if it doesn't exist
+    if (!primeMeridianLayerRef.current) {
+      // Create a pane for the Prime Meridian with high z-index
+      const meridianPane = 'prime-meridian-pane';
+      if (!map.getPane(meridianPane)) {
+        map.createPane(meridianPane);
+        map.getPane(meridianPane).style.zIndex = 651; // Higher than grid
+      }
+      
+      // Create layer group for Prime Meridian
+      const primeMeridianLayer = L.layerGroup([], { pane: meridianPane });
+      primeMeridianLayerRef.current = primeMeridianLayer;
+      
+      // Draw Prime Meridian Line
+      drawPrimeMeridian();
+      
+      // Only add to map if visibility is enabled
+      if (showPrimeMeridian) {
+        primeMeridianLayer.addTo(map);
+      }
+    } else {
+      // Update existing layer
+      redrawPrimeMeridian();
+    }
+  }, [map, L, primeMeridianSvg]);
+  
+  // Draw Prime Meridian lines and labels
+  const drawPrimeMeridian = () => {
+    if (!map || !L || !primeMeridianSvg || !primeMeridianLayerRef.current) return;
+    
+    try {
+      // Clear existing prime meridian
+      primeMeridianLayerRef.current.clearLayers();
+      
+      // Get SVG coordinates for visible bounds
+      const southPoint = latLngToSvg(visibleBounds.southLat, 0);
+      const northPoint = latLngToSvg(visibleBounds.northLat, 0);
+      
+      // Function to draw a meridian instance
+      const drawMeridianLine = (xPosition: number): void => {
+        // Draw the meridian line
+        L.polyline([
+          [southPoint.y, xPosition], 
+          [northPoint.y, xPosition]
+        ], {
+          color: '#FF8000',
+          weight: 2.5,
+          opacity: 0.8,
+          dashArray: '8,6',
+          pane: 'prime-meridian-pane'
+        }).addTo(primeMeridianLayerRef.current);
+        
+        // Get current view bounds
+        const bounds = map.getBounds();
+        const southBound = bounds.getSouth();
+        const northBound = bounds.getNorth();
+        
+        // Add meridian label
+        L.marker(L.latLng(southBound + (northBound - southBound) * 0.1, xPosition), {
+          icon: L.divIcon({
+            className: 'prime-meridian-label',
+            html: 'Prime Meridian (0°)',
+            iconSize: [120, 30],
+            iconAnchor: [60, 15]
+          }),
+          pane: 'prime-meridian-pane'
+        }).addTo(primeMeridianLayerRef.current);
+        
+        // Add reference point marker if in view
+        const markerY = primeMeridianSvg.y;
+        if (markerY >= southBound && markerY <= northBound) {
+          L.circleMarker(L.latLng(markerY, xPosition), {
+            radius: 8,
+            color: '#FF8000',
+            fillColor: '#FFFF00',
+            fillOpacity: 0.7,
+            weight: 2,
+            pane: 'prime-meridian-pane'
+          }).bindPopup(`
+            <strong>Prime Meridian Reference</strong><br>
+            Map Reference: 0° Longitude
+          `).addTo(primeMeridianLayerRef.current);
+        }
+      };
+      
+      // Draw all instances of the meridian (original + wraparounds)
+      drawMeridianLine(primeMeridianSvg.x);           // Original
+      drawMeridianLine(primeMeridianSvg.x + svgWidth); // Right wraparound
+      drawMeridianLine(primeMeridianSvg.x - svgWidth); // Left wraparound
+    } catch (error) {
+      console.error('Error drawing prime meridian:', error);
+    }
+  };
+  
+  // Redraw Prime Meridian when map view changes
+  const redrawPrimeMeridian = () => {
+    if (!showPrimeMeridian) return;
+    drawPrimeMeridian();
+  };
+  
+  // Set up coordinate display control
   useEffect(() => {
     if (!map || !L || displayAdded) return;
     
@@ -259,9 +385,15 @@ const CoordinatesComponent: React.FC<CoordinatesComponentProps> = ({
     
     map.on('mousemove', mouseMoveHandler);
     
+    // Update Prime Meridian on map view changes
+    map.on('moveend', redrawPrimeMeridian);
+    map.on('zoomend', redrawPrimeMeridian);
+    
     // Cleanup
     return () => {
       map.off('mousemove', mouseMoveHandler);
+      map.off('moveend', redrawPrimeMeridian);
+      map.off('zoomend', redrawPrimeMeridian);
       
       // Try to remove the control
       try {
