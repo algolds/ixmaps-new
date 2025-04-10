@@ -481,31 +481,105 @@ html, body {
   border-radius: 4px;
   font-size: 14px;
 }
-.grid-label {
-  background-color: rgba(255, 255, 255, 0.7);
-  border: 1px solid #666;
-  border-radius: 3px;
-  padding: 2px 4px;
-  font-size: 10px;
-  font-weight: bold;
-  color: #333;
-  white-space: nowrap;
+
+@layer components {
+  .ixmap-control-panel {
+    @apply absolute right-2.5 z-[1000] bg-white p-0 m-2.5 border-2 border-black rounded shadow-lg cursor-auto w-[250px] transition-all duration-300 ease-in-out max-h-[80vh] overflow-y-auto;
+    top: 0.625rem;
+    --tw-border-opacity: 0.2;
+  }
+
+  .toggle-button {
+    @apply absolute -left-4 bg-white border-2 border-black rounded w-5 h-5 text-center leading-4 cursor-pointer z-[1000];
+    top: 0.625rem;
+    --tw-border-opacity: 0.2;
+  }
+
+  .control-content {
+    @apply block; /* Default state */
+  }
+
+  .control-content.hidden {
+     @apply hidden; /* State when collapsed */
+  }
+
+  .control-title {
+    @apply font-bold text-base p-2.5 border-b border-gray-300 text-center;
+  }
+
+  .tab-navigation {
+    @apply flex border-b border-gray-300;
+  }
+
+  .tab {
+    @apply flex-1 p-2 text-center cursor-pointer transition-colors duration-200;
+  }
+
+  .tab.active {
+    @apply bg-gray-100 font-bold;
+  }
+
+  .tab-content {
+     @apply p-2.5 hidden; /* Hidden by default */
+  }
+  .tab-content.active {
+      @apply block; /* Visible when active */
+  }
+
+  .control-section, .layer-group {
+    @apply mb-4;
+  }
+
+  .section-title, .group-title {
+    @apply font-bold mb-2 text-sm;
+  }
+
+  .layer-item {
+      @apply mb-2 ml-2.5;
+  }
+
+  .control-item {
+    @apply flex items-center mb-2.5;
+  }
+}
+/* Styles for the control panel when it's collapsed */
+.ixmap-control-panel.collapsed-state {
+  /* Make it look like a compact box */
+  background-color: white; /* Or your theme's background */
+  border: 1px solid #ccc; /* Standard Leaflet control border */
+  border-radius: 4px; /* Standard Leaflet control radius */
+  padding: 0; /* Remove padding to fit button snugly */
+  width: 30px; /* Match Leaflet default control size */
+  height: 30px; /* Match Leaflet default control size */
+  box-shadow: 0 1px 5px rgba(0,0,0,0.2); /* Subtle shadow */
+
+  /* Center the toggle button inside */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden; /* Ensure content doesn't spill */
 }
 
-.prime-meridian-label {
-  background-color: rgba(255, 128, 0, 0.8);
-  color: white;
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+/* Adjust the toggle button style when inside the collapsed box */
+.ixmap-control-panel.collapsed-state .toggle-button {
+  /* Remove any default margins/paddings if necessary */
+  margin: 0;
+  padding: 0;
+  line-height: 30px; /* Vertically center text if needed */
+  width: 100%; /* Ensure it fills the small box */
+  text-align: center;
 }
 
-.equator-label {
-  background-color: rgba(255, 69, 0, 0.8);
-  color: white;
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+/* Ensure the expanded state looks correct (it should by default) */
+.ixmap-control-panel {
+  /* Reset width/height if set by collapsed state */
+   width: auto;
+   height: auto;
+   /* Other default styles for expanded panel */
+}
+
+
+/* Style for the content area when expanded */
+.ixmap-control-panel .control-content {
+   display: block; /* Or flex, grid etc. depending on layout */
 }
