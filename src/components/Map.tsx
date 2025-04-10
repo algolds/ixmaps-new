@@ -491,6 +491,16 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
         />
       )}
       
+      {/* Add the CountryLabelsComponent */}
+      {isMapReady && mapRef.current && (
+  <CountryLabelsComponent
+    map={mapRef.current}
+    visible={showCountryLabels}  // Make sure this state is true
+    mapConfig={mapConfig}
+  />
+)}
+
+      
       {/* Add the SVGLayerControl */}
       {isMapReady && mapRef.current && leafletRef.current && (
         <SVGLayerControl 
@@ -501,29 +511,20 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
           position="topright"
         />
       )}
-      {/* Add the CountryLabelsComponent */}
-{isMapReady && mapRef.current && leafletRef.current && (
-  <CountryLabelsComponent
-    map={mapRef.current}
-    L={leafletRef.current}
-    visible={showCountryLabels}
-    mapConfig={mapConfig}
-  />
-)}
-      {/* Add the ControlPanel with layer control reference */}
-      {isMapReady && mapRef.current && leafletRef.current && (
-        <ControlPanel
-          map={mapRef.current}
-          L={leafletRef.current}
-          onToggleGrid={toggleGrid}
-          onToggleLabels={toggleLabels}
-          onTogglePrimeMeridian={togglePrimeMeridian}
-          onTogglePosition={toggleCoordinates}
-          onToggleCountryLabels={toggleCountryLabels}
-          mapConfig={mapConfig}
-          layerControlRef={layerControlRef}
-        />
-      )}
+      
+      {/* Add the ControlPanel */}
+      <ControlPanel
+  map={mapRef.current}
+  L={leafletRef.current}
+  onToggleGrid={toggleGrid}
+  onToggleLabels={toggleLabels}
+  onToggleCountryLabels={toggleCountryLabels} // This is now properly passed
+  onTogglePrimeMeridian={togglePrimeMeridian}
+  onTogglePosition={toggleCoordinates}
+  mapConfig={mapConfig}
+  layerControlRef={layerControlRef}
+/>
+
       
       {/* Add the MapScale component */}
       {isMapReady && mapRef.current && leafletRef.current && (
@@ -554,6 +555,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       )}
     </div>
   );
+  
 };
 
 export default MapComponent;

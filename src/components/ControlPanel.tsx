@@ -22,6 +22,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   L,
   onToggleGrid,
   onToggleLabels,
+  onToggleCountryLabels, // Add this line
   onTogglePrimeMeridian,
   onTogglePosition,
   mapConfig,
@@ -210,39 +211,41 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
         displayTab.addEventListener('click', () => setActiveTab('display'));
         layersTab.addEventListener('click', () => setActiveTab('layers'));
         
-        // == Display tab content ==
-        const coordSection = L.DomUtil.create('div', '', displayContent);
-        L.DomUtil.addClass(coordSection, 'control-section');
-        
-        const coordTitle = L.DomUtil.create('div', '', coordSection);
-        L.DomUtil.addClass(coordTitle, 'section-title');
-        coordTitle.innerHTML = 'Coordinates';
-        
-        // Add control items
-        createControlItem(coordSection, 'Show Position', showPosition, (checked) => { 
-          setShowPosition(checked); 
-          onTogglePosition(checked); 
-        });
-        
-        createControlItem(coordSection, 'Show Grid', showGrid, (checked) => { 
-          setShowGrid(checked); 
-          onToggleGrid(checked); 
-        });
-        
-        createControlItem(coordSection, 'Show Labels', showLabels, (checked) => { 
-          setShowLabels(checked); 
-          onToggleLabels(checked); 
-        });
-        
-        createControlItem(coordSection, 'Show Prime Meridian', showPrimeMeridian, (checked) => { 
-          setShowPrimeMeridian(checked); 
-          onTogglePrimeMeridian(checked); 
-        });
+      // In the display content section
+const coordSection = L.DomUtil.create('div', '', displayContent);
+L.DomUtil.addClass(coordSection, 'control-section');
 
-        createControlItem(coordSection, 'Show Country Labels', showCountryLabels, (checked) => { 
-          setShowCountryLabels(checked); 
-          onToggleLabels(checked); // Changed from onToggleLabels
-        });
+const coordTitle = L.DomUtil.create('div', '', coordSection);
+L.DomUtil.addClass(coordTitle, 'section-title');
+coordTitle.innerHTML = 'Coordinates';
+
+// Add control items
+createControlItem(coordSection, 'Show Position', showPosition, (checked) => { 
+  setShowPosition(checked); 
+  onTogglePosition(checked); 
+});
+
+createControlItem(coordSection, 'Show Grid', showGrid, (checked) => { 
+  setShowGrid(checked); 
+  onToggleGrid(checked); 
+});
+
+createControlItem(coordSection, 'Show Labels', showLabels, (checked) => { 
+  setShowLabels(checked); 
+  onToggleLabels(checked); 
+});
+
+createControlItem(coordSection, 'Show Prime Meridian', showPrimeMeridian, (checked) => { 
+  setShowPrimeMeridian(checked); 
+  onTogglePrimeMeridian(checked); 
+});
+
+createControlItem(coordSection, 'Show Country Labels', showCountryLabels, (checked) => { 
+  setShowCountryLabels(checked); 
+  onToggleCountryLabels(checked); // Changed to use onToggleCountryLabels
+});
+
+
         // == Layers tab content ==
         const layerGroups: Record<string, string[]> = {
           'Base Layers': ['political', 'climate'],
