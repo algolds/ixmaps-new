@@ -26,6 +26,17 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   const [showPrimeMeridian, setShowPrimeMeridian] = useState(false);
   const [controlAdded, setControlAdded] = useState(false);
 
+  // Remove any existing control panel before adding a new one
+  useEffect(() => {
+    // Remove any existing control panels first
+    const existingControlPanels = document.querySelectorAll('.coordinate-control');
+    existingControlPanels.forEach(panel => {
+      if (panel.parentNode) {
+        panel.parentNode.removeChild(panel);
+      }
+    });
+  }, []);
+
   useEffect(() => {
     if (!map || !L || controlAdded) return;
 
@@ -161,6 +172,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       checkbox.checked = checked;
       checkbox.style.marginRight = '8px';
       
+      // Add a data attribute to help identify this checkbox
+      checkbox.setAttribute('data-control', label.toLowerCase().replace(/\s+/g, '-'));
+      
       const labelElement = L.DomUtil.create('label', '', controlItem);
       labelElement.innerHTML = label;
       labelElement.style.cursor = 'pointer';
@@ -191,7 +205,21 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
     }
   }, [collapsed, controlAdded]);
 
-  return null; // Control is added directly to the map
+  // Cleanup when component unmounts
+  useEffect(() => {
+    return () => {
+      // Remove control when component unmounts
+      const controlPanels = document.querySelectorAll('.coordinate-control');
+      controlPanels.forEach(panel => {
+        if (panel.parentNode) {
+          panel.parentNode.removeChild(panel);
+        }
+      });
+    };
+  }, []);
+
+  // This component doesn't render anything in the DOM tree
+  return null;
 };
 
 export default ControlPanel;
