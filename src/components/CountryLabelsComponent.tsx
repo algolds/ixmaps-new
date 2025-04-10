@@ -31,7 +31,8 @@ const CountryLabelsComponent: React.FC<CountryLabelsComponentProps> = ({
 
     // Create pane if it doesn't exist
     if (!map.getPane('labels-pane')) {
-      map.createPane('labels-pane').style.zIndex = '650';
+      const pane = map.createPane('labels-pane');
+      pane.style.zIndex = '650';
     }
 
     labelsLayerRef.current = new LayerGroup([], { pane: 'labels-pane' });
@@ -50,7 +51,9 @@ const CountryLabelsComponent: React.FC<CountryLabelsComponentProps> = ({
     
     if (visible) {
       map.addLayer(labelsLayerRef.current);
-      if (!isLoaded) loadLabels();
+      if (!isLoaded) {
+        loadLabels();
+      }
     } else {
       map.removeLayer(labelsLayerRef.current);
     }
@@ -65,6 +68,8 @@ const CountryLabelsComponent: React.FC<CountryLabelsComponentProps> = ({
       const data = await response.json();
       if (!data?.countries) throw new Error('Invalid data format');
 
+      console.log('Loaded data:', data);
+      
       // Clear existing markers
       markersRef.current.forEach(marker => marker.remove());
       markersRef.current = [];
@@ -73,17 +78,18 @@ const CountryLabelsComponent: React.FC<CountryLabelsComponentProps> = ({
       data.countries.forEach((country: CountryData) => {
         if (!country.centerpoint) return;
 
-        const position = new LatLng(
-          mapConfig.equatorY - country.centerpoint.y / mapConfig.pixelsPerLatitude,
-          (country.centerpoint.x - mapConfig.primeMeridianX) / mapConfig.pixelsPerLongitude
-        );
+        const lat = mapConfig.equatorY - (country.centerpoint.y / mapConfig.pixelsPerLatitude);
+        const lng = (country.centerpoint.x - mapConfig.primeMeridianX) / mapConfig.pixelsPerLongitude;
+        const position = new LatLng(lat, lng);
+
+        console.log(`Processing country ${country.name} at position:`, position);
 
         const marker = new Marker(position, {
           icon: new DivIcon({
             className: 'country-label',
             html: `<div>${country.name}</div>`,
             iconSize: [100, 24],
-            iconAnchor: [50, 12]
+            iconAnchor: [50, 12],
           }),
           pane: 'labels-pane'
         }).addTo(labelsLayerRef.current!);
@@ -94,7 +100,6 @@ const CountryLabelsComponent: React.FC<CountryLabelsComponentProps> = ({
 
       setIsLoaded(true);
       console.log(`Loaded ${markersRef.current.length} country labels`);
-
     } catch (error) {
       console.error('Error loading country labels:', error);
     }
