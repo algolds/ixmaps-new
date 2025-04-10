@@ -5,6 +5,12 @@ import { MapConfig, LatLng, SvgPoint } from '@/types';
 import { defaultMapConfig, visibleBounds } from '@/lib/MapConfig';
 import { showToast, initToasts } from '@/lib/Toast';
 import { loadSVGDimensions } from '@/lib/SVGLoader';
+import { 
+  getCurrentLODLevel, 
+  getMapPathForZoom, 
+  updateConfigForZoom, 
+  LODMapConfig 
+} from '@/lib/LODManager';
 import dynamic from 'next/dynamic';
 import DistanceMeasurement from './DistanceMeasurement';
 import MapScale from './MapScale';
@@ -36,6 +42,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const layerControlRef = useRef<SVGLayerControlRef>(null);
   const isWrappingRef = useRef<boolean>(false); // Track if we're currently wrapping
   const controlPanelAddedRef = useRef<boolean>(false);
+  const baseLayersRef = useRef<Record<string, any>>({});
 
   // State
   const [mapConfig, setMapConfig] = useState<MapConfig>({
@@ -49,6 +56,8 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const [showCoordinates, setShowCoordinates] = useState<boolean>(true);
   const [showPrimeMeridian, setShowPrimeMeridian] = useState<boolean>(false);
   const [showLabels, setShowLabels] = useState<boolean>(true);
+  const [currentZoom, setCurrentZoom] = useState<number>(mapConfig.initialZoom);
+  const [currentLODLevel, setCurrentLODLevel] = useState(getCurrentLODLevel(mapConfig.initialZoom));
 
   useEffect(() => {
     // Initialize toasts
@@ -57,7 +66,12 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     // Load SVG dimensions
     async function loadDimensions() {
       try {
-        const dimensions = await loadSVGDimensions(mapConfig.masterMapPath);
+        // Get the appropriate LOD path based on initial zoom
+        const initialPath = mapConfig.lodEnabled 
+          ? getMapPathForZoom(mapConfig.initialZoom) 
+          : mapConfig.masterMapPath;
+          
+        const dimensions = await loadSVGDimensions(initialPath);
         console.log(`Raw SVG dimensions from file: ${dimensions.width}x${dimensions.height}`);
         
         // Make sure dimensions are reasonable
@@ -116,7 +130,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       isWrappingRef.current = false;
       controlPanelAddedRef.current = false;
     };
-  }, [mapConfig.masterMapPath]);
+  }, [mapConfig.masterMapPath, mapConfig.initialZoom, mapConfig.lodEnabled]);
 
   // Initialize the prime meridian SVG point once the map is ready
   useEffect(() => {
@@ -139,6 +153,80 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       console.log('Adding control panel to map');
     }
   }, [isMapReady]);
+
+  // Handle LOD changes when zoom level changes
+  useEffect(() => {
+    if (!isMapReady || !mapRef.current || !leafletRef.current) return;
+    
+    // Skip if LOD is not enabled
+    if (!mapConfig.lodEnabled) return;
+    
+    // Get the new LOD level based on current zoom
+    const newLODLevel = getCurrentLODLevel(currentZoom);
+    
+    // If LOD level changed, update the map
+    if (newLODLevel !== currentLODLevel) {
+      console.log(`LOD level changed from ${currentLODLevel} to ${newLODLevel} at zoom ${currentZoom}`);
+      setCurrentLODLevel(newLODLevel);
+      
+      // Update map config with new LOD paths
+      const updatedConfig = updateConfigForZoom(mapConfig as LODMapConfig, currentZoom);
+      
+      // Handle layer replacement if necessary
+      if (updatedConfig.baseMapUrl !== mapConfig.baseMapUrl) {
+        console.log(`Switching base map to: ${updatedConfig.baseMapUrl}`);
+        
+        const map = mapRef.current;
+        const L = leafletRef.current;
+        
+        // Calculate bounds based on SVG dimensions
+        const bounds = L.latLngBounds(
+          L.latLng(mapConfig.bounds.south, mapConfig.bounds.west),
+          L.latLng(mapConfig.bounds.north, mapConfig.bounds.east)
+        );
+
+        // Remove existing base layers
+        if (baseLayersRef.current.baseMap) {
+          baseLayersRef.current.baseMap.removeFrom(map);
+        }
+        if (baseLayersRef.current.leftCopy) {
+          baseLayersRef.current.leftCopy.removeFrom(map);
+        }
+        if (baseLayersRef.current.rightCopy) {
+          baseLayersRef.current.rightCopy.removeFrom(map);
+        }
+
+        // Add new base map layer with updated SVG
+        const baseMap = L.imageOverlay(updatedConfig.baseMapUrl, bounds);
+        baseMap.addTo(map);
+        baseLayersRef.current.baseMap = baseMap;
+
+        // Create wraparound copies of the base map
+        const leftCopy = L.imageOverlay(
+          updatedConfig.baseMapUrl,
+          L.latLngBounds(
+            L.latLng(mapConfig.bounds.south, mapConfig.bounds.west - mapConfig.svgWidth),
+            L.latLng(mapConfig.bounds.north, mapConfig.bounds.east - mapConfig.svgWidth)
+          )
+        ).addTo(map);
+        baseLayersRef.current.leftCopy = leftCopy;
+        
+        const rightCopy = L.imageOverlay(
+          updatedConfig.baseMapUrl,
+          L.latLngBounds(
+            L.latLng(mapConfig.bounds.south, mapConfig.bounds.west + mapConfig.svgWidth),
+            L.latLng(mapConfig.bounds.north, mapConfig.bounds.east + mapConfig.svgWidth)
+          )
+        ).addTo(map);
+        baseLayersRef.current.rightCopy = rightCopy;
+        
+        // Update config state
+        setMapConfig(updatedConfig);
+        
+        showToast(`Switched to ${newLODLevel} resolution map`, 'info', 2000);
+      }
+    }
+  }, [currentZoom, isMapReady, currentLODLevel, mapConfig]);
 
   // Function to handle horizontal wraparound
   const handleMapWraparound = () => {
@@ -218,26 +306,34 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
         L.latLng(mapConfig.bounds.north, mapConfig.bounds.east)
       );
 
+      // Get initial map URL based on LOD if enabled
+      const initialMapUrl = mapConfig.lodEnabled
+        ? getMapPathForZoom(mapConfig.initialZoom)
+        : mapConfig.baseMapUrl;
+
       // Add the base map layer with SVG
-      const baseMap = L.imageOverlay(mapConfig.baseMapUrl, bounds);
+      const baseMap = L.imageOverlay(initialMapUrl, bounds);
       baseMap.addTo(map);
+      baseLayersRef.current.baseMap = baseMap;
 
       // Create wraparound copies of the base map
       const leftCopy = L.imageOverlay(
-        mapConfig.baseMapUrl,
+        initialMapUrl,
         L.latLngBounds(
           L.latLng(mapConfig.bounds.south, mapConfig.bounds.west - mapConfig.svgWidth),
           L.latLng(mapConfig.bounds.north, mapConfig.bounds.east - mapConfig.svgWidth)
         )
       ).addTo(map);
+      baseLayersRef.current.leftCopy = leftCopy;
       
       const rightCopy = L.imageOverlay(
-        mapConfig.baseMapUrl,
+        initialMapUrl,
         L.latLngBounds(
           L.latLng(mapConfig.bounds.south, mapConfig.bounds.west + mapConfig.svgWidth),
           L.latLng(mapConfig.bounds.north, mapConfig.bounds.east + mapConfig.svgWidth)
         )
       ).addTo(map);
+      baseLayersRef.current.rightCopy = rightCopy;
 
       // Fit to bounds
       map.fitBounds(bounds);
@@ -261,7 +357,9 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
 
       // Set up event handlers
       map.on('zoomend', () => {
-        console.log('Map zoom level:', map.getZoom());
+        const newZoom = map.getZoom();
+        console.log('Map zoom level:', newZoom);
+        setCurrentZoom(newZoom);
       });
 
       map.on('moveend', () => {
@@ -419,6 +517,24 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       {/* Add the distance measurement component */}
       {isMapReady && mapRef.current && leafletRef.current && (
         <DistanceMeasurement map={mapRef.current} L={leafletRef.current} />
+      )}
+      
+      {/* Optional: LOD level indicator for debugging */}
+      {mapConfig.lodEnabled && (
+        <div 
+          style={{
+            position: 'absolute',
+            bottom: '10px',
+            left: '10px',
+            background: 'rgba(255, 255, 255, 0.7)',
+            padding: '5px',
+            borderRadius: '3px',
+            fontSize: '12px',
+            zIndex: 1000
+          }}
+        >
+          LOD: {currentLODLevel} (Zoom: {currentZoom.toFixed(1)})
+        </div>
       )}
     </div>
   );

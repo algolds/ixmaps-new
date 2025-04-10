@@ -174,3 +174,22 @@ export interface IxMapsNamespace {
     KM_PER_PIXEL: number;
   };
 }
+
+/**
+ * LOD Map Paths interface
+ */
+export interface LODMapPaths {
+  low: string;
+  medium: string;
+  high: string;
+}
+/**
+ * Extended Map configuration with LOD support
+ */
+export interface MapConfig {
+  // Existing properties...
+  
+  // Add LOD properties
+  lodEnabled?: boolean;
+  lodPaths?: LODMapPaths;
+}
