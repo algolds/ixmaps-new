@@ -1,16 +1,17 @@
 'use client';
-import React, { useEffect, useState } from 'react';
-import { LatLng } from 'leaflet'; // Changed import to use 'leaflet' instead of '@/types'
 
-interface CoordinateDisplayProps {
-  map: L.Map; // Specified the type for map as L.Map
-  L: typeof import('leaflet'); // Specified the type for L as the Leaflet module
+import React, { useEffect, useState } from 'react';
+import { LatLng } from 'leaflet';
+
+interface CoordinatesComponentProps {
+  map: any;
+  L: any;
   svgToCustomLatLng: (x: number, y: number) => LatLng;
   formatCoord: (value: number, posLabel: string, negLabel: string) => string;
   visible: boolean;
 }
 
-const CoordinateDisplay: React.FC<CoordinateDisplayProps> = ({
+const CoordinatesComponent: React.FC<CoordinatesComponentProps> = ({
   map,
   L,
   svgToCustomLatLng,
@@ -22,6 +23,13 @@ const CoordinateDisplay: React.FC<CoordinateDisplayProps> = ({
   useEffect(() => {
     if (!map || !L || displayAdded) return;
     
+    // Create a custom pane with high z-index for the coordinates display
+    const coordinatesPane = 'coordinates-pane';
+    if (!map.getPane(coordinatesPane)) {
+      map.createPane(coordinatesPane);
+      map.getPane(coordinatesPane).style.zIndex = 655; // Higher than grid
+    }
+    
     // Create coordinate display control
     const CoordDisplay = L.Control.extend({
       options: {
@@ -29,7 +37,7 @@ const CoordinateDisplay: React.FC<CoordinateDisplayProps> = ({
       },
       
       onAdd: function() {
-        const container = L.DomUtil.create('div', 'coordinates-display');
+        const container = L.DomUtil.create('div', 'coordinates-display ixmap-coordinates-display');
         container.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
         container.style.padding = '5px 10px';
         container.style.borderRadius = '4px';
@@ -56,7 +64,7 @@ const CoordinateDisplay: React.FC<CoordinateDisplayProps> = ({
     const mouseMoveHandler = (e: any) => {
       try {
         const customCoord = svgToCustomLatLng(e.latlng.lng, e.latlng.lat);
-        const container = document.querySelector('.coordinates-display');
+        const container = document.querySelector('.ixmap-coordinates-display');
         if (container) {
           container.innerHTML = `Lat: ${formatCoord(customCoord.lat, 'N', 'S')}<br>Lng: ${formatCoord(customCoord.lng, 'E', 'W')}`;
         }
@@ -70,12 +78,21 @@ const CoordinateDisplay: React.FC<CoordinateDisplayProps> = ({
     // Cleanup
     return () => {
       map.off('mousemove', mouseMoveHandler);
+      
+      // Try to remove the control
+      try {
+        if (coordDisplay && coordDisplay.remove) {
+          coordDisplay.remove();
+        }
+      } catch (e) {
+        console.warn('Error removing coordinates display:', e);
+      }
     };
   }, [map, L, svgToCustomLatLng, formatCoord, displayAdded]);
   
   // Update visibility when changed
   useEffect(() => {
-    const container = document.querySelector('.coordinates-display') as HTMLElement;
+    const container = document.querySelector('.ixmap-coordinates-display') as HTMLElement;
     if (container) {
       container.style.display = visible ? 'block' : 'none';
     }
@@ -84,4 +101,4 @@ const CoordinateDisplay: React.FC<CoordinateDisplayProps> = ({
   return null; // Control is added directly to the map
 };
 
-export default CoordinateDisplay;
+export default CoordinatesComponent;
