@@ -1,8 +1,9 @@
 'use client';
 import React, { useEffect, useRef, useState } from 'react';
-import { Map as LeafletMap, LayerGroup, DivIcon, LatLng, Marker, Popup } from 'leaflet';
+import { Map as LeafletMap, LayerGroup, DivIcon, LatLng as LeafletLatLng, Marker, Popup } from 'leaflet';
 import { MapConfig } from '@/types';
-import { visibleBounds } from '@/lib/MapConfig';
+// We are NOT using the geographic svgToLatLng for plotting with CRS.Simple
+import { svgToLatLng } from '@/lib/MapConfig'; 
 
 interface CountryData {
   id: string;
@@ -13,42 +14,42 @@ interface CountryData {
 interface CountryLabelsComponentProps {
   map: LeafletMap;
   visible: boolean;
-  mapConfig: MapConfig;
+  mapConfig: MapConfig; 
 }
 
 const CountryLabelsComponent: React.FC<CountryLabelsComponentProps> = ({
   map,
   visible,
-  mapConfig
+  mapConfig 
 }) => {
   const labelsLayerRef = useRef<LayerGroup | null>(null);
   const markersRef = useRef<Marker[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Initialize layer
+  // (useEffect hooks remain the same as the previous version)
   useEffect(() => {
     if (!map) return;
-
-    // Create pane if it doesn't exist
     if (!map.getPane('labels-pane')) {
       const pane = map.createPane('labels-pane');
-      pane.style.zIndex = '650';
+      pane.style.zIndex = '5000'; 
     }
-
     labelsLayerRef.current = new LayerGroup([], { pane: 'labels-pane' });
     if (visible) {
       labelsLayerRef.current.addTo(map);
+      if (!isLoaded) {
+         loadLabels();
+      }
     }
-
     return () => {
       labelsLayerRef.current?.remove();
+      markersRef.current.forEach(marker => marker.remove());
+      markersRef.current = [];
+      setIsLoaded(false); 
     };
-  }, [map]);
+  }, [map]); 
 
-  // Toggle visibility
   useEffect(() => {
     if (!labelsLayerRef.current) return;
-    
     if (visible) {
       map.addLayer(labelsLayerRef.current);
       if (!isLoaded) {
@@ -57,49 +58,74 @@ const CountryLabelsComponent: React.FC<CountryLabelsComponentProps> = ({
     } else {
       map.removeLayer(labelsLayerRef.current);
     }
-  }, [visible]);
+  }, [visible, isLoaded, map]);
 
   const loadLabels = async () => {
+    if (isLoaded || !labelsLayerRef.current) return;
+
     try {
-      console.log('Loading country labels...');
+      console.log('Plotting country labels using direct SVG coordinates...'); 
       const response = await fetch('/data/countries.json');
       if (!response.ok) throw new Error('Failed to load countries data');
-      
+
       const data = await response.json();
       if (!data?.countries) throw new Error('Invalid data format');
 
-      console.log('Loaded data:', data);
-      
-      // Clear existing markers
+      console.log('Loaded country data:', data);
+
       markersRef.current.forEach(marker => marker.remove());
       markersRef.current = [];
 
-      // Add new markers
       data.countries.forEach((country: CountryData) => {
-        if (!country.centerpoint) return;
+        if (!country.centerpoint || typeof country.centerpoint.x !== 'number' || typeof country.centerpoint.y !== 'number') {
+          console.warn(`Skipping country ${country.name || country.id} due to invalid centerpoint`);
+          return;
+        }
 
-        const lat = mapConfig.equatorY - (country.centerpoint.y / mapConfig.pixelsPerLatitude);
-        const lng = (country.centerpoint.x - mapConfig.primeMeridianX) / mapConfig.pixelsPerLongitude;
-        const position = new LatLng(lat, lng);
+        // --- Use Raw SVG Coordinates for Plotting ---
+        const svgX = country.centerpoint.x;
+        const svgY = country.centerpoint.y;
+        
+        if (isNaN(svgX) || isNaN(svgY)) {
+             console.warn(`Skipping country ${country.name || country.id} due to invalid raw SVG coordinates`);
+             return;
+        }
 
-        console.log(`Processing country ${country.name} at position:`, position);
+        // Create Leaflet LatLng using (svgY, svgX)
+        const position = new LeafletLatLng(svgY, svgX); 
+        // --- End Coordinate Logic ---
 
-        const marker = new Marker(position, {
-          icon: new DivIcon({
-            className: 'country-label',
-            html: `<div>${country.name}</div>`,
-            iconSize: [100, 24],
-            iconAnchor: [50, 12],
-          }),
-          pane: 'labels-pane'
-        }).addTo(labelsLayerRef.current!);
+        console.log(`Plotting Country: ${country.name}, SVG: (${svgX}, ${svgY}), Leaflet Pos: (${svgY}, ${svgX})`); 
 
-        marker.bindPopup(`<b>${country.name}</b>`);
-        markersRef.current.push(marker);
+        try {
+          const marker = new Marker(position, {
+            icon: new DivIcon({
+              className: 'country-label', 
+              html: `<div>${country.name}</div>`,
+              // Adjust anchor if needed based on CSS/label size
+              // iconAnchor: [approxLabelWidth / 2, approxLabelHeight / 2] 
+              iconSize: undefined, 
+              iconAnchor: undefined, // Let CSS center or define anchor point
+            }),
+            pane: 'labels-pane'
+          });
+
+          if (labelsLayerRef.current) {
+             marker.addTo(labelsLayerRef.current);
+             // Add geographic coords to popup using the conversion function (useful for display)
+             // Make sure svgToLatLng is imported if you use this:
+             // const geoCoords = svgToLatLng(svgX, svgY); 
+             // marker.bindPopup(`<b>${country.name}</b><br/>[SVG: ${svgX.toFixed(1)}, ${svgY.toFixed(1)}]<br/>[Geo: ${geoCoords.lat.toFixed(2)}, ${geoCoords.lng.toFixed(2)}]`);
+             marker.bindPopup(`<b>${country.name}</b><br/>[SVG: ${svgX.toFixed(1)}, ${svgY.toFixed(1)}]`); // Simpler popup for now
+             markersRef.current.push(marker);
+          }
+        } catch (markerError) {
+            console.error(`Error creating marker for ${country.name || country.id}:`, markerError);
+        }
       });
 
-      setIsLoaded(true);
-      console.log(`Loaded ${markersRef.current.length} country labels`);
+      setIsLoaded(true); 
+      console.log(`Plotted ${markersRef.current.length} country labels using direct SVG coords`); 
     } catch (error) {
       console.error('Error loading country labels:', error);
     }

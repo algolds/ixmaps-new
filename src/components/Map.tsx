@@ -2,7 +2,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { MapConfig, LatLng, SvgPoint } from '@/types';
-import { defaultMapConfig, visibleBounds } from '@/lib/MapConfig';
+// Import defaultMapConfig, visibleBounds, and the coordinate functions from MapConfig
+import { defaultMapConfig, visibleBounds, svgToLatLng, latLngToSvg } from '@/lib/MapConfig'; 
 import { showToast, initToasts } from '@/lib/Toast';
 import { loadSVGDimensions } from '@/lib/SVGLoader';
 import { 
@@ -56,8 +57,8 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const [showGrid, setShowGrid] = useState<boolean>(true);
   const [showCoordinates, setShowCoordinates] = useState<boolean>(true);
   const [showPrimeMeridian, setShowPrimeMeridian] = useState<boolean>(false);
-  const [showLabels, setShowLabels] = useState<boolean>(true);
-  const [showCountryLabels, setShowCountryLabels] = useState<boolean>(true);
+  const [showLabels, setShowLabels] = useState<boolean>(true); // General labels toggle (if needed elsewhere)
+  const [showCountryLabels, setShowCountryLabels] = useState<boolean>(true); // Specific toggle for country labels
   const [currentZoom, setCurrentZoom] = useState<number>(mapConfig.initialZoom);
   const [currentLODLevel, setCurrentLODLevel] = useState(getCurrentLODLevel(mapConfig.initialZoom));
 
@@ -409,45 +410,19 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   };
   
   const toggleLabels = (visible: boolean) => {
-    setShowLabels(visible);
+    // This toggle might control other labels, not just country labels
+    setShowLabels(visible); 
   };
   
   const toggleCountryLabels = (visible: boolean) => {
-    setShowCountryLabels(visible);
+    // This specifically controls the state for CountryLabelsComponent
+    setShowCountryLabels(visible); 
     console.log('Country labels visibility toggled to:', visible);
   };
 
-  // Convert SVG coordinates to geographic coordinates - helper function
-  const svgToLatLng = (x: number, y: number): LatLng => {
-    // Map y-coordinate to latitude range with proper N/S orientation
-    const latRange = visibleBounds.northLat - visibleBounds.southLat;
-    // Calculate latitude with southLat as the base
-    const lat = visibleBounds.southLat + ((mapConfig.svgHeight - y) / mapConfig.svgHeight * latRange);
-    
-    // Calculate longitude with prime meridian offset (30°E)
-    // First convert to 0-360 range
-    const rawLng = (x / mapConfig.svgWidth * 360);
-    // Then shift by 30 degrees (prime meridian offset) and normalize to -180 to 180
-    const lng = ((rawLng + 30) % 360) - 180;
-    
-    return { lat, lng };
-  };
+  // NOTE: Removed the svgToLatLng and latLngToSvg definitions from here
+  // They should be imported from '@/lib/MapConfig' if needed elsewhere in this component
 
-  // Convert geographic coordinates to SVG coordinates - helper function
-  const latLngToSvg = (lat: number, lng: number): SvgPoint => {
-    // Convert latitude to y coordinate with proper orientation
-    const latRange = visibleBounds.northLat - visibleBounds.southLat;
-    const y = mapConfig.svgHeight - ((lat - visibleBounds.southLat) / latRange) * mapConfig.svgHeight;
-    
-    // Convert longitude to x coordinate with wraparound and prime meridian adjustment
-    // First shift to 0-360 range with prime meridian (30°E) at 0
-    const adjustedLng = ((lng - 30 + 540) % 360);
-    // Then normalize to 0-1 range and scale to SVG width
-    const x = (adjustedLng / 360) * mapConfig.svgWidth;
-    
-    return { x, y };
-  };
-  
   return (
     <div 
       ref={mapContainerRef} 
@@ -468,8 +443,8 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
           map={mapRef.current}
           L={leafletRef.current}
           primeMeridianSvg={primeMeridianSvg}
-          svgToLatLng={svgToLatLng}
-          latLngToSvg={latLngToSvg}
+          svgToLatLng={svgToLatLng} // Pass the imported svgToLatLng
+          latLngToSvg={latLngToSvg} // Pass the imported latLngToSvg
           visible={showGrid}
           svgWidth={mapConfig.svgWidth}
           svgHeight={mapConfig.svgHeight}
@@ -488,18 +463,21 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
           svgHeight={mapConfig.svgHeight}
           primeMeridianSvg={primeMeridianSvg}
           setPrimeMeridianSvg={setPrimeMeridianSvg}
+          // Pass conversion functions if needed by CoordinatesComponent
+          // svgToLatLng={svgToLatLng} 
+          // latLngToSvg={latLngToSvg}
         />
       )}
       
       {/* Add the CountryLabelsComponent */}
       {isMapReady && mapRef.current && (
-  <CountryLabelsComponent
-    map={mapRef.current}
-    visible={showCountryLabels}  // Make sure this state is true
-    mapConfig={mapConfig}
-  />
-)}
-
+        <CountryLabelsComponent
+          map={mapRef.current}
+          visible={showCountryLabels}
+          mapConfig={mapConfig}
+          // No svgToLatLng prop passed here anymore
+        />
+      )} {/* <<< Corrected syntax: Added closing parenthesis and brace */}
       
       {/* Add the SVGLayerControl */}
       {isMapReady && mapRef.current && leafletRef.current && (
@@ -514,17 +492,16 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       
       {/* Add the ControlPanel */}
       <ControlPanel
-  map={mapRef.current}
-  L={leafletRef.current}
-  onToggleGrid={toggleGrid}
-  onToggleLabels={toggleLabels}
-  onToggleCountryLabels={toggleCountryLabels} // This is now properly passed
-  onTogglePrimeMeridian={togglePrimeMeridian}
-  onTogglePosition={toggleCoordinates}
-  mapConfig={mapConfig}
-  layerControlRef={layerControlRef}
-/>
-
+        map={mapRef.current}
+        L={leafletRef.current}
+        onToggleGrid={toggleGrid}
+        onToggleLabels={toggleLabels} // General label toggle
+        onToggleCountryLabels={toggleCountryLabels} // Specific country label toggle
+        onTogglePrimeMeridian={togglePrimeMeridian}
+        onTogglePosition={toggleCoordinates}
+        mapConfig={mapConfig}
+        layerControlRef={layerControlRef}
+      />
       
       {/* Add the MapScale component */}
       {isMapReady && mapRef.current && leafletRef.current && (
