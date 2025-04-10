@@ -1,25 +1,209 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { LatLng } from 'leaflet';
+import { SvgPoint } from '@/types';
+import { visibleBounds } from '@/lib/MapConfig';
+import { showToast } from '@/lib/Toast';
 
 interface CoordinatesComponentProps {
   map: any;
   L: any;
-  svgToCustomLatLng: (x: number, y: number) => LatLng;
-  formatCoord: (value: number, posLabel: string, negLabel: string) => string;
   visible: boolean;
+  showPrimeMeridian: boolean;
+  mapConfig: any;
+  svgWidth: number;
+  svgHeight: number;
+  primeMeridianSvg: SvgPoint | null;
+  setPrimeMeridianSvg: (point: SvgPoint | null) => void;
 }
 
 const CoordinatesComponent: React.FC<CoordinatesComponentProps> = ({
   map,
   L,
-  svgToCustomLatLng,
-  formatCoord,
-  visible
+  visible,
+  showPrimeMeridian,
+  mapConfig,
+  svgWidth,
+  svgHeight,
+  primeMeridianSvg,
+  setPrimeMeridianSvg
 }) => {
   const [displayAdded, setDisplayAdded] = useState(false);
+  const clickMarkerRef = useRef<any>(null);
+  const isWrappingRef = useRef<boolean>(false);
+  const initialCenterAppliedRef = useRef<boolean>(false);
   
+  // Initialize prime meridian coordinates if not already set
+  useEffect(() => {
+    if (!primeMeridianSvg && mapConfig.primeMeridianX && mapConfig.equatorY) {
+      console.log('Setting initial prime meridian position');
+      setPrimeMeridianSvg({ 
+        x: mapConfig.primeMeridianX, 
+        y: mapConfig.equatorY 
+      });
+    }
+  }, [mapConfig, primeMeridianSvg, setPrimeMeridianSvg]);
+
+  // Effect to handle prime meridian updates and centering
+  useEffect(() => {
+    if (map && primeMeridianSvg && primeMeridianSvg.x && !initialCenterAppliedRef.current) {
+      // Center on prime meridian when it changes
+      centerOnPrimeMeridian();
+    }
+  }, [primeMeridianSvg, map]);
+  
+  // Function to center map on prime meridian
+  const centerOnPrimeMeridian = () => {
+    if (map && primeMeridianSvg && primeMeridianSvg.x) {
+      // Center vertically in the middle of the map, horizontally at prime meridian
+      const centerY = mapConfig.svgHeight / 2;
+      isWrappingRef.current = true; // Prevent wraparound during centering
+      map.panTo([centerY, primeMeridianSvg.x], {animate: true, duration: 1});
+      console.log('Map centered on prime meridian', primeMeridianSvg.x);
+      initialCenterAppliedRef.current = true;
+      
+      // Reset wrapping flag after animation completes
+      setTimeout(() => {
+        isWrappingRef.current = false;
+      }, 1100);
+    }
+  };
+
+  // Convert SVG coordinates to geographic coordinates
+  const svgToLatLng = (x: number, y: number): LatLng => {
+    // Map y-coordinate to latitude range with proper N/S orientation
+    const latRange = visibleBounds.northLat - visibleBounds.southLat;
+    // Calculate latitude with southLat as the base
+    const lat = visibleBounds.southLat + ((mapConfig.svgHeight - y) / mapConfig.svgHeight * latRange);
+    
+    // Calculate longitude in standard way
+    const lng = (x / mapConfig.svgWidth * 360) - 180;
+    
+    // Return a Leaflet LatLng instance instead of a plain object
+    return L.latLng(lat, lng);
+  };
+
+  // Convert geographic coordinates to SVG coordinates
+  const latLngToSvg = (lat: number, lng: number): SvgPoint => {
+    // Convert latitude to y coordinate with proper orientation
+    const latRange = visibleBounds.northLat - visibleBounds.southLat;
+    const y = mapConfig.svgHeight - ((lat - visibleBounds.southLat) / latRange) * mapConfig.svgHeight;
+    
+    // Convert longitude to x coordinate with wraparound
+    const normalizedLng = ((lng + 180) % 360) / 360;
+    const x = normalizedLng * mapConfig.svgWidth;
+    
+    return { x, y };
+  };
+
+  // Convert SVG coordinates to custom lat/lng using prime meridian as reference
+  const svgToCustomLatLng = (x: number, y: number): LatLng => {
+    // Calculate standard lat/lng first
+    const standardLatLng = svgToLatLng(x, y);
+    
+    // Ensure prime meridian reference exists
+    if (!primeMeridianSvg || !primeMeridianSvg.x) {
+      console.error("Prime meridian reference not initialized");
+      return L.latLng(standardLatLng.lat, standardLatLng.lng); // Return as Leaflet LatLng
+    }
+    
+    // The latitude remains the same
+    const lat = standardLatLng.lat;
+    
+    // Calculate longitude relative to prime meridian
+    // First normalize both x coordinates to 0-mapWidth range
+    const normalizedX = ((x % svgWidth) + svgWidth) % svgWidth;
+    const normalizedPrimeMeridianX = ((primeMeridianSvg.x % svgWidth) + svgWidth) % svgWidth;
+    
+    // Calculate the offset, taking into account possible wraparound
+    let lngOffset = normalizedX - normalizedPrimeMeridianX;
+    
+    // If the offset is more than half the map width, it's shorter to go the other way around
+    if (Math.abs(lngOffset) > svgWidth / 2) {
+      if (lngOffset > 0) {
+        lngOffset -= svgWidth;
+      } else {
+        lngOffset += svgWidth;
+      }
+    }
+    
+    // Convert offset to longitude degrees
+    const lngScale = 360 / svgWidth;
+    const lng = lngOffset * lngScale;
+    
+    // Return as a Leaflet LatLng
+    return L.latLng(lat, lng);
+  };
+  
+  // Format coordinate for display
+  const formatCoord = (value: number, posLabel: string, negLabel: string): string => {
+    const absValue = Math.abs(value);
+    const direction = value >= 0 ? posLabel : negLabel;
+    return `${absValue.toFixed(2)}° ${direction}`;
+  };
+
+  // Add coordinate marker when clicking on map
+  const addCoordinateMarker = (e: any) => {
+    if (!map || !primeMeridianSvg) return;
+
+    try {
+      // Remove existing marker
+      if (clickMarkerRef.current) {
+        map.removeLayer(clickMarkerRef.current);
+      }
+      
+      // Get coordinates using custom system
+      const customCoord = svgToCustomLatLng(e.latlng.lng, e.latlng.lat);
+      
+      // Create marker
+      const marker = L.circleMarker(e.latlng, {
+        radius: 5,
+        color: '#FF4500',
+        fillColor: '#FFA07A',
+        fillOpacity: 1,
+        weight: 2
+      }).addTo(map);
+      
+      // Store marker in ref
+      clickMarkerRef.current = marker;
+      
+      // Create popup with coordinates
+      const coordText = `
+        <div style="text-align:center;">
+          <strong>Coordinates:</strong><br>
+          Lat: ${formatCoord(customCoord.lat, 'N', 'S')}<br>
+          Lng: ${formatCoord(customCoord.lng, 'E', 'W')}
+        </div>
+      `;
+      
+      marker.bindPopup(coordText).openPopup();
+      
+      // Show toast notification
+      showToast(`Clicked at Lat: ${formatCoord(customCoord.lat, 'N', 'S')}, Lng: ${formatCoord(customCoord.lng, 'E', 'W')}`, 'info', 3000);
+    } catch (e) {
+      console.error('Error adding coordinate marker:', e);
+    }
+  };
+
+  // Setup click handler on map
+  useEffect(() => {
+    if (!map) return;
+    
+    map.on('click', addCoordinateMarker);
+    
+    return () => {
+      map.off('click', addCoordinateMarker);
+      if (clickMarkerRef.current) {
+        try {
+          map.removeLayer(clickMarkerRef.current);
+        } catch (e) {
+          console.warn('Error removing click marker:', e);
+        }
+      }
+    };
+  }, [map, primeMeridianSvg]);
+
   useEffect(() => {
     if (!map || !L || displayAdded) return;
     
@@ -88,7 +272,7 @@ const CoordinatesComponent: React.FC<CoordinatesComponentProps> = ({
         console.warn('Error removing coordinates display:', e);
       }
     };
-  }, [map, L, svgToCustomLatLng, formatCoord, displayAdded]);
+  }, [map, L, visible, displayAdded]);
   
   // Update visibility when changed
   useEffect(() => {

@@ -39,12 +39,12 @@ const GridComponent: React.FC<GridComponentProps> = ({
     
     if (!map.getPane(gridPane)) {
       map.createPane(gridPane);
-      map.getPane(gridPane).style.zIndex = 950; // Very high z-index
+      map.getPane(gridPane).style.zIndex = 650; // Very high z-index
     }
     
     if (!map.getPane(meridianPane)) {
       map.createPane(meridianPane);
-      map.getPane(meridianPane).style.zIndex = 951; // Even higher z-index
+      map.getPane(meridianPane).style.zIndex = 651; // Even higher z-index
     }
     
     // Create layer groups in these panes
@@ -64,23 +64,24 @@ const GridComponent: React.FC<GridComponentProps> = ({
     map.on('zoomend', () => {
       if (visible && primeMeridianSvg) {
         drawGrid();
+        drawPrimeMeridian();
       }
     });
 
     map.on('moveend', () => {
       if (visible && primeMeridianSvg) {
         drawGrid();
+        drawPrimeMeridian();
       }
     });
     
-    // Add continuous grid updates during dragging for smoother experience
+    // Add immediate grid updates during dragging for smoother experience
     map.on('move', () => {
       if (visible && primeMeridianSvg) {
-        // Use debouncing for performance
-        if (map._gridUpdateTimer) clearTimeout(map._gridUpdateTimer);
-        map._gridUpdateTimer = setTimeout(() => {
+        // Use requestAnimationFrame for better performance
+        requestAnimationFrame(() => {
           drawGrid();
-        }, 100); // 100ms debounce
+        });
       }
     });
     
@@ -97,7 +98,6 @@ const GridComponent: React.FC<GridComponentProps> = ({
       map.off('zoomend');
       map.off('moveend');
       map.off('move');
-      if (map._gridUpdateTimer) clearTimeout(map._gridUpdateTimer);
       
       // Remove layers
       if (gridLayerRef.current) {
@@ -133,39 +133,7 @@ const GridComponent: React.FC<GridComponentProps> = ({
       primeMeridianLayerRef.current.removeFrom(map);
     }
   }, [visible, map, primeMeridianSvg]);
-  
-  // Check if a new label position would overlap with existing ones
-  const isLabelPositionSafe = (position: number, labeledPositions: number[], minDistance: number): boolean => {
-    for (let i = 0; i < labeledPositions.length; i++) {
-      if (Math.abs(position - labeledPositions[i]) < minDistance) {
-        return false;
-      }
-    }
-    return true;
-  };
 
-  // Helper function to add a longitude label and track its position
-  const addLongitudeLabel = (
-    labelPos: any, 
-    labelText: string, 
-    labeledPositions: number[], 
-    xPosition: number
-  ): void => {
-    if (!L || !gridLayerRef.current) return;
-    
-    L.marker(labelPos, {
-      icon: L.divIcon({
-        className: 'grid-label',
-        html: labelText,
-        iconSize: [40, 20],
-        iconAnchor: [20, 0]
-      }),
-      pane: 'grid-pane' // Explicitly set the pane
-    }).addTo(gridLayerRef.current);
-    
-    labeledPositions.push(xPosition);
-  };
-  
   // Draw coordinate grid based on zoom level and current view
   const drawGrid = () => {
     if (!map || !gridLayerRef.current || !primeMeridianSvg || !visible) return;
@@ -189,7 +157,7 @@ const GridComponent: React.FC<GridComponentProps> = ({
       const southPoint = latLngToSvg(visibleBounds.southLat, 0);
       const northPoint = latLngToSvg(visibleBounds.northLat, 0);
       
-      // Get current view bounds for clipping
+      // Get current view bounds for reference (but draw beyond these for complete grid)
       const bounds = map.getBounds();
       const visibleWest = bounds.getWest();
       const visibleEast = bounds.getEast();
@@ -197,236 +165,145 @@ const GridComponent: React.FC<GridComponentProps> = ({
       const visibleSouth = bounds.getSouth();
       
       // Add buffer to ensure grid lines appear smoothly when scrolling
-      const bufferWidth = svgWidth * 0.1; // 10% buffer
-      const bufferHeight = svgHeight * 0.1; // 10% buffer
+      const bufferWidth = svgWidth * 0.5; // 50% buffer to ensure full grid
+      const bufferHeight = svgHeight * 0.5; // 50% buffer to ensure full grid
       
       // Calculate pixels per degree for longitude
       const pixelsPerDegree = svgWidth / 360;
       
       // Track labeled positions to prevent overlap
       const labeledPositions: number[] = [];
-      const LABEL_MIN_DISTANCE = 50; // Minimum distance between labels in pixels
+      const LABEL_MIN_DISTANCE = 40; // Minimum distance between labels in pixels
       
       // Draw the prime meridian (0°) and its wrapped instances
       const drawMeridian = (xPosition: number): void => {
-        if (xPosition >= visibleWest - bufferWidth && xPosition <= visibleEast + bufferWidth) {
-          L.polyline([
-            [Math.max(southPoint.y, visibleSouth - bufferHeight), xPosition], // Bottom of visible map
-            [Math.min(northPoint.y, visibleNorth + bufferHeight), xPosition]  // Top of visible map
-          ], {
-            color: '#FF8000', // Orange for prime meridian
-            weight: 2,
-            opacity: 0.8,
-            dashArray: '8,6',
-            pane: 'grid-pane' // Explicitly set the pane
+        L.polyline([
+          [southPoint.y, xPosition], // Bottom of map
+          [northPoint.y, xPosition]  // Top of map
+        ], {
+          color: '#FF8000', // Orange for prime meridian
+          weight: 2,
+          opacity: 0.8,
+          dashArray: '8,6',
+          pane: 'grid-pane'
+        }).addTo(gridLayerRef.current);
+        
+        // Prime meridian label - position near the bottom
+        const meridianLabelPos = L.latLng(visibleSouth + (visibleNorth - visibleSouth) * 0.05, xPosition);
+        
+        // Add label only if it won't overlap
+        if (!labeledPositions.some(pos => Math.abs(pos - xPosition) < LABEL_MIN_DISTANCE)) {
+          L.marker(meridianLabelPos, {
+            icon: L.divIcon({
+              className: 'grid-label prime-meridian-label',
+              html: '0°',
+              iconSize: [40, 20],
+              iconAnchor: [20, 0]
+            }),
+            pane: 'grid-pane'
           }).addTo(gridLayerRef.current);
           
-          // Prime meridian label
-          const meridianLabelPos = L.latLng(visibleSouth + (visibleNorth - visibleSouth) * 0.05, xPosition);
-          // Add label only if it won't overlap with existing ones
-          if (isLabelPositionSafe(xPosition, labeledPositions, LABEL_MIN_DISTANCE)) {
-            L.marker(meridianLabelPos, {
-              icon: L.divIcon({
-                className: 'grid-label prime-meridian-label',
-                html: '0°',
-                iconSize: [40, 20],
-                iconAnchor: [20, 0]
-              }),
-              pane: 'grid-pane' // Explicitly set the pane
-            }).addTo(gridLayerRef.current);
-            
-            // Record this position
-            labeledPositions.push(xPosition);
-          }
+          // Record this position
+          labeledPositions.push(xPosition);
         }
       };
       
       // Draw all instances of prime meridian
       drawMeridian(primeMeridianX);
-      drawMeridian(primeMeridianX + svgWidth);  // Right wraparound
-      drawMeridian(primeMeridianX - svgWidth);  // Left wraparound
+      drawMeridian(primeMeridianX + svgWidth);
+      drawMeridian(primeMeridianX - svgWidth);
       
       // Calculate how many grid lines we need
       const maxLines = Math.ceil(360 / spacing);
       
-      // First pass: Draw all grid lines
       // Draw lines east of prime meridian
-      for (let i = 1; i <= maxLines; i++) {
+      for (let i = 1; i < maxLines; i++) {
         const lng = i * spacing;
         const isMajor = lng % 30 === 0;
         
         // Calculate pixels from prime meridian
         const offsetPixels = lng * pixelsPerDegree;
         
-        // Draw original line and wraparounds
-        const svgX = primeMeridianX + offsetPixels;
-        
-        // Only draw lines that are in the visible area (with buffer)
-        const isVisible = (
-          (svgX >= visibleWest - bufferWidth && svgX <= visibleEast + bufferWidth) ||
-          (svgX - svgWidth >= visibleWest - bufferWidth && svgX - svgWidth <= visibleEast + bufferWidth) ||
-          (svgX + svgWidth >= visibleWest - bufferWidth && svgX + svgWidth <= visibleEast + bufferWidth)
-        );
-        
-        if (isVisible) {
-          // Draw the lines in the visible area
-          if (svgX >= visibleWest - bufferWidth && svgX <= visibleEast + bufferWidth) {
-            L.polyline([
-              [Math.max(southPoint.y, visibleSouth - bufferHeight), svgX], // Bottom of visible map
-              [Math.min(northPoint.y, visibleNorth + bufferHeight), svgX]  // Top of visible map
-            ], {
-              color: gridStyle.GRID_COLOR,
-              weight: isMajor ? gridStyle.MAJOR_LINE_WEIGHT : gridStyle.MINOR_LINE_WEIGHT,
-              opacity: gridStyle.LINE_OPACITY,
-              dashArray: isMajor ? undefined : gridStyle.DASH_ARRAY,
-              pane: 'grid-pane' // Explicitly set the pane
-            }).addTo(gridLayerRef.current);
-          }
+        // Draw original line and two wraparounds
+        [-svgWidth, 0, svgWidth].forEach(offset => {
+          const svgX = primeMeridianX + offsetPixels + offset;
           
-          if (svgX - svgWidth >= visibleWest - bufferWidth && svgX - svgWidth <= visibleEast + bufferWidth) {
-            L.polyline([
-              [Math.max(southPoint.y, visibleSouth - bufferHeight), svgX - svgWidth], // Bottom of visible map
-              [Math.min(northPoint.y, visibleNorth + bufferHeight), svgX - svgWidth]  // Top of visible map
-            ], {
-              color: gridStyle.GRID_COLOR,
-              weight: isMajor ? gridStyle.MAJOR_LINE_WEIGHT : gridStyle.MINOR_LINE_WEIGHT,
-              opacity: gridStyle.LINE_OPACITY,
-              dashArray: isMajor ? undefined : gridStyle.DASH_ARRAY,
-              pane: 'grid-pane' // Explicitly set the pane
-            }).addTo(gridLayerRef.current);
-          }
+          L.polyline([
+            [southPoint.y, svgX], // Bottom
+            [northPoint.y, svgX]  // Top
+          ], {
+            color: gridStyle.GRID_COLOR,
+            weight: isMajor ? gridStyle.MAJOR_LINE_WEIGHT : gridStyle.MINOR_LINE_WEIGHT,
+            opacity: gridStyle.LINE_OPACITY,
+            dashArray: isMajor ? undefined : gridStyle.DASH_ARRAY,
+            pane: 'grid-pane'
+          }).addTo(gridLayerRef.current);
           
-          if (svgX + svgWidth >= visibleWest - bufferWidth && svgX + svgWidth <= visibleEast + bufferWidth) {
-            L.polyline([
-              [Math.max(southPoint.y, visibleSouth - bufferHeight), svgX + svgWidth], // Bottom of visible map
-              [Math.min(northPoint.y, visibleNorth + bufferHeight), svgX + svgWidth]  // Top of visible map
-            ], {
-              color: gridStyle.GRID_COLOR,
-              weight: isMajor ? gridStyle.MAJOR_LINE_WEIGHT : gridStyle.MINOR_LINE_WEIGHT,
-              opacity: gridStyle.LINE_OPACITY,
-              dashArray: isMajor ? undefined : gridStyle.DASH_ARRAY,
-              pane: 'grid-pane' // Explicitly set the pane
+          // Add label if it's a major line and won't overlap
+          if (isMajor && !labeledPositions.some(pos => Math.abs(pos - svgX) < LABEL_MIN_DISTANCE)) {
+            const labelPos = L.latLng(visibleSouth + (visibleNorth - visibleSouth) * 0.05, svgX);
+            
+            L.marker(labelPos, {
+              icon: L.divIcon({
+                className: 'grid-label',
+                html: `${lng}° E`,
+                iconSize: [40, 20],
+                iconAnchor: [20, 0]
+              }),
+              pane: 'grid-pane'
             }).addTo(gridLayerRef.current);
+            
+            labeledPositions.push(svgX);
           }
-        }
+        });
       }
       
       // Draw lines west of prime meridian
-      for (let i = 1; i <= maxLines; i++) {
+      for (let i = 1; i < maxLines; i++) {
         const lng = i * spacing;
         const isMajor = lng % 30 === 0;
         
         // Calculate pixels from prime meridian
         const offsetPixels = lng * pixelsPerDegree;
         
-        // Draw original line and wraparounds
-        const svgX = primeMeridianX - offsetPixels;
-        
-        // Only draw lines that are in the visible area (with buffer)
-        const isVisible = (
-          (svgX >= visibleWest - bufferWidth && svgX <= visibleEast + bufferWidth) ||
-          (svgX - svgWidth >= visibleWest - bufferWidth && svgX - svgWidth <= visibleEast + bufferWidth) ||
-          (svgX + svgWidth >= visibleWest - bufferWidth && svgX + svgWidth <= visibleEast + bufferWidth)
-        );
-        
-        if (isVisible) {
-          // Draw the lines in the visible area
-          if (svgX >= visibleWest - bufferWidth && svgX <= visibleEast + bufferWidth) {
-            L.polyline([
-              [Math.max(southPoint.y, visibleSouth - bufferHeight), svgX], // Bottom of visible map
-              [Math.min(northPoint.y, visibleNorth + bufferHeight), svgX]  // Top of visible map
-            ], {
-              color: gridStyle.GRID_COLOR,
-              weight: isMajor ? gridStyle.MAJOR_LINE_WEIGHT : gridStyle.MINOR_LINE_WEIGHT,
-              opacity: gridStyle.LINE_OPACITY,
-              dashArray: isMajor ? undefined : gridStyle.DASH_ARRAY,
-              pane: 'grid-pane' // Explicitly set the pane
-            }).addTo(gridLayerRef.current);
-          }
+        // Draw original line and two wraparounds
+        [-svgWidth, 0, svgWidth].forEach(offset => {
+          const svgX = primeMeridianX - offsetPixels + offset;
           
-          if (svgX - svgWidth >= visibleWest - bufferWidth && svgX - svgWidth <= visibleEast + bufferWidth) {
-            L.polyline([
-              [Math.max(southPoint.y, visibleSouth - bufferHeight), svgX - svgWidth], // Bottom of visible map
-              [Math.min(northPoint.y, visibleNorth + bufferHeight), svgX - svgWidth]  // Top of visible map
-            ], {
-              color: gridStyle.GRID_COLOR,
-              weight: isMajor ? gridStyle.MAJOR_LINE_WEIGHT : gridStyle.MINOR_LINE_WEIGHT,
-              opacity: gridStyle.LINE_OPACITY,
-              dashArray: isMajor ? undefined : gridStyle.DASH_ARRAY,
-              pane: 'grid-pane' // Explicitly set the pane
-            }).addTo(gridLayerRef.current);
-          }
+          L.polyline([
+            [southPoint.y, svgX], // Bottom
+            [northPoint.y, svgX]  // Top
+          ], {
+            color: gridStyle.GRID_COLOR,
+            weight: isMajor ? gridStyle.MAJOR_LINE_WEIGHT : gridStyle.MINOR_LINE_WEIGHT,
+            opacity: gridStyle.LINE_OPACITY,
+            dashArray: isMajor ? undefined : gridStyle.DASH_ARRAY,
+            pane: 'grid-pane'
+          }).addTo(gridLayerRef.current);
           
-          if (svgX + svgWidth >= visibleWest - bufferWidth && svgX + svgWidth <= visibleEast + bufferWidth) {
-            L.polyline([
-              [Math.max(southPoint.y, visibleSouth - bufferHeight), svgX + svgWidth], // Bottom of visible map
-              [Math.min(northPoint.y, visibleNorth + bufferHeight), svgX + svgWidth]  // Top of visible map
-            ], {
-              color: gridStyle.GRID_COLOR,
-              weight: isMajor ? gridStyle.MAJOR_LINE_WEIGHT : gridStyle.MINOR_LINE_WEIGHT,
-              opacity: gridStyle.LINE_OPACITY,
-              dashArray: isMajor ? undefined : gridStyle.DASH_ARRAY,
-              pane: 'grid-pane' // Explicitly set the pane
+          // Add label if it's a major line and won't overlap
+          if (isMajor && !labeledPositions.some(pos => Math.abs(pos - svgX) < LABEL_MIN_DISTANCE)) {
+            const labelPos = L.latLng(visibleSouth + (visibleNorth - visibleSouth) * 0.05, svgX);
+            
+            L.marker(labelPos, {
+              icon: L.divIcon({
+                className: 'grid-label',
+                html: `${lng}° W`,
+                iconSize: [40, 20],
+                iconAnchor: [20, 0]
+              }),
+              pane: 'grid-pane'
             }).addTo(gridLayerRef.current);
+            
+            labeledPositions.push(svgX);
           }
-        }
+        });
       }
       
-      // Second pass: Add labels with overlap prevention
-      // Draw labels for east lines
-      for (let i = 1; i <= maxLines; i++) {
-        const lng = i * spacing;
-        const isMajor = lng % 30 === 0;
-        if (!isMajor) continue;
-        
-        const offsetPixels = lng * pixelsPerDegree;
-        const svgX = primeMeridianX + offsetPixels;
-        
-        // Try all three possible positions (original, left wrap, right wrap)
-        // in order of visibility priority
-        if (svgX >= visibleWest && svgX <= visibleEast && isLabelPositionSafe(svgX, labeledPositions, LABEL_MIN_DISTANCE)) {
-          const labelPos = L.latLng(visibleSouth + (visibleNorth - visibleSouth) * 0.05, svgX);
-          addLongitudeLabel(labelPos, `${lng}° E`, labeledPositions, svgX);
-        } else if (svgX - svgWidth >= visibleWest && svgX - svgWidth <= visibleEast && 
-                 isLabelPositionSafe(svgX - svgWidth, labeledPositions, LABEL_MIN_DISTANCE)) {
-          const labelPos = L.latLng(visibleSouth + (visibleNorth - visibleSouth) * 0.05, svgX - svgWidth);
-          addLongitudeLabel(labelPos, `${lng}° E`, labeledPositions, svgX - svgWidth);
-        } else if (svgX + svgWidth >= visibleWest && svgX + svgWidth <= visibleEast && 
-                 isLabelPositionSafe(svgX + svgWidth, labeledPositions, LABEL_MIN_DISTANCE)) {
-          const labelPos = L.latLng(visibleSouth + (visibleNorth - visibleSouth) * 0.05, svgX + svgWidth);
-          addLongitudeLabel(labelPos, `${lng}° E`, labeledPositions, svgX + svgWidth);
-        }
-      }
-      
-      // Draw labels for west lines
-      for (let i = 1; i <= maxLines; i++) {
-        const lng = i * spacing;
-        const isMajor = lng % 30 === 0;
-        if (!isMajor) continue;
-        
-        const offsetPixels = lng * pixelsPerDegree;
-        const svgX = primeMeridianX - offsetPixels;
-        
-        // Try all three possible positions (original, left wrap, right wrap)
-        // in order of visibility priority
-        if (svgX >= visibleWest && svgX <= visibleEast && isLabelPositionSafe(svgX, labeledPositions, LABEL_MIN_DISTANCE)) {
-          const labelPos = L.latLng(visibleSouth + (visibleNorth - visibleSouth) * 0.05, svgX);
-          addLongitudeLabel(labelPos, `${lng}° W`, labeledPositions, svgX);
-        } else if (svgX - svgWidth >= visibleWest && svgX - svgWidth <= visibleEast && 
-                 isLabelPositionSafe(svgX - svgWidth, labeledPositions, LABEL_MIN_DISTANCE)) {
-          const labelPos = L.latLng(visibleSouth + (visibleNorth - visibleSouth) * 0.05, svgX - svgWidth);
-          addLongitudeLabel(labelPos, `${lng}° W`, labeledPositions, svgX - svgWidth);
-        } else if (svgX + svgWidth >= visibleWest && svgX + svgWidth <= visibleEast && 
-                 isLabelPositionSafe(svgX + svgWidth, labeledPositions, LABEL_MIN_DISTANCE)) {
-          const labelPos = L.latLng(visibleSouth + (visibleNorth - visibleSouth) * 0.05, svgX + svgWidth);
-          addLongitudeLabel(labelPos, `${lng}° W`, labeledPositions, svgX + svgWidth);
-        }
-      }
-      
-      // Draw latitude lines - only within visible bounds
-      // First calculate the start and end latitudes based on the visible area
-      const startLat = Math.max(visibleBounds.southLat, Math.floor(visibleSouth / spacing) * spacing);
-      const endLat = Math.min(visibleBounds.northLat, Math.ceil(visibleNorth / spacing) * spacing);
+      // Draw latitude lines - use full range
+      // Calculate reasonable bounds for latitude lines
+      const startLat = Math.max(visibleBounds.southLat + 5, -85); // Avoid exact pole
+      const endLat = Math.min(visibleBounds.northLat - 5, 85);    // Avoid exact pole
       
       for (let lat = startLat; lat <= endLat; lat += spacing) {
         const isMajor = lat % 30 === 0;
@@ -435,38 +312,38 @@ const GridComponent: React.FC<GridComponentProps> = ({
         // Get SVG coordinates for this latitude
         const svgY = latLngToSvg(lat, 0).y;
         
-        // Only draw if it's within the visible area
-        if (svgY >= visibleSouth - bufferHeight && svgY <= visibleNorth + bufferHeight) {
-          // Draw the line across the visible area with buffer
-          const lineWidth = visibleEast - visibleWest + (2 * bufferWidth);
-          const lineStart = visibleWest - bufferWidth;
+        // Draw line across full map width with extra margin
+        const fullWidth = svgWidth * 3; // Three times the width for good measure
+        const centerX = visibleWest + (visibleEast - visibleWest) / 2;
+        const lineStart = centerX - fullWidth / 2;
+        
+        L.polyline([
+          [svgY, lineStart], // Left edge with buffer
+          [svgY, lineStart + fullWidth] // Right edge with buffer
+        ], {
+          color: isEquator ? gridStyle.EQUATOR_COLOR : gridStyle.GRID_COLOR,
+          weight: (isMajor || isEquator) ? gridStyle.MAJOR_LINE_WEIGHT : gridStyle.MINOR_LINE_WEIGHT,
+          opacity: gridStyle.LINE_OPACITY,
+          dashArray: (isMajor || isEquator) ? undefined : gridStyle.DASH_ARRAY,
+          pane: 'grid-pane'
+        }).addTo(gridLayerRef.current);
+        
+        // Add label
+        if (isMajor || isEquator) {
+          // Position label at the left side of the visible area
+          const labelPos = L.latLng(svgY, visibleWest + (visibleEast - visibleWest) * 0.05);
           
-          L.polyline([
-            [svgY, lineStart], // Left side of visible area with buffer
-            [svgY, lineStart + lineWidth] // Right side of visible area with buffer
-          ], {
-            color: isEquator ? gridStyle.EQUATOR_COLOR : gridStyle.GRID_COLOR,
-            weight: (isMajor || isEquator) ? gridStyle.MAJOR_LINE_WEIGHT : gridStyle.MINOR_LINE_WEIGHT,
-            opacity: gridStyle.LINE_OPACITY,
-            dashArray: (isMajor || isEquator) ? undefined : gridStyle.DASH_ARRAY,
-            pane: 'grid-pane' // Explicitly set the pane
+          const labelClass = isEquator ? 'grid-label equator-label' : 'grid-label';
+          
+          L.marker(labelPos, {
+            icon: L.divIcon({
+              className: labelClass,
+              html: `${Math.abs(lat)}° ${lat >= 0 ? 'N' : 'S'}`,
+              iconSize: [40, 20],
+              iconAnchor: [0, 10]
+            }),
+            pane: 'grid-pane'
           }).addTo(gridLayerRef.current);
-          
-          // Add label if needed - position it at the left side of the visible area
-          if ((isMajor || isEquator)) {
-            const labelPos = L.latLng(svgY, visibleWest + (visibleEast - visibleWest) * 0.05);
-            
-            // The display of N/S labels
-            L.marker(labelPos, {
-              icon: L.divIcon({
-                className: 'grid-label',
-                html: `${Math.abs(lat)}° ${lat >= 0 ? 'N' : 'S'}`,
-                iconSize: [40, 20],
-                iconAnchor: [0, 10]
-              }),
-              pane: 'grid-pane' // Explicitly set the pane
-            }).addTo(gridLayerRef.current);
-          }
         }
       }
     } catch (error) {
@@ -486,66 +363,57 @@ const GridComponent: React.FC<GridComponentProps> = ({
       const southPoint = latLngToSvg(visibleBounds.southLat, 0);
       const northPoint = latLngToSvg(visibleBounds.northLat, 0);
       
-      // Get current map view bounds
-      const bounds = map.getBounds();
-      const westBound = bounds.getWest();
-      const eastBound = bounds.getEast();
-      const northBound = bounds.getNorth();
-      const southBound = bounds.getSouth();
-      
-      // Add buffer for smooth appearance/disappearance
-      const bufferWidth = svgWidth * 0.1;
-      const bufferHeight = svgHeight * 0.1;
-      
       // Function to draw a meridian instance
       const drawMeridianLine = (xPosition: number): void => {
-        // Only draw if in visible area (with buffer)
-        if (xPosition >= westBound - bufferWidth && xPosition <= eastBound + bufferWidth) {
-          // Draw the meridian line
-          L.polyline([
-            [Math.max(southPoint.y, southBound - bufferHeight), xPosition], 
-            [Math.min(northPoint.y, northBound + bufferHeight), xPosition]
-          ], {
+        // Draw the meridian line
+        L.polyline([
+          [southPoint.y, xPosition], 
+          [northPoint.y, xPosition]
+        ], {
+          color: gridStyle.PRIME_MERIDIAN_COLOR,
+          weight: gridStyle.PRIME_MERIDIAN_WEIGHT,
+          opacity: gridStyle.PRIME_MERIDIAN_OPACITY,
+          dashArray: gridStyle.PRIME_MERIDIAN_DASH_ARRAY,
+          pane: 'meridian-pane'
+        }).addTo(primeMeridianLayerRef.current);
+        
+        // Get current view bounds
+        const bounds = map.getBounds();
+        const southBound = bounds.getSouth();
+        const northBound = bounds.getNorth();
+        
+        // Add meridian label
+        L.marker(L.latLng(southBound + (northBound - southBound) * 0.1, xPosition), {
+          icon: L.divIcon({
+            className: 'prime-meridian-label',
+            html: 'Prime Meridian (0°)',
+            iconSize: [120, 30],
+            iconAnchor: [60, 15]
+          }),
+          pane: 'meridian-pane'
+        }).addTo(primeMeridianLayerRef.current);
+        
+        // Add reference point marker if in view
+        const markerY = primeMeridianSvg.y;
+        if (markerY >= southBound && markerY <= northBound) {
+          L.circleMarker(L.latLng(markerY, xPosition), {
+            radius: 8,
             color: gridStyle.PRIME_MERIDIAN_COLOR,
-            weight: gridStyle.PRIME_MERIDIAN_WEIGHT,
-            opacity: gridStyle.PRIME_MERIDIAN_OPACITY,
-            dashArray: gridStyle.PRIME_MERIDIAN_DASH_ARRAY,
-            pane: 'meridian-pane' // Explicitly set the pane
-          }).addTo(primeMeridianLayerRef.current);
-          
-          // Add meridian label
-          L.marker(L.latLng(southBound + (northBound - southBound) * 0.1, xPosition), {
-            icon: L.divIcon({
-              className: 'prime-meridian-label',
-              html: 'Prime Meridian (0°)',
-              iconSize: [120, 30],
-              iconAnchor: [60, 15]
-            }),
-            pane: 'meridian-pane' // Explicitly set the pane
-          }).addTo(primeMeridianLayerRef.current);
-          
-          // Add reference point marker
-          const markerY = primeMeridianSvg.y;
-          if (markerY >= southBound - bufferHeight && markerY <= northBound + bufferHeight) {
-            L.circleMarker(L.latLng(markerY, xPosition), {
-              radius: 8,
-              color: gridStyle.PRIME_MERIDIAN_COLOR,
-              fillColor: '#FFFF00',
-              fillOpacity: 0.7,
-              weight: 2,
-              pane: 'meridian-pane' // Explicitly set the pane
-            }).bindPopup(`
-              <strong>Prime Meridian Reference</strong><br>
-              Map Reference: 0° Longitude
-            `).addTo(primeMeridianLayerRef.current);
-          }
+            fillColor: '#FFFF00',
+            fillOpacity: 0.7,
+            weight: 2,
+            pane: 'meridian-pane'
+          }).bindPopup(`
+            <strong>Prime Meridian Reference</strong><br>
+            Map Reference: 0° Longitude
+          `).addTo(primeMeridianLayerRef.current);
         }
       };
       
       // Draw all instances of the meridian
-      drawMeridianLine(primeMeridianSvg.x);  // Original
-      drawMeridianLine(primeMeridianSvg.x + svgWidth);  // Right wraparound
-      drawMeridianLine(primeMeridianSvg.x - svgWidth);  // Left wraparound
+      drawMeridianLine(primeMeridianSvg.x);           // Original
+      drawMeridianLine(primeMeridianSvg.x + svgWidth); // Right wraparound
+      drawMeridianLine(primeMeridianSvg.x - svgWidth); // Left wraparound
     } catch (error) {
       console.error('Error drawing prime meridian:', error);
     }
