@@ -7,6 +7,7 @@ export const MILES_TO_KM = 2.59; // Conversion factor from square miles to squar
 
 // Default map configuration
 export const defaultMapConfig: MapConfig = {
+  // Ensure all paths include the basePath
   masterMapPath: `${basePath}/maps/master-map.svg`,
   baseMapUrl: `${basePath}/maps/master-map.svg`,
   svgWidth: 8202,

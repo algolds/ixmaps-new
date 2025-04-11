@@ -1,13 +1,23 @@
 import { SVGDimensions } from '@/types';
+import { basePath } from './config';
 
 export const loadSVGDimensions = async (svgPath: string): Promise<SVGDimensions> => {
   try {
     console.log(`SVGLoader: Attempting to load SVG from path: ${svgPath}`);
     
-    // Use absolute URL if path doesn't start with http or /
-    const url = (svgPath.startsWith('http') || svgPath.startsWith('/')) 
-      ? svgPath 
-      : `/${svgPath}`;
+    // Properly construct URL with basePath
+    let url = svgPath;
+    
+    // If it's not an absolute URL (http/https) and doesn't already include basePath
+    if (!svgPath.startsWith('http') && !svgPath.includes(basePath)) {
+      // If svgPath already starts with /, just combine with basePath
+      if (svgPath.startsWith('/')) {
+        url = `${basePath}${svgPath}`;
+      } else {
+        // Otherwise add both basePath and /
+        url = `${basePath}/${svgPath}`;
+      }
+    }
     
     console.log(`SVGLoader: Fetching from URL: ${url}`);
     

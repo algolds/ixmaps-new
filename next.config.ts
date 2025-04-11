@@ -1,13 +1,17 @@
 /** @type {import('next').NextConfig} */
+const isDevelopment = process.env.NODE_ENV === 'development';
+
+const basePath = isDevelopment ? '' : '/projects/ixmaps';
+
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['leaflet'],
   eslint: {
     ignoreDuringBuilds: true,
   },
-  basePath: '/projects/ixmaps', // Static basePath for the project
+  basePath: basePath,
   publicRuntimeConfig: {
-    basePath: '/projects/ixmaps', // Expose basePath to the client
+    basePath: basePath, // Expose basePath to the client
   },
 };
 
