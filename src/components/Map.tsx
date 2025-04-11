@@ -1,16 +1,24 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { MapConfig, LatLng, SvgPoint } from '@/types';
-// Import defaultMapConfig, visibleBounds, and the coordinate functions from MapConfig
-import { defaultMapConfig, visibleBounds, svgToLatLng, latLngToSvg } from '@/lib/MapConfig'; 
+import {
+  MapConfig,
+  LatLng,
+  SvgPoint
+} from '@/types';
+import {
+  defaultMapConfig,
+  visibleBounds,
+  svgToLatLng,
+  latLngToSvg
+} from '@/lib/MapConfig';
 import { showToast, initToasts } from '@/lib/Toast';
 import { loadSVGDimensions } from '@/lib/SVGLoader';
-import { 
-  getCurrentLODLevel, 
-  getMapPathForZoom, 
-  updateConfigForZoom, 
-  LODMapConfig 
+import {
+  getCurrentLODLevel,
+  getMapPathForZoom,
+  updateConfigForZoom,
+  LODMapConfig
 } from '@/lib/LODManager';
 import dynamic from 'next/dynamic';
 import DistanceMeasurement from './DistanceMeasurement';
@@ -22,13 +30,17 @@ import ControlPanel from './ControlPanel';
 import CountryLabelsComponent from './CountryLabelsComponent';
 
 // Import Leaflet types
-import type { Map as LeafletMap, LatLngBounds, CircleMarker, LatLng as LeafletLatLng } from 'leaflet';
+import type {
+  Map as LeafletMap,
+  LatLngBounds,
+  CircleMarker,
+  LatLng as LeafletLatLng
+} from 'leaflet';
 
 // Client-side only imports
-const LeafletComponentLoader = dynamic(
-  () => import('./LeafletLoader'),
-  { ssr: false }
-);
+const LeafletComponentLoader = dynamic(() => import('./LeafletLoader'), {
+  ssr: false
+});
 
 interface MapProps {
   mapConfig?: Partial<MapConfig>;
@@ -42,25 +54,31 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const resizeHandlerRef = useRef<(() => void) | null>(null);
   const leafletRef = useRef<any>(null);
   const layerControlRef = useRef<SVGLayerControlRef>(null);
-  const isWrappingRef = useRef<boolean>(false); // Track if we're currently wrapping
+  const isWrappingRef = useRef<boolean>(false);
   const controlPanelAddedRef = useRef<boolean>(false);
   const baseLayersRef = useRef<Record<string, any>>({});
+  const [showCountryPolygons, setShowCountryPolygons] = useState<boolean>(true);
 
   // State
   const [mapConfig, setMapConfig] = useState<MapConfig>({
     ...defaultMapConfig,
     ...configOverrides
   });
-  const [primeMeridianSvg, setPrimeMeridianSvg] = useState<SvgPoint | null>(null);
+  const [primeMeridianSvg, setPrimeMeridianSvg] =
+    useState<SvgPoint | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
   const [isLeafletLoaded, setIsLeafletLoaded] = useState(false);
   const [showGrid, setShowGrid] = useState<boolean>(true);
   const [showCoordinates, setShowCoordinates] = useState<boolean>(true);
   const [showPrimeMeridian, setShowPrimeMeridian] = useState<boolean>(false);
-  const [showLabels, setShowLabels] = useState<boolean>(true); // General labels toggle (if needed elsewhere)
-  const [showCountryLabels, setShowCountryLabels] = useState<boolean>(true); // Specific toggle for country labels
-  const [currentZoom, setCurrentZoom] = useState<number>(mapConfig.initialZoom);
-  const [currentLODLevel, setCurrentLODLevel] = useState(getCurrentLODLevel(mapConfig.initialZoom));
+  const [showLabels, setShowLabels] = useState<boolean>(true);
+  const [showCountryLabels, setShowCountryLabels] = useState<boolean>(true);
+  const [currentZoom, setCurrentZoom] = useState<number>(
+    mapConfig.initialZoom
+  );
+  const [currentLODLevel, setCurrentLODLevel] = useState(
+    getCurrentLODLevel(mapConfig.initialZoom)
+  );
 
   useEffect(() => {
     // Initialize toasts
@@ -70,21 +88,25 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     async function loadDimensions() {
       try {
         // Get the appropriate LOD path based on initial zoom
-        const initialPath = mapConfig.lodEnabled 
-          ? getMapPathForZoom(mapConfig.initialZoom) 
+        const initialPath = mapConfig.lodEnabled
+          ? getMapPathForZoom(mapConfig.initialZoom)
           : mapConfig.masterMapPath;
-          
+
         const dimensions = await loadSVGDimensions(initialPath);
-        console.log(`Raw SVG dimensions from file: ${dimensions.width}x${dimensions.height}`);
-        
+        console.log(
+          `Raw SVG dimensions from file: ${dimensions.width}x${dimensions.height}`
+        );
+
         // Make sure dimensions are reasonable
         if (dimensions.width > 500 && dimensions.height > 500) {
-          setMapConfig(prevConfig => ({
+          setMapConfig((prevConfig) => ({
             ...prevConfig,
             svgWidth: dimensions.width,
             svgHeight: dimensions.height
           }));
-          console.log(`Updated SVG dimensions: ${dimensions.width}x${dimensions.height}`);
+          console.log(
+            `Updated SVG dimensions: ${dimensions.width}x${dimensions.height}`
+          );
         } else {
           console.log('Using default dimensions');
         }
@@ -105,20 +127,17 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
         }
       }
     };
-    
-    // Store the handler in a ref for cleanup
+
     resizeHandlerRef.current = handleResize;
     window.addEventListener('resize', handleResize);
 
     // Cleanup
     return () => {
-      // Remove event listeners
       if (resizeHandlerRef.current) {
         window.removeEventListener('resize', resizeHandlerRef.current);
         resizeHandlerRef.current = null;
       }
-      
-      // Clean up map instance
+
       if (mapRef.current) {
         try {
           console.log('Cleaning up map instance');
@@ -128,7 +147,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
           console.error('Error cleaning up map:', e);
         }
       }
-      
+
       mapInitializedRef.current = false;
       isWrappingRef.current = false;
       controlPanelAddedRef.current = false;
@@ -138,21 +157,22 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   // Initialize the prime meridian SVG point once the map is ready
   useEffect(() => {
     if (isMapReady && mapRef.current && !primeMeridianSvg) {
-      // Initialize the prime meridian SVG point directly from the mapConfig
       setPrimeMeridianSvg({
         x: mapConfig.primeMeridianX,
         y: mapConfig.equatorY
       });
-      console.log('Initialized primeMeridianSvg:', mapConfig.primeMeridianX, mapConfig.equatorY);
+      console.log(
+        'Initialized primeMeridianSvg:',
+        mapConfig.primeMeridianX,
+        mapConfig.equatorY
+      );
     }
   }, [isMapReady, primeMeridianSvg, mapConfig]);
 
   // Add control panel once map is ready
   useEffect(() => {
     if (isMapReady && mapRef.current && leafletRef.current && !controlPanelAddedRef.current) {
-      // Add control panel
       controlPanelAddedRef.current = true;
-      
       console.log('Adding control panel to map');
     }
   }, [isMapReady]);
@@ -160,78 +180,67 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   // Handle LOD changes when zoom level changes
   useEffect(() => {
     if (!isMapReady || !mapRef.current || !leafletRef.current) return;
-    
-    // Skip if LOD is not enabled
     if (!mapConfig.lodEnabled) return;
-    
-    // Get the new LOD level based on current zoom
+
     const newLODLevel = getCurrentLODLevel(currentZoom);
-    
-    // If LOD level changed, update the map
+
     if (newLODLevel !== currentLODLevel) {
-      console.log(`LOD level changed from ${currentLODLevel} to ${newLODLevel} at zoom ${currentZoom}`);
+      console.log(
+        `LOD level changed from ${currentLODLevel} to ${newLODLevel} at zoom ${currentZoom}`
+      );
       setCurrentLODLevel(newLODLevel);
-      
-      // Update map config with new LOD paths
-      const updatedConfig = updateConfigForZoom(mapConfig as LODMapConfig, currentZoom);
-      
-      // Handle layer replacement if necessary
-      if (updatedConfig.baseMapUrl !== mapConfig.baseMapUrl) {
-        console.log(`Switching base map to: ${updatedConfig.baseMapUrl}`);
-        
-        const map = mapRef.current;
-        const L = leafletRef.current;
-        
-        // Calculate bounds based on SVG dimensions
-        const bounds = L.latLngBounds(
-          L.latLng(mapConfig.bounds.south, mapConfig.bounds.west),
-          L.latLng(mapConfig.bounds.north, mapConfig.bounds.east)
-        );
 
-        // Remove existing base layers
-        if (baseLayersRef.current.baseMap) {
-          baseLayersRef.current.baseMap.removeFrom(map);
-        }
-        if (baseLayersRef.current.leftCopy) {
-          baseLayersRef.current.leftCopy.removeFrom(map);
-        }
-        if (baseLayersRef.current.rightCopy) {
-          baseLayersRef.current.rightCopy.removeFrom(map);
-        }
+      const updatedConfig = updateConfigForZoom(
+        mapConfig as LODMapConfig,
+        currentZoom
+      );
 
-        // Add new base map layer with updated SVG
-        const baseMap = L.imageOverlay(updatedConfig.baseMapUrl, bounds);
-        baseMap.addTo(map);
-        baseLayersRef.current.baseMap = baseMap;
+      const map = mapRef.current;
+      const L = leafletRef.current;
 
-        // Create wraparound copies of the base map
-        const leftCopy = L.imageOverlay(
-          updatedConfig.baseMapUrl,
-          L.latLngBounds(
-            L.latLng(mapConfig.bounds.south, mapConfig.bounds.west - mapConfig.svgWidth),
-            L.latLng(mapConfig.bounds.north, mapConfig.bounds.east - mapConfig.svgWidth)
-          )
-        ).addTo(map);
-        baseLayersRef.current.leftCopy = leftCopy;
-        
-        const rightCopy = L.imageOverlay(
-          updatedConfig.baseMapUrl,
-          L.latLngBounds(
-            L.latLng(mapConfig.bounds.south, mapConfig.bounds.west + mapConfig.svgWidth),
-            L.latLng(mapConfig.bounds.north, mapConfig.bounds.east + mapConfig.svgWidth)
-          )
-        ).addTo(map);
-        baseLayersRef.current.rightCopy = rightCopy;
-        
-        // Update config state
-        setMapConfig(updatedConfig);
-        
-        showToast(`Switched to ${newLODLevel} resolution map`, 'info', 2000);
+      const bounds = L.latLngBounds(
+        L.latLng(mapConfig.bounds.south, mapConfig.bounds.west),
+        L.latLng(mapConfig.bounds.north, mapConfig.bounds.east)
+      );
+
+      if (baseLayersRef.current.baseMap) {
+        baseLayersRef.current.baseMap.removeFrom(map);
       }
+      if (baseLayersRef.current.leftCopy) {
+        baseLayersRef.current.leftCopy.removeFrom(map);
+      }
+      if (baseLayersRef.current.rightCopy) {
+        baseLayersRef.current.rightCopy.removeFrom(map);
+      }
+
+      const baseMap = L.imageOverlay(updatedConfig.baseMapUrl, bounds);
+      baseMap.addTo(map);
+      baseLayersRef.current.baseMap = baseMap;
+
+      const leftCopy = L.imageOverlay(
+        updatedConfig.baseMapUrl,
+        L.latLngBounds(
+          L.latLng(mapConfig.bounds.south, mapConfig.bounds.west - mapConfig.svgWidth),
+          L.latLng(mapConfig.bounds.north, mapConfig.bounds.east - mapConfig.svgWidth)
+        )
+      ).addTo(map);
+      baseLayersRef.current.leftCopy = leftCopy;
+
+      const rightCopy = L.imageOverlay(
+        updatedConfig.baseMapUrl,
+        L.latLngBounds(
+          L.latLng(mapConfig.bounds.south, mapConfig.bounds.west + mapConfig.svgWidth),
+          L.latLng(mapConfig.bounds.north, mapConfig.bounds.east + mapConfig.svgWidth)
+        )
+      ).addTo(map);
+      baseLayersRef.current.rightCopy = rightCopy;
+
+      setMapConfig(updatedConfig);
+      showToast(`Switched to ${newLODLevel} resolution map`, 'info', 2000);
     }
   }, [currentZoom, isMapReady, currentLODLevel, mapConfig]);
 
-  // Function to handle horizontal wraparound
+  // Handle horizontal wraparound
   const handleMapWraparound = () => {
     const map = mapRef.current;
     if (!map) return;
@@ -239,19 +248,14 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     const center = map.getCenter();
     const svgWidth = mapConfig.svgWidth;
 
-    // Calculate the new center position based on the current center
     let newCenterLng = center.lng;
 
-    // If we've panned beyond the left edge
     if (center.lng < 0) {
-      newCenterLng += svgWidth; // Wrap to the right side
-    } 
-    // If we've panned beyond the right edge
-    else if (center.lng > svgWidth) {
-      newCenterLng -= svgWidth; // Wrap to the left side
+      newCenterLng += svgWidth; // wrap to right side
+    } else if (center.lng > svgWidth) {
+      newCenterLng -= svgWidth; // wrap to left side
     }
 
-    // Pan to the new center position
     if (newCenterLng !== center.lng) {
       map.panTo([center.lat, newCenterLng], {
         animate: false,
@@ -262,31 +266,28 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     }
   };
 
-  // Function to handle map initialization after Leaflet is loaded
+  // Map initialization after Leaflet is loaded
   const handleMapInit = (L: any) => {
     if (!mapContainerRef.current || mapInitializedRef.current) {
       console.log('Map already initialized or container not available');
       return;
     }
-    
+
     leafletRef.current = L;
     setIsLeafletLoaded(true);
     showToast('Initializing map...', 'info', 3000);
 
     try {
-      // Mark as initialized before creating the map to prevent multiple initializations
       mapInitializedRef.current = true;
-      
       console.log('Creating map with container:', mapContainerRef.current);
-      
-      // Create a custom simple CRS for the SVG map
+
+      // Create a custom simple CRS for the SVG map.
       const customCRS = L.extend({}, L.CRS.Simple, {
         transformation: new L.Transformation(1, 0, 1, 0),
         wrapLng: null,
         wrapLat: null
       });
 
-      // Initialize the map
       const map = L.map(mapContainerRef.current, {
         crs: customCRS,
         minZoom: mapConfig.minZoom,
@@ -297,29 +298,25 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
         bounceAtZoomLimits: false
       });
 
-      // Add attribution control
       L.control.attribution({
         position: 'bottomright',
         prefix: '© IxMaps v4.0.0'
       }).addTo(map);
-      
-      // Calculate bounds based on SVG dimensions
+
+      // Calculate bounds based on SVG dimensions.
       const bounds = L.latLngBounds(
         L.latLng(mapConfig.bounds.south, mapConfig.bounds.west),
         L.latLng(mapConfig.bounds.north, mapConfig.bounds.east)
       );
 
-      // Get initial map URL based on LOD if enabled
       const initialMapUrl = mapConfig.lodEnabled
         ? getMapPathForZoom(mapConfig.initialZoom)
         : mapConfig.baseMapUrl;
 
-      // Add the base map layer with SVG
       const baseMap = L.imageOverlay(initialMapUrl, bounds);
       baseMap.addTo(map);
       baseLayersRef.current.baseMap = baseMap;
 
-      // Create wraparound copies of the base map
       const leftCopy = L.imageOverlay(
         initialMapUrl,
         L.latLngBounds(
@@ -328,7 +325,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
         )
       ).addTo(map);
       baseLayersRef.current.leftCopy = leftCopy;
-      
+
       const rightCopy = L.imageOverlay(
         initialMapUrl,
         L.latLngBounds(
@@ -338,27 +335,20 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       ).addTo(map);
       baseLayersRef.current.rightCopy = rightCopy;
 
-      // Fit to bounds
       map.fitBounds(bounds);
-      
-      // Set max bounds for vertical constraint only (to allow horizontal wraparound)
+
+      // Set vertical bounds only so horizontal wraparound is enabled.
       const verticalBounds = L.latLngBounds(
-        L.latLng(mapConfig.bounds.south, -Infinity), // Allow infinity in horizontal direction
-        L.latLng(mapConfig.bounds.north, Infinity)   // Set vertical bounds to the SVG height
+        L.latLng(mapConfig.bounds.south, -Infinity),
+        L.latLng(mapConfig.bounds.north, Infinity)
       );
       map.setMaxBounds(verticalBounds);
-      
-      // Add zoom control
-      L.control.zoom({
-        position: 'topleft'
-      }).addTo(map);
 
-      // Store refs
+      L.control.zoom({ position: 'topleft' }).addTo(map);
+
       mapRef.current = map;
-
       console.log('Map initialized successfully');
 
-      // Set up event handlers
       map.on('zoomend', () => {
         const newZoom = map.getZoom();
         console.log('Map zoom level:', newZoom);
@@ -367,35 +357,30 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
 
       map.on('moveend', () => {
         console.log('Map center:', map.getCenter());
-        // Handle wraparound
         handleMapWraparound();
       });
-      
-      // Add continuous wraparound handler during drag
+
       map.on('move', () => {
         handleMapWraparound();
       });
 
-      // Initialize the prime meridian SVG point
       setPrimeMeridianSvg({
         x: mapConfig.primeMeridianX,
         y: mapConfig.equatorY
       });
 
-      // Initial map setup
       setTimeout(() => {
         setIsMapReady(true);
         showToast('Map initialized successfully!', 'success', 3000);
       }, 1000);
-
     } catch (error) {
       console.error('Error initializing map:', error);
       showToast(`Map initialization failed: ${error}`, 'error', 5000);
-      mapInitializedRef.current = false; // Reset so we can try again
+      mapInitializedRef.current = false;
     }
   };
 
-  // Toggle handlers for controls
+  // Toggle handlers
   const toggleGrid = (visible: boolean) => {
     setShowGrid(visible);
   };
@@ -408,45 +393,44 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     setShowPrimeMeridian(visible);
     console.log('Prime Meridian visibility toggled to:', visible);
   };
-  
+
   const toggleLabels = (visible: boolean) => {
-    // This toggle might control other labels, not just country labels
-    setShowLabels(visible); 
+    setShowLabels(visible);
   };
-  
+
   const toggleCountryLabels = (visible: boolean) => {
-    // This specifically controls the state for CountryLabelsComponent
-    setShowCountryLabels(visible); 
+    setShowCountryLabels(visible);
     console.log('Country labels visibility toggled to:', visible);
   };
+
   return (
-    <div 
-      ref={mapContainerRef} 
-      id="map" 
-      style={{ 
-        width: '100%', 
-        height: '100%', 
+    <div
+      ref={mapContainerRef}
+      id="map"
+      style={{
+        width: '100%',
+        height: '100%',
         backgroundColor: '#D5FFFF',
         position: 'relative'
       }}
     >
       {/* Load Leaflet only on client-side */}
       <LeafletComponentLoader onLeafletLoad={handleMapInit} />
-      
+
       {/* Add the GridComponent */}
       {isMapReady && mapRef.current && leafletRef.current && (
-        <GridComponent 
+        <GridComponent
           map={mapRef.current}
           L={leafletRef.current}
           primeMeridianSvg={primeMeridianSvg}
-          svgToLatLng={svgToLatLng} // Pass the imported svgToLatLng
-          latLngToSvg={latLngToSvg} // Pass the imported latLngToSvg
+          svgToLatLng={svgToLatLng}
+          latLngToSvg={latLngToSvg}
           visible={showGrid}
           svgWidth={mapConfig.svgWidth}
           svgHeight={mapConfig.svgHeight}
         />
       )}
-      
+
       {/* Add the CoordinatesComponent */}
       {isMapReady && mapRef.current && leafletRef.current && (
         <CoordinatesComponent
@@ -459,56 +443,46 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
           svgHeight={mapConfig.svgHeight}
           primeMeridianSvg={primeMeridianSvg}
           setPrimeMeridianSvg={setPrimeMeridianSvg}
-
         />
       )}
-      
-{/* Add the CountryLabelsComponent */}
-{isMapReady && mapRef.current && (
-  <CountryLabelsComponent
-    map={mapRef.current}
-    visible={showCountryLabels}
-    mapConfig={mapConfig}
-  />
-)}
-      
+
       {/* Add the SVGLayerControl */}
       {isMapReady && mapRef.current && leafletRef.current && (
-        <SVGLayerControl 
+        <SVGLayerControl
           ref={layerControlRef}
-          map={mapRef.current} 
-          L={leafletRef.current} 
-          mapConfig={mapConfig} 
+          map={mapRef.current}
+          L={leafletRef.current}
+          mapConfig={mapConfig}
           position="topright"
         />
       )}
-      
+
       {/* Add the ControlPanel */}
       <ControlPanel
         map={mapRef.current}
         L={leafletRef.current}
         onToggleGrid={toggleGrid}
-        onToggleLabels={toggleLabels} // General label toggle
-        onToggleCountryLabels={toggleCountryLabels} // Specific country label toggle
+        onToggleLabels={toggleLabels}
+        onToggleCountryLabels={toggleCountryLabels}
         onTogglePrimeMeridian={togglePrimeMeridian}
         onTogglePosition={toggleCoordinates}
         mapConfig={mapConfig}
         layerControlRef={layerControlRef}
       />
-      
+
       {/* Add the MapScale component */}
       {isMapReady && mapRef.current && leafletRef.current && (
         <MapScale map={mapRef.current} L={leafletRef.current} mapConfig={mapConfig} />
       )}
-      
+
       {/* Add the distance measurement component */}
       {isMapReady && mapRef.current && leafletRef.current && (
         <DistanceMeasurement map={mapRef.current} L={leafletRef.current} />
       )}
-      
-      {/* Optional: LOD level indicator for debugging */}
+
+      {/* LOD level indicator for debugging */}
       {mapConfig.lodEnabled && (
-        <div 
+        <div
           style={{
             position: 'absolute',
             bottom: '10px',
@@ -525,7 +499,6 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       )}
     </div>
   );
-  
 };
 
 export default MapComponent;

@@ -11,17 +11,16 @@ export const defaultMapConfig: MapConfig = {
   masterMapPath: getAssetPath('/maps/master-map.svg'),
   baseMapUrl: getAssetPath('/maps/master-map.svg'),
 
-  svgWidth: 8202,
+  svgWidth: 8200,
   svgHeight: 4900,
   initialZoom: -2,
   minZoom: -2,
   maxZoom: 4.0,
-  rawWidth: 8202,  // Same as svgWidth by default
+  rawWidth: 8200,  // Same as svgWidth by default
   rawHeight: 4900, // Same as svgHeight by default
   pixelsPerLongitude: 45.5666, 
   pixelsPerLatitude: 27.2222,
   equatorY: 2450,
-  // Set prime meridian to 30°E (4101 + (30/360 * 8202))
   primeMeridianX: 4785, 
   milesPerPixel: 10, // Base scale at zoom level 0: 1px = 10 sq mi
   // Calculate km value automatically using miles-to-km conversion
@@ -31,7 +30,7 @@ export const defaultMapConfig: MapConfig = {
   bounds: {
     north: 0,
     south: 4900,
-    east: 8202,
+    east: 8200,
     west: 0
   },
   showCountryLabels: true
