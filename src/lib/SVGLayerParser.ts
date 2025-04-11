@@ -29,7 +29,7 @@ export async function parseSVGLayers(svgContent: string): Promise<Record<string,
   // Get SVG dimensions
   const width = svgRoot.getAttribute('width') || '100%';
   const height = svgRoot.getAttribute('height') || '100%';
-  let viewBox = svgRoot.getAttribute('viewBox') || '0 0 100 100';
+  const viewBox = svgRoot.getAttribute('viewBox') || '0 0 100 100';
   
   // Extract layers from SVG
   const layers: Record<string, SVGLayer> = {};

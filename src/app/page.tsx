@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense } from 'react';
+// Remove the unused Suspense import
 import dynamic from 'next/dynamic';
 
 // Simple dynamic import that only expects a default export

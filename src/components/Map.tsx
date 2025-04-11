@@ -463,15 +463,14 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
         />
       )}
       
-      {/* Add the CountryLabelsComponent */}
-      {isMapReady && mapRef.current && (
-        <CountryLabelsComponent
-          map={mapRef.current}
-          visible={showCountryLabels}
-          mapConfig={mapConfig}
-          // No svgToLatLng prop passed here anymore
-        />
-      )} {/* <<< Corrected syntax: Added closing parenthesis and brace */}
+{/* Add the CountryLabelsComponent */}
+{isMapReady && mapRef.current && (
+  <CountryLabelsComponent
+    map={mapRef.current}
+    visible={showCountryLabels}
+    mapConfig={mapConfig}
+  />
+)}
       
       {/* Add the SVGLayerControl */}
       {isMapReady && mapRef.current && leafletRef.current && (

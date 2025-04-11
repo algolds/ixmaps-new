@@ -41,11 +41,10 @@ export const showToast = (message: string, type: string = 'info', duration: numb
   const toast = document.createElement('div');
   const toastId = Math.random().toString(36).substr(2, 9);
   toast.id = `toast-${toastId}`;
-  
-  // Determine color based on type
-  let bgColor;
-  let textColor = 'white';
-  let icon = '';
+ // Determine color based on type
+ let bgColor;
+ const textColor = 'white';
+ let icon = '';
   
   switch (type) {
     case 'error':
