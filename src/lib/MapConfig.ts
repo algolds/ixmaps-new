@@ -1,17 +1,14 @@
 import { MapConfig } from '@/types';
-import getConfig from 'next/config';
+import { basePath } from './config';
 
-// Get the basePath from Next.js configuration
-const { publicRuntimeConfig } = getConfig();
-const basePath = publicRuntimeConfig.basePath || '';
 // Scale constants
 export const BASE_MILES_PER_PIXEL = 10; // Base scale at zoom level 0: 1px = 10 sq mi
 export const MILES_TO_KM = 2.59; // Conversion factor from square miles to square kilometers
 
 // Default map configuration
 export const defaultMapConfig: MapConfig = {
-  masterMapPath: '${basePath}/maps/master-map.svg',
-  baseMapUrl: '${basePath}/maps/master-map.svg',
+  masterMapPath: `${basePath}/maps/master-map.svg`,
+  baseMapUrl: `${basePath}/maps/master-map.svg`,
   svgWidth: 8202,
   svgHeight: 4900,
   initialZoom: -2,

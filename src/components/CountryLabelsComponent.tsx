@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Map as LeafletMap, LayerGroup, DivIcon, LatLng as LeafletLatLng, Marker } from 'leaflet';
 import { MapConfig } from '@/types';
+import { basePath } from '@/lib/config';
 
 interface CountryData {
   id: string;
@@ -68,7 +69,8 @@ const CountryLabelsComponent: React.FC<CountryLabelsComponentProps> = ({
 
     try {
       console.log('Loading country labels...'); 
-      const response = await fetch('/data/countries.json');
+      const response = await fetch(`${basePath}/data/countries.json`);
+
       if (!response.ok) throw new Error('Failed to load countries data');
 
       const data = await response.json();

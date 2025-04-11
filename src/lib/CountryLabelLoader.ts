@@ -3,7 +3,7 @@
  */
 
 import { CountryData, CountriesData } from '@/types/country-types';
-import getConfig from 'next/config';
+import { basePath } from './config';
 
 /**
  * Load country data from JSON file
@@ -12,7 +12,7 @@ import getConfig from 'next/config';
 export async function loadCountryData(): Promise<CountriesData> {
   try {
     // Fetch the JSON file
-    const response = await fetch('${basePath}/data/countries.json');
+    const response = await fetch(`${basePath}/data/countries.json`);
     
     if (!response.ok) {
       throw new Error(`Failed to load countries data: ${response.status} ${response.statusText}`);
