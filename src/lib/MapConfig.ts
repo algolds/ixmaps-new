@@ -104,4 +104,5 @@ export const latLngToSvg = (lat: number, lng: number) => {
   const x = defaultMapConfig.primeMeridianX + ((lng - 30) * defaultMapConfig.pixelsPerLongitude);
   
   return { x, y };
+  
 };

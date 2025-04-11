@@ -10,11 +10,14 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "geojson2svg": "^2.0.2",
     "leaflet": "^1.9.4",
     "next": "15.2.4",
     "postcss": "^8.5.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "svg-path-parser": "^1.1.0",
+    "xml2js": "^0.6.2",
     "xmldom": "^0.6.0"
   },
   "devDependencies": {
@@ -24,6 +27,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/svg-path-parser": "^1.1.6",
     "eslint": "^9",
     "eslint-config-next": "15.2.4",
     "kill-port": "^2.0.1",
