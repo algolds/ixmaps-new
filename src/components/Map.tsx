@@ -57,7 +57,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const isWrappingRef = useRef<boolean>(false);
   const controlPanelAddedRef = useRef<boolean>(false);
   const baseLayersRef = useRef<Record<string, any>>({});
-  const [showCountryPolygons, setShowCountryPolygons] = useState<boolean>(true);
+  const [showCountryLabels, setShowCountryLabels] = useState<boolean>(true);
 
   // State
   const [mapConfig, setMapConfig] = useState<MapConfig>({
@@ -72,7 +72,6 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const [showCoordinates, setShowCoordinates] = useState<boolean>(true);
   const [showPrimeMeridian, setShowPrimeMeridian] = useState<boolean>(false);
   const [showLabels, setShowLabels] = useState<boolean>(true);
-  const [showCountryLabels, setShowCountryLabels] = useState<boolean>(true);
   const [currentZoom, setCurrentZoom] = useState<number>(
     mapConfig.initialZoom
   );
@@ -416,7 +415,16 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     >
       {/* Load Leaflet only on client-side */}
       <LeafletComponentLoader onLeafletLoad={handleMapInit} />
-
+      {isMapReady && mapRef.current && leafletRef.current && (
+  <CountryLabelsComponent
+    map={mapRef.current}
+    L={leafletRef.current}
+    visible={showCountryLabels}
+    mapConfig={mapConfig}
+    svgWidth={mapConfig.svgWidth}
+    svgHeight={mapConfig.svgHeight}
+  />
+)}
       {/* Add the GridComponent */}
       {isMapReady && mapRef.current && leafletRef.current && (
         <GridComponent

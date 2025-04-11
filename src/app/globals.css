@@ -524,3 +524,33 @@ html, body {
   transition: font-size 0.3s ease;
 }
 
+.country-id-label {
+  background-color: rgba(255, 255, 255, 0.7);
+  border: 1px solid #666;
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 10px;
+  font-weight: bold;
+  color: #333;
+  white-space: nowrap;
+  pointer-events: none;
+  text-align: center;
+  box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.country-label-container {
+  background: none;
+  border: none;
+}
+
+/* Ensure tooltip arrow is hidden */
+.country-id-label:before {
+  display: none !important;
+}
+
+/* Improve tooltip appearance */
+.leaflet-tooltip {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
