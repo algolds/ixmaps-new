@@ -46,6 +46,9 @@ const GridComponent: React.FC<GridComponentProps> = ({
       }
     };
 
+    // Initial grid drawing
+    updateGrid();
+
     // Attach event listeners to update the grid on map events
     map.on('zoomend', updateGrid);
     map.on('moveend', updateGrid);
@@ -76,61 +79,61 @@ const GridComponent: React.FC<GridComponentProps> = ({
 
     // Draw longitude lines (vertical grid lines)
     for (let lng = -180; lng <= 180; lng += spacing) {
-      const start = { lat: -90, lng }; // Start at the bottom of the map
-      const end = { lat: 90, lng }; // End at the top of the map
+      const points = [];
+      
+      // Create a series of points for the longitude line
+      for (let lat = -90; lat <= 90; lat += 5) {
+        // Convert geographic coordinates to SVG coordinates
+        const svgPoint = latLngToSvg(lat, lng);
+        // Convert SVG coordinates to Leaflet coordinates (which are in the CRS.Simple system)
+        points.push(L.latLng(svgPoint.y, svgPoint.x));
+      }
 
-      L.polyline(
-        [
-          [start.lat, start.lng],
-          [end.lat, end.lng],
-        ],
-        {
-          color: gridStyle.GRID_COLOR,
-          weight: gridStyle.MINOR_LINE_WEIGHT,
-          opacity: gridStyle.LINE_OPACITY,
-          dashArray: gridStyle.DASH_ARRAY,
-          pane: 'grid-pane',
-        }
-      ).addTo(gridLayerRef.current);
+      L.polyline(points, {
+        color: gridStyle.GRID_COLOR,
+        weight: gridStyle.MINOR_LINE_WEIGHT,
+        opacity: gridStyle.LINE_OPACITY,
+        dashArray: gridStyle.DASH_ARRAY,
+        pane: 'grid-pane',
+      }).addTo(gridLayerRef.current);
     }
 
     // Draw latitude lines (horizontal grid lines)
     for (let lat = -90; lat <= 90; lat += spacing) {
-      const start = { lat, lng: -180 }; // Start at the left of the map
-      const end = { lat, lng: 180 }; // End at the right of the map
+      const points = [];
+      
+      // Create a series of points for the latitude line
+      for (let lng = -180; lng <= 180; lng += 5) {
+        // Convert geographic coordinates to SVG coordinates
+        const svgPoint = latLngToSvg(lat, lng);
+        // Convert SVG coordinates to Leaflet coordinates (which are in the CRS.Simple system)
+        points.push(L.latLng(svgPoint.y, svgPoint.x));
+      }
 
-      L.polyline(
-        [
-          [start.lat, start.lng],
-          [end.lat, end.lng],
-        ],
-        {
-          color: gridStyle.GRID_COLOR,
-          weight: gridStyle.MINOR_LINE_WEIGHT,
-          opacity: gridStyle.LINE_OPACITY,
-          dashArray: gridStyle.DASH_ARRAY,
-          pane: 'grid-pane',
-        }
-      ).addTo(gridLayerRef.current);
+      L.polyline(points, {
+        color: gridStyle.GRID_COLOR,
+        weight: gridStyle.MINOR_LINE_WEIGHT,
+        opacity: gridStyle.LINE_OPACITY,
+        dashArray: gridStyle.DASH_ARRAY,
+        pane: 'grid-pane',
+      }).addTo(gridLayerRef.current);
     }
 
-    // Draw the prime meridian (0° longitude)
-    const primeMeridianStart = { lat: -90, lng: 0 };
-    const primeMeridianEnd = { lat: 90, lng: 0 };
+    // Draw the prime meridian (0° longitude) - using 30° as the reference point (mirrored)
+    const primeMeridianPoints = [];
+    for (let lat = -90; lat <= 90; lat += 5) {
+      // We use 30 as the longitude since that's the reference meridian in the coordinates system
+      const svgPoint = latLngToSvg(lat, 30);
+      primeMeridianPoints.push(L.latLng(svgPoint.y, svgPoint.x));
+    }
 
-    L.polyline(
-      [
-        [primeMeridianStart.lat, primeMeridianStart.lng],
-        [primeMeridianEnd.lat, primeMeridianEnd.lng],
-      ],
-      {
-        color: gridStyle.PRIME_MERIDIAN_COLOR,
-        weight: gridStyle.PRIME_MERIDIAN_WEIGHT,
-        opacity: gridStyle.PRIME_MERIDIAN_OPACITY,
-        dashArray: gridStyle.PRIME_MERIDIAN_DASH_ARRAY,
-        pane: 'grid-pane',
-      }
-    ).addTo(gridLayerRef.current);
+    L.polyline(primeMeridianPoints, {
+      color: gridStyle.PRIME_MERIDIAN_COLOR,
+      weight: gridStyle.PRIME_MERIDIAN_WEIGHT,
+      opacity: gridStyle.PRIME_MERIDIAN_OPACITY,
+      dashArray: gridStyle.PRIME_MERIDIAN_DASH_ARRAY,
+      pane: 'grid-pane',
+    }).addTo(gridLayerRef.current);
   };
 
   return null; // This component does not render any DOM elements
