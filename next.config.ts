@@ -5,8 +5,10 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Uncomment this if you want to use a base path
- // basePath: '/wiki/prod/v14/projects/ixmaps',
-}
+  basePath: '/projects/ixmaps', // Static basePath for the project
+  publicRuntimeConfig: {
+    basePath: '/projects/ixmaps', // Expose basePath to the client
+  },
+};
 
 module.exports = nextConfig;
