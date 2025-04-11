@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { MapConfig, SvgPoint } from '@/types';
-import { svgToLatLng } from '@/lib/MapConfig';
+import { svgToLatLng, latLngToSvg } from '@/lib/coordinates-system';
 
 interface CountryLabelsProps {
   map: any; // Leaflet map instance

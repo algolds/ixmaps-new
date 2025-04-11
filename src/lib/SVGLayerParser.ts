@@ -30,7 +30,7 @@ export async function parseSVGLayers(svgContent: string): Promise<Record<string,
   // Get SVG dimensions
   const width = svgRoot.getAttribute('width') || '100%';
   const height = svgRoot.getAttribute('height') || '100%';
-  const viewBox = svgRoot.getAttribute('viewBox') || '0 0 100 100';
+  const viewBox = svgRoot.getAttribute('viewBox') || '0 0 25625 15729';
   
   // Extract layers from SVG
   const layers: Record<string, SVGLayer> = {};
@@ -139,7 +139,7 @@ export function extractCountries(svgDoc: Document, countryIds: string[]): SVGEle
   if (svgRoot) {
     const width = svgRoot.getAttribute('width') || '100%';
     const height = svgRoot.getAttribute('height') || '100%';
-    const viewBox = svgRoot.getAttribute('viewBox') || '0 0 100 100';
+    const viewBox = svgRoot.getAttribute('viewBox') || '0 0 25625 15729';
     
     svgElement.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     svgElement.setAttribute('width', width);
