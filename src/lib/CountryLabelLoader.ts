@@ -3,16 +3,17 @@
  */
 
 import { CountryData, CountriesData } from '@/types/country-types';
-import { basePath } from './config';
+import { getAssetPath } from '@/lib/config';
 
 /**
  * Load country data from JSON file
  * @returns Promise that resolves to the country data
  */
-export async function loadCountryData(): Promise<CountriesData> {
+const loadLabels = async () => {
   try {
-    // Fetch the JSON file
-    const response = await fetch(`${basePath}/data/countries.json`);
+    console.log('Loading country labels...'); 
+    const response = await fetch(getAssetPath('/data/countries.json'));
+
     
     if (!response.ok) {
       throw new Error(`Failed to load countries data: ${response.status} ${response.statusText}`);

@@ -1,5 +1,5 @@
 import { MapConfig } from '@/types';
-import { basePath } from './config';
+import { getAssetPath } from './config';
 
 // Scale constants
 export const BASE_MILES_PER_PIXEL = 10; // Base scale at zoom level 0: 1px = 10 sq mi
@@ -7,9 +7,10 @@ export const MILES_TO_KM = 2.59; // Conversion factor from square miles to squar
 
 // Default map configuration
 export const defaultMapConfig: MapConfig = {
-  // Ensure all paths include the basePath
-  masterMapPath: `${basePath}/maps/master-map.svg`,
-  baseMapUrl: `${basePath}/maps/master-map.svg`,
+  // Use createUrl for all paths
+  masterMapPath: getAssetPath('/maps/master-map.svg'),
+  baseMapUrl: getAssetPath('/maps/master-map.svg'),
+
   svgWidth: 8202,
   svgHeight: 4900,
   initialZoom: -2,

@@ -6,7 +6,7 @@
  */
 
 import { MapConfig } from '@/types';
-import { basePath } from './config';
+import { getAssetPath } from '@/lib/config';
 
 // Define LOD levels
 export enum LODLevel {
@@ -26,9 +26,9 @@ export interface LODMapPaths {
 export const defaultLODConfig = {
   // Map file paths with proper basePath
   paths: {
-    [LODLevel.LOW]: `${basePath}/maps/master-map-low.svg`,
-    [LODLevel.MEDIUM]: `${basePath}/maps/master-map-medium.svg`,
-    [LODLevel.HIGH]: `${basePath}/maps/master-map-high.svg`,
+    [LODLevel.LOW]: getAssetPath('/maps/master-map-low.svg'),
+    [LODLevel.MEDIUM]: getAssetPath('/maps/master-map-medium.svg'),
+    [LODLevel.HIGH]: getAssetPath('/maps/master-map-high.svg'),
   },
   
   // Zoom level thresholds

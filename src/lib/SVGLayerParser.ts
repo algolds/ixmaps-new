@@ -5,7 +5,7 @@
  */
 
 import { SVGLayer } from '@/types';
-import { basePath } from './config';
+import { getAssetPath } from '@/lib/config';
 
 /**
  * Parse SVG content and extract layers
