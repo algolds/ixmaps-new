@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { MapConfig } from '@/types';
 import { SVGLayer, SVGLayerState } from '@/types/svg-types';
 import { parseSVGLayers, svgToDataUrl } from '@/lib/SVGLayerParser';
 import { showToast } from '@/lib/Toast';
-import { getCurrentLODLevel, getMapPathForZoom, LODLevel } from '@/lib/LODManager';
 
 interface SVGLayerControlProps {
   map: any;
@@ -13,27 +12,15 @@ interface SVGLayerControlProps {
   mapConfig: MapConfig;
   position?: 'topleft' | 'topright' | 'bottomleft' | 'bottomright';
   collapsed?: boolean;
-  onLayerVisibilityChange?: (layerId: string, visible: boolean) => void;
 }
 
-// Define the interface for the ref methods
-export interface SVGLayerControlRef {
-  toggleLayer: (layerId: string, visible: boolean) => boolean;
-  getLayers: () => string[];
-  getVisibility: () => Record<string, boolean>;
-  setVisibility: (newState: Record<string, boolean>) => void;
-  reloadLayers: () => Promise<void>;
-}
-
-// Use forwardRef to create the component
-const SVGLayerControl = forwardRef<SVGLayerControlRef, SVGLayerControlProps>(({
-  map,
-  L,
+const SVGLayerControl: React.FC<SVGLayerControlProps> = ({ 
+  map, 
+  L, 
   mapConfig,
   position = 'topright',
-  collapsed = false,
-  onLayerVisibilityChange
-}, ref) => {
+  collapsed = false
+}) => {
   // State for all SVG layers
   const [layers, setLayers] = useState<Record<string, SVGLayer>>({});
   
@@ -46,235 +33,56 @@ const SVGLayerControl = forwardRef<SVGLayerControlRef, SVGLayerControlProps>(({
     'altitude-layers': false
   });
   
-  // Track current zoom and LOD level
-  const [currentZoom, setCurrentZoom] = useState<number>(mapConfig.initialZoom);
-  const [currentLODLevel, setCurrentLODLevel] = useState<LODLevel>(
-    getCurrentLODLevel(mapConfig.initialZoom)
-  );
-  
   // Refs for layer overlays and control
   const layerOverlaysRef = useRef<Record<string, any>>({});
-  const svgContentRef = useRef<Record<LODLevel, string | null>>({
-    [LODLevel.LOW]: null,
-    [LODLevel.MEDIUM]: null,
-    [LODLevel.HIGH]: null
-  });
-  
+  const controlRef = useRef<any>(null);
+  const svgContentRef = useRef<string | null>(null);
+  const [controlAdded, setControlAdded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Priority layers for ordering
-  const priorityLayers = ['political', 'climate', 'lakes', 'rivers', 'altitude-layers'];
-
-  // Public method to toggle layer visibility
-  const toggleLayerVisibility = (layerId: string, visible: boolean) => {
-    // Update internal state
-    setLayerVisibility(prev => {
-      const newState = {
-        ...prev,
-        [layerId]: visible
-      };
-      return newState;
-    });
-    
-    // Update overlay visibility
-    const overlay = layerOverlaysRef.current[layerId];
-    if (overlay) {
-      if (visible && !map.hasLayer(overlay)) {
-        overlay.addTo(map);
-        console.log(`Added layer: ${layerId}`);
-      } else if (!visible && map.hasLayer(overlay)) {
-        overlay.removeFrom(map);
-        console.log(`Removed layer: ${layerId}`);
-      }
-    }
-    
-    // Notify parent component if callback provided
-    if (onLayerVisibilityChange) {
-      onLayerVisibilityChange(layerId, visible);
-    }
-    
-    return visible; // Return the new state for convenience
-  };
-
-  // Method to reload layers (useful when LOD changes)
-  const reloadLayers = async () => {
-    if (!mapConfig.lodEnabled) {
-      await fetchSVG();
-      return;
-    }
-    
-    // For LOD-enabled maps, we want to fetch the SVG for the current LOD level
-    const newLODLevel = getCurrentLODLevel(currentZoom);
-    await fetchSVG(newLODLevel);
-  };
-
-  // Expose methods to parent components via ref
-  useImperativeHandle(ref, () => ({
-    toggleLayer: toggleLayerVisibility,
-    getLayers: () => Object.keys(layers),
-    getVisibility: () => layerVisibility,
-    setVisibility: (newState: Record<string, boolean>) => {
-      setLayerVisibility(prev => {
-        const merged = { ...prev, ...newState };
-        
-        // Update layer visibility based on the new state
-        Object.entries(merged).forEach(([layerId, isVisible]) => {
-          const overlay = layerOverlaysRef.current[layerId];
-          if (overlay) {
-            if (isVisible && !map.hasLayer(overlay)) {
-              overlay.addTo(map);
-            } else if (!isVisible && map.hasLayer(overlay)) {
-              overlay.removeFrom(map);
-            }
-          }
-        });
-        
-        return merged;
-      });
-    },
-    reloadLayers
-  }), [layers, layerVisibility, map, currentZoom]);
-
-  // Listen for zoom changes
+  // Fetch and parse SVG on mount
   useEffect(() => {
-    if (!map) return;
-    
-    const handleZoomEnd = () => {
-      const newZoom = map.getZoom();
-      setCurrentZoom(newZoom);
-    };
-    
-    map.on('zoomend', handleZoomEnd);
-    
-    return () => {
-      map.off('zoomend', handleZoomEnd);
-    };
-  }, [map]);
-
-  // Check for LOD level changes when zoom changes
-  useEffect(() => {
-    if (!mapConfig.lodEnabled) return;
-    
-    const newLODLevel = getCurrentLODLevel(currentZoom);
-    if (newLODLevel !== currentLODLevel) {
-      console.log(`SVGLayerControl: LOD level changed from ${currentLODLevel} to ${newLODLevel}`);
-      setCurrentLODLevel(newLODLevel);
+    const fetchSVG = async () => {
+      if (!mapConfig.masterMapPath) return;
       
-      // If we don't have the SVG content for this LOD level yet, fetch it
-      if (!svgContentRef.current[newLODLevel]) {
-        fetchSVG(newLODLevel);
-      } else {
-        // Otherwise, just recreate the layers from the cached content
-        recreateLayersFromCache(newLODLevel);
-      }
-    }
-  }, [currentZoom, currentLODLevel, mapConfig.lodEnabled]);
-
-  // Fetch and parse SVG
-  const fetchSVG = async (lodLevel?: LODLevel) => {
-    if (!mapConfig) return;
-    
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Determine which SVG to load
-      let svgPath = mapConfig.masterMapPath;
-      
-      if (mapConfig.lodEnabled) {
-        const targetLODLevel = lodLevel || getCurrentLODLevel(currentZoom);
+      try {
+        setIsLoading(true);
+        setError(null);
         
-        if (mapConfig.lodPaths && mapConfig.lodPaths[targetLODLevel]) {
-          svgPath = mapConfig.lodPaths[targetLODLevel];
-        } else {
-          svgPath = getMapPathForZoom(currentZoom);
+        // Fetch the SVG
+        const response = await fetch(mapConfig.masterMapPath);
+        if (!response.ok) {
+          throw new Error(`Failed to load SVG: ${response.status} ${response.statusText}`);
         }
         
-        console.log(`SVGLayerControl: Loading ${targetLODLevel} resolution SVG from ${svgPath}`);
+        // Get SVG content
+        const svgContent = await response.text();
+        svgContentRef.current = svgContent;
+        
+        // Parse SVG layers
+        const parsedLayers = await parseSVGLayers(svgContent);
+        console.log('Parsed SVG layers:', Object.keys(parsedLayers));
+        
+        // Update state
+        setLayers(parsedLayers);
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error fetching or parsing SVG:', err);
+        setError(err instanceof Error ? err.message : 'Unknown error loading SVG');
+        setIsLoading(false);
       }
-      
-      // Fetch the SVG
-      console.log(`SVGLayerControl: Fetching SVG from ${svgPath}`);
-      const response = await fetch(svgPath);
-      if (!response.ok) {
-        throw new Error(`Failed to load SVG: ${response.status} ${response.statusText}`);
-      }
-      
-      // Get SVG content
-      const svgContent = await response.text();
-      
-      // Cache the SVG content for this LOD level
-      if (mapConfig.lodEnabled && lodLevel) {
-        svgContentRef.current[lodLevel] = svgContent;
-      } else {
-        // If not using LOD or no level specified, cache at current level
-        const currentLevel = getCurrentLODLevel(currentZoom);
-        svgContentRef.current[currentLevel] = svgContent;
-      }
-      
-      // Parse SVG layers
-      const parsedLayers = await parseSVGLayers(svgContent);
-      console.log('Parsed SVG layers:', Object.keys(parsedLayers));
-      
-      // Update state
-      setLayers(parsedLayers);
-      
-      // Create layer overlays
-      createLayerOverlays(parsedLayers);
-      
-      setIsLoading(false);
-    } catch (err) {
-      console.error('Error fetching or parsing SVG:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error loading SVG');
-      setIsLoading(false);
-    }
-  };
-  
-  // Recreate layers from cached SVG content
-  const recreateLayersFromCache = async (lodLevel: LODLevel) => {
-    const cachedContent = svgContentRef.current[lodLevel];
-    if (!cachedContent) {
-      console.log(`No cached content for LOD level ${lodLevel}, fetching new...`);
-      await fetchSVG(lodLevel);
-      return;
-    }
+    };
     
-    try {
-      setIsLoading(true);
-      
-      // Parse SVG layers from cached content
-      const parsedLayers = await parseSVGLayers(cachedContent);
-      console.log(`Recreated layers from cached ${lodLevel} SVG:`, Object.keys(parsedLayers));
-      
-      // Update state and create overlays
-      setLayers(parsedLayers);
-      createLayerOverlays(parsedLayers);
-      
-      setIsLoading(false);
-    } catch (err) {
-      console.error('Error recreating layers from cache:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error recreating layers');
-      setIsLoading(false);
-      
-      // Fallback: try fetching fresh
-      await fetchSVG(lodLevel);
-    }
-  };
-  
-  // Create layer overlays
-  const createLayerOverlays = (parsedLayers: Record<string, SVGLayer>) => {
-    if (!map || !L) return;
+    fetchSVG();
+  }, [mapConfig.masterMapPath]);
+
+  // Add layer overlays to the map once layers are parsed
+  useEffect(() => {
+    if (!map || !L || Object.keys(layers).length === 0 || controlAdded) return;
     
     try {
       console.log('Creating layer overlays...');
-      
-      // Remove existing overlays first
-      Object.values(layerOverlaysRef.current).forEach(overlay => {
-        if (map.hasLayer(overlay)) {
-          overlay.removeFrom(map);
-        }
-      });
       
       // Calculate bounds based on SVG dimensions
       const bounds = L.latLngBounds(
@@ -286,7 +94,8 @@ const SVGLayerControl = forwardRef<SVGLayerControlRef, SVGLayerControlProps>(({
       const overlays: Record<string, any> = {};
       
       // Sort layers by priority (keeping important ones at the top)
-      const sortedLayerKeys = Object.keys(parsedLayers).sort((a, b) => {
+      const priorityLayers = ['political', 'climate', 'lakes', 'rivers', 'altitude-layers'];
+      const sortedLayerKeys = Object.keys(layers).sort((a, b) => {
         const indexA = priorityLayers.indexOf(a);
         const indexB = priorityLayers.indexOf(b);
         
@@ -307,26 +116,20 @@ const SVGLayerControl = forwardRef<SVGLayerControlRef, SVGLayerControlProps>(({
       const visibleLayerKeys = sortedLayerKeys.filter(id => 
         priorityLayers.includes(id) || 
         // Also include child layers of altitude-layers
-        parsedLayers[id].parentId === 'altitude-layers'
+        layers[id].parentId === 'altitude-layers'
       );
       
-      // Create panes if they don't exist
-      // This ensures consistent z-index even when LOD changes
-      priorityLayers.forEach((layerId, index) => {
+      // Create overlays for each layer
+      visibleLayerKeys.forEach((layerId, index) => {
+        const layer = layers[layerId];
+        
+        // Create pane for this layer
         const paneName = `svg-layer-${layerId}`;
         if (!map.getPane(paneName)) {
           map.createPane(paneName);
           // Higher z-index = rendered on top
           map.getPane(paneName).style.zIndex = 400 + index;
         }
-      });
-      
-      // Create overlays for each layer
-      visibleLayerKeys.forEach((layerId) => {
-        const layer = parsedLayers[layerId];
-        
-        // Get or create pane for this layer
-        const paneName = `svg-layer-${layerId}`;
         
         // Convert SVG to data URL
         const dataUrl = svgToDataUrl(layer.svgElement);
@@ -351,24 +154,160 @@ const SVGLayerControl = forwardRef<SVGLayerControlRef, SVGLayerControlProps>(({
       // Store overlays reference
       layerOverlaysRef.current = overlays;
       
-      console.log('Layer overlays created successfully');
+      // Create control
+      createLayerControl(L, map, visibleLayerKeys);
       
-      // Notify user on initial load, but not when LOD changes
-      if (!Object.values(svgContentRef.current).some(Boolean)) {
-        showToast('SVG layers loaded successfully', 'success', 3000);
-      }
+      console.log('Layer overlays created successfully');
     } catch (err) {
       console.error('Error creating layer overlays:', err);
       setError(err instanceof Error ? err.message : 'Unknown error creating layer overlays');
     }
+  }, [layers, map, L, mapConfig, controlAdded]);
+
+  // Create layer control
+  const createLayerControl = (L: any, map: any, layerKeys: string[]) => {
+    // Only create control once
+    if (controlAdded) return;
+    
+    try {
+      // Define the layer control
+      const LayerControl = L.Control.extend({
+        options: {
+          position: position
+        },
+        
+        onAdd: function() {
+          const container = L.DomUtil.create('div', 'leaflet-control-layers leaflet-control svg-layer-control');
+          container.style.backgroundColor = 'white';
+          container.style.padding = '6px 10px';
+          container.style.borderRadius = '4px';
+          container.style.border = '2px solid rgba(0,0,0,0.2)';
+          container.style.boxShadow = '0 1px 5px rgba(0,0,0,0.4)';
+          
+          // Title
+          const title = L.DomUtil.create('div', 'control-title', container);
+          title.innerHTML = 'Map Layers';
+          title.style.fontWeight = 'bold';
+          title.style.marginBottom = '8px';
+          title.style.borderBottom = '1px solid #ddd';
+          title.style.paddingBottom = '5px';
+          title.style.display = 'flex';
+          title.style.justifyContent = 'space-between';
+          title.style.alignItems = 'center';
+          
+          // Toggle button
+          const toggleButton = L.DomUtil.create('span', 'toggle-button', title);
+          toggleButton.innerHTML = collapsed ? '»' : '×';
+          toggleButton.style.cursor = 'pointer';
+          toggleButton.style.marginLeft = '8px';
+          
+          // Layer container
+          const layerContainer = L.DomUtil.create('div', 'layer-container', container);
+          if (collapsed) {
+            layerContainer.style.display = 'none';
+          }
+          
+          // Handle toggle button click
+          L.DomEvent.on(toggleButton, 'click', function() {
+            const isCollapsed = layerContainer.style.display === 'none';
+            layerContainer.style.display = isCollapsed ? 'block' : 'none';
+            toggleButton.innerHTML = isCollapsed ? '×' : '»';
+          });
+          
+          // Layer group categories
+          const layerGroups: Record<string, string[]> = {
+            'Base Layers': ['political', 'climate'],
+            'Geographic Features': ['lakes', 'rivers', 'altitude-layers']
+          };
+          
+          // Add layer groups
+          Object.entries(layerGroups).forEach(([groupName, groupLayerIds]) => {
+            // Create group container
+            const groupContainer = L.DomUtil.create('div', 'layer-group', layerContainer);
+            groupContainer.style.marginBottom = '10px';
+            
+            // Group title
+            const groupTitle = L.DomUtil.create('div', 'group-title', groupContainer);
+            groupTitle.innerHTML = groupName;
+            groupTitle.style.fontWeight = 'bold';
+            groupTitle.style.marginBottom = '5px';
+            
+            // Add layers in this group
+            groupLayerIds.forEach(layerId => {
+              // Only add layers that exist in the parsed SVG
+              if (layerKeys.includes(layerId)) {
+                const layerInfo = layers[layerId];
+                const name = layerInfo.name.charAt(0).toUpperCase() + layerInfo.name.slice(1);
+                
+                // Create layer item
+                const layerItem = L.DomUtil.create('div', 'layer-item', groupContainer);
+                layerItem.style.marginBottom = '5px';
+                layerItem.style.marginLeft = '10px';
+                
+                // Create label with checkbox
+                const label = L.DomUtil.create('label', '', layerItem);
+                label.style.display = 'flex';
+                label.style.alignItems = 'center';
+                label.style.cursor = 'pointer';
+                
+                // Checkbox
+                const checkbox = L.DomUtil.create('input', '', label);
+                checkbox.type = 'checkbox';
+                checkbox.checked = layerVisibility[layerId] ?? false;
+                checkbox.style.marginRight = '8px';
+                
+                // Layer name
+                const layerName = L.DomUtil.create('span', '', label);
+                layerName.innerHTML = name;
+                
+                // Add change event
+                L.DomEvent.on(checkbox, 'change', function(e: { target: HTMLInputElement; }) {
+                  // Update visibility
+                  const target = e.target as HTMLInputElement;
+                  const isVisible = target.checked;
+                  
+                  setLayerVisibility(prev => ({
+                    ...prev,
+                    [layerId]: isVisible
+                  }));
+                  
+                  // Toggle overlay
+                  const overlay = layerOverlaysRef.current[layerId];
+                  if (overlay) {
+                    if (isVisible) {
+                      overlay.addTo(map);
+                    } else {
+                      overlay.remove();
+                    }
+                  }
+                });
+              }
+            });
+          });
+          
+          // Prevent propagation
+          L.DomEvent.disableClickPropagation(container);
+          L.DomEvent.disableScrollPropagation(container);
+          
+          return container;
+        }
+      });
+      
+      // Create and add control
+      const control = new LayerControl();
+      map.addControl(control);
+      controlRef.current = control;
+      setControlAdded(true);
+      
+      // Notify user
+      showToast('SVG layers loaded successfully', 'success', 3000);
+    } catch (err) {
+      console.error('Error creating layer control:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error creating layer control');
+    }
   };
 
-  // Initial load on mount
-  useEffect(() => {
-    fetchSVG();
-  }, [mapConfig.masterMapPath]);
-
-  // Update layer visibility when it changes
+  // Update layer visibility when changes
   useEffect(() => {
     if (!map || !layerOverlaysRef.current) return;
     
@@ -378,7 +317,7 @@ const SVGLayerControl = forwardRef<SVGLayerControlRef, SVGLayerControlProps>(({
         if (isVisible && !map.hasLayer(overlay)) {
           overlay.addTo(map);
         } else if (!isVisible && map.hasLayer(overlay)) {
-          overlay.removeFrom(map);
+          overlay.remove();
         }
       }
     });
@@ -395,14 +334,14 @@ const SVGLayerControl = forwardRef<SVGLayerControlRef, SVGLayerControlProps>(({
           }
         });
       }
+      
+      if (map && controlRef.current) {
+        map.removeControl(controlRef.current);
+      }
     };
   }, [map]);
 
-  // This component no longer renders a UI control - it just manages layers
-  return null;
-});
-
-// Add display name for better debugging
-SVGLayerControl.displayName = 'SVGLayerControl';
+  return null; // This component doesn't render any DOM elements
+};
 
 export default SVGLayerControl;

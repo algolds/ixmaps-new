@@ -4,13 +4,30 @@ import { getAssetPath } from './config';
 // Scale constants
 export const BASE_MILES_PER_PIXEL = 10; // Base scale at zoom level 0: 1px = 10 sq mi
 export const MILES_TO_KM = 2.59; // Conversion factor from square miles to square kilometers
-
 // Default map configuration
 export const defaultMapConfig: MapConfig = {
   masterMapPath: getAssetPath('/maps/master-map.svg'),
   baseMapUrl: getAssetPath('/maps/master-map.svg'),
   svgWidth: 8200,
   svgHeight: 4900,
+  lodConfig: {
+    paths: {
+      low: '',
+      medium: '',
+      high: ''
+    },
+    zoomThresholds: {
+      low: 0,
+      medium: 0
+    }
+  }, // Added missing property
+  initialLayerVisibility: {
+    political: true,
+    climate: false,
+    lakes: false,
+    rivers: false,
+    'altitude-layers': false
+  }, // Added missing property
   initialZoom: -2,
   minZoom: -2,
   maxZoom: 4.0,

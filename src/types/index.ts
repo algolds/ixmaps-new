@@ -1,9 +1,8 @@
-/**
- * IxMaps TypeScript Type Definitions
- */
+// src/types/index.ts
 
-import { Map as LeafletMap } from 'leaflet';
-export * from './svg-types';  // Export SVG types
+import { Map as LeafletMap, LatLngBounds } from 'leaflet'; // Import LatLngBounds
+export * from './svg-types'; // Export SVG types
+
 /**
  * Map bounds configuration
  */
@@ -15,42 +14,45 @@ export interface MapBounds {
 }
 
 /**
- * Map configuration
+ * LOD Map Paths interface
  */
-export interface MapConfig {
-  primeMeridianReferenceLng: number;
-  masterMapPath: string;
-  baseMapUrl: string;
-  svgWidth: number;
-  svgHeight: number;
-  initialZoom: number;
-  minZoom: number;
-  maxZoom: number;
-  rawWidth: number;
-  rawHeight: number;
-  pixelsPerLongitude: number;
-  pixelsPerLatitude: number;
-  equatorY: number;
-  primeMeridianX: number;
-  milesPerPixel: number;
-  kmPerPixel: number;
-  labelFontSize: number;
-  labelClassName: string;
-  bounds: {
-    north: number;
-    south: number;
-    east: number;
-    west: number;
-  };
-  showCountryLabels: boolean;
+export interface LODMapPaths {
+  low: string;
+  medium: string;
+  high: string;
 }
 
 /**
- * Prime meridian reference
+ * Map configuration
  */
-export interface PrimeMeridianRef {
-  lat: number;
-  lng: number;
+export interface MapConfig {
+  masterMapPath: string; // Path to the master SVG file
+  baseMapUrl?: string; // Optional: URL template for a tile base map
+  svgWidth: number; // Intrinsic width of the SVG map
+  svgHeight: number; // Intrinsic height of the SVG map
+  initialZoom: number;
+  minZoom: number;
+  maxZoom: number;
+  rawWidth?: number; // Deprecated or specific use? Consider removal if unused
+  rawHeight?: number; // Deprecated or specific use? Consider removal if unused
+  pixelsPerLongitude: number; // Map projection scaling factor
+  pixelsPerLatitude: number; // Map projection scaling factor
+  equatorY: number; // Y-coordinate of the equator in SVG space
+  primeMeridianX: number; // X-coordinate of the prime meridian in SVG space
+  milesPerPixel: number; // Scale factor at a reference zoom level
+  kmPerPixel: number; // Scale factor at a reference zoom level
+  labelFontSize?: number; // Default font size for labels
+  labelClassName?: string; // CSS class for labels
+  bounds: MapBounds; // Geographic bounds of the map
+  showCountryLabels: boolean; // Initial visibility for country labels
+  primeMeridianReferenceLng?: number; // Reference longitude for PM calculations (often 0)
+  initialLayerVisibility?: Record<string, boolean>; // Initial visibility states for SVG layers
+  // LOD properties (Optional)
+  lodEnabled?: boolean;
+  lodConfig?: {
+    paths: LODMapPaths;
+    zoomThresholds: { low: number; medium: number };
+  };
 }
 
 /**
@@ -58,53 +60,39 @@ export interface PrimeMeridianRef {
  */
 export type ToastType = 'info' | 'success' | 'warning' | 'error';
 
-/**
- * Layer configuration
- */
-export interface LayerConfig {
-  id: string;
-  name: string;
-  url: string;
-  visible: boolean;
-  minZoom: number;
-  maxZoom: number;
-}
+// Layer visibility settings type
+// Use Record for a flexible key-value map of layer IDs (string) to visibility (boolean)
+export type LayerVisibility = Record<string, boolean>;
 
-// Layer visibility settings interface
+/* --- Remove or comment out the conflicting interface ---
 export interface LayerVisibility {
-  political: boolean;
-  climate: boolean;
-  lakes: boolean;
-  rivers: boolean;
-  mountains: boolean;
-  cities: boolean;
-  countries: boolean;
-  states: boolean;
-  territories: boolean;
-  disputed: boolean;
-  labels: boolean;
-  grid: boolean;
-  scale: boolean;
-  compass: boolean;
+  [key: string]: boolean; // Allows any string key for layer IDs
+  // Example specific layers (optional, for type hinting if needed)
+  political?: boolean;
+  climate?: boolean;
+  lakes?: boolean;
+  rivers?: boolean;
+  'altitude-layers'?: boolean;
+  // Add others as needed
 }
+*/
 
 // Country label interface
 export interface CountryLabel {
-  x: number;
-  y: number;
-  name: string;
-  originalId: string;
-  class: 'standard' | 'major' | 'minor' | 'capital';
+  x: number; // SVG x-coordinate
+  y: number; // SVG y-coordinate
+  name: string; // Country name
+  originalId?: string; // Optional ID from source data
+  class?: 'standard' | 'major' | 'minor' | 'capital'; // Classification for styling/filtering
 }
 
 // Distance calculation result interface
 export interface DistanceResult {
   kilometers: number;
   miles: number;
-  km: number; // For backward compatibility
 }
 
-// SVG dimensions interface
+// SVG dimensions interface (Potentially redundant with MapConfig.svgWidth/Height)
 export interface SVGDimensions {
   width: number;
   height: number;
@@ -121,28 +109,22 @@ export interface SvgPoint {
   y: number;
 }
 
-// Visible bounds
-export interface VisibleBounds {
-  northLat: number;
-  southLat: number;
-}
-
-// Grid style
+// Grid style (Consider moving defaults to a config/theme file)
 export interface GridStyle {
   MAJOR_LINE_WEIGHT: number;
   MINOR_LINE_WEIGHT: number;
   LINE_OPACITY: number;
   DASH_ARRAY: string;
-  MAJOR_DASH_ARRAY: string | null;
+  MAJOR_DASH_ARRAY: string | null; // Keep as string | null if that's how it's defined in MapConfig.js
   PRIME_MERIDIAN_COLOR: string;
   PRIME_MERIDIAN_WEIGHT: number;
   PRIME_MERIDIAN_OPACITY: number;
-  PRIME_MERIDIAN_DASH_ARRAY: string;
+  PRIME_MERIDIAN_DASH_ARRAY: string; // Assuming PM dash array is always a string
   EQUATOR_COLOR: string;
   GRID_COLOR: string;
 }
 
-// Label style
+// Label style (Consider moving defaults to a config/theme file)
 export interface LabelStyle {
   MIN_DISTANCE: number;
   BACKGROUND_COLOR: string;
@@ -159,38 +141,15 @@ export interface LabelStyle {
   PRIME_MERIDIAN_TEXT_SHADOW: string;
 }
 
-// IxMaps namespace for global usage (will be adapted for React)
+// Consider if IxMapsNamespace is still needed in a React context
+// Helper functions might be better organized in utility modules.
 export interface IxMapsNamespace {
-  Main: {
-    showToast: (message: string, type?: string, duration?: number) => string;
-    hideToast: (toastId: string) => void;
-    calculateScaleFactor: () => number;
-    calculateDistance: (latlng1: any, latlng2: any, unit?: 'miles' | 'km') => number;
-    calculatePixelDistance: (latlng1: any, latlng2: any) => number;
-    updateLayerVisibility: () => void;
-    getLayerVisibility: () => LayerVisibility;
-    showCountryLabels: () => void;
-    hideCountryLabels: () => void;
-    MILES_PER_PIXEL: number;
-    KM_PER_PIXEL: number;
-  };
+  // ... (Define if still necessary for legacy or specific patterns)
 }
 
-/**
- * LOD Map Paths interface
- */
-export interface LODMapPaths {
-  low: string;
-  medium: string;
-  high: string;
-}
-/**
- * Extended Map configuration with LOD support
- */
-export interface MapConfig {
-  // Existing properties...
-  
-  // Add LOD properties
-  lodEnabled?: boolean;
-  lodPaths?: LODMapPaths;
-}
+// Define SVGLayerControlRef if needed by external components,
+// although the goal is to remove its necessity for ControlPanel.
+// export interface SVGLayerControlRef {
+//   toggleLayer: (layerId: string, visible: boolean) => void;
+//   getVisibility: () => Record<string, boolean>;
+// }
