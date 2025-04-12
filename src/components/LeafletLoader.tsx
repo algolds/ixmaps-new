@@ -4,6 +4,7 @@
 import React, { useEffect, useRef } from 'react';
 import Script from 'next/script';
 import { MapConfig } from '@/types';
+import { svgToLatLng } from '@/lib/coordinates-system'; // Import the conversion util
 
 interface LeafletLoaderProps {
   mapConfig: MapConfig;
@@ -18,36 +19,40 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
   const mapRef = useRef<any>(null);
 
   const initializeMap = () => {
-    if (initialized.current || typeof window === 'undefined' || !window.L)
-      return;
-
+    if (initialized.current || typeof window === 'undefined' || !window.L) return;
     initialized.current = true;
-
     const L = window.L;
 
-    // --- Simplified CRS ---
-    // Use CRS.Simple: 1 map unit = 1 pixel.
-    // The transformation L.Transformation(1, 0, 1, 0) is the default for CRS.Simple
-    // and maps coordinates directly.
+    // --- Use CRS.Simple ---
+    // We will map our custom LatLng directly onto CRS.Simple's coordinate plane.
+    // Leaflet's L.latLng(y, x) will correspond to our custom (lat, lng).
     const customCRS = L.CRS.Simple;
 
-    // --- Map Bounds based on SVG Dimensions ---
-    // Leaflet uses [y, x] for coordinates (LatLng).
-    // Top-left is (0, 0), Bottom-right is (svgHeight, svgWidth).
-    // Bounds are defined by [southWest, northEast] corners.
-    const southWest = L.latLng(mapConfig.svgHeight, 0); // (y, x) -> (max Y, min X)
-    const northEast = L.latLng(0, mapConfig.svgWidth); // (y, x) -> (min Y, max X)
+    // --- Calculate Bounds in Custom LatLng ---
+    // Convert SVG corners (top-left: 0,0 and bottom-right: svgWidth, svgHeight)
+    // to our custom LatLng coordinate system.
+    const topLeftLatLng = svgToLatLng(0, 0); // Provides { lat, lng } for SVG top-left
+    const bottomRightLatLng = svgToLatLng(mapConfig.svgWidth, mapConfig.svgHeight); // Provides { lat, lng } for SVG bottom-right
+
+    // Leaflet bounds need [southWest, northEast] corners in LatLng(lat, lng) format.
+    // Note: Lat corresponds to Y, Lng corresponds to X.
+    // Southwest corner: Max Y (min Lat), Min X (min Lng)
+    // Northeast corner: Min Y (max Lat), Max X (max Lng)
+    const southWest = L.latLng(bottomRightLatLng.lat, topLeftLatLng.lng);
+    const northEast = L.latLng(topLeftLatLng.lat, bottomRightLatLng.lng);
     const bounds = L.latLngBounds(southWest, northEast);
+
+    console.log("Calculated Custom CRS Bounds:", bounds);
 
     // Initialize the map
     const map = L.map('map', {
       crs: customCRS,
-      minZoom: mapConfig.minZoom, // Adjust as needed, maybe start lower
+      minZoom: mapConfig.minZoom,
       maxZoom: mapConfig.maxZoom,
-      zoomControl: false, // We add it manually later
-      attributionControl: false,
-      inertia: true, // Keep inertia for smoother panning
-      bounceAtZoomLimits: false, // Keep false
+      zoomControl: false, // Added manually later
+      attributionControl: false, // Added manually later
+      inertia: true, // Keep inertia
+      bounceAtZoomLimits: false,
     });
 
     // Add attribution control
@@ -58,15 +63,18 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
       })
       .addTo(map);
 
-    // Add the base map layer using the calculated bounds
+    // Add the base map layer using the calculated custom LatLng bounds
     const baseMap = L.imageOverlay(mapConfig.baseMapUrl, bounds).addTo(map);
 
-    // Fit the map to the bounds initially
-    // Use zoom 0 to display the SVG at its native pixel size initially
-    map.setView(bounds.getCenter(), 0); // Center the map, zoom 0
-    // map.fitBounds(bounds); // Alternative: fit bounds exactly
+    // Set the initial view
+    // Option 1: Fit to calculated bounds
+    map.fitBounds(bounds);
+    // Option 2: Set specific center and zoom (using custom LatLng)
+    // const initialCenter = L.latLng(0, 0); // Example: Center on custom equator/prime meridian
+    // map.setView(initialCenter, mapConfig.initialZoom);
 
-    // Set max bounds to prevent panning outside the main SVG area
+    // Set max bounds (optional, prevents panning outside the main area)
+    // Use the same calculated bounds
     map.setMaxBounds(bounds);
 
     // Add zoom control
@@ -80,7 +88,6 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
   };
 
   useEffect(() => {
-    // Cleanup function
     return () => {
       if (mapRef.current) {
         mapRef.current.remove();
@@ -88,14 +95,11 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
         console.log('Leaflet map removed.');
       }
       initialized.current = false;
-      // Ensure Leaflet script/style tags are handled if necessary on unmount/re-route
-      // (Next.js <Script> might handle this, but good to be aware)
     };
-  }, []); // Empty dependency array ensures cleanup runs only on unmount
+  }, []);
 
   return (
     <>
-      {/* Consider moving CSS link to _app.tsx or layout.tsx for global scope */}
       <link
         rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
@@ -104,7 +108,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
       <Script
         src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"
         crossOrigin="anonymous"
-        strategy="afterInteractive" // Load after page is interactive
+        strategy="afterInteractive"
         onLoad={() => {
           console.log('Leaflet script loaded.');
           initializeMap();
@@ -119,9 +123,6 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
 
 export default LeafletLoader;
 
-// Define window.L for TypeScript
 declare global {
-  interface Window {
-    L: any;
-  }
+  interface Window { L: any; }
 }
