@@ -5,15 +5,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { MapConfig, LatLng } from '@/types'; // Make sure MapConfig is imported
 import { calculateDistance } from '@/lib/coordinates-system'; // Ensure correct path
 
-// Optional: Basic Leaflet.draw styles
-const drawControlStyle = `
-  /* Add Leaflet Draw CSS or necessary overrides here if not globally included */
-  .leaflet-draw-toolbar a { background-image: url(https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/images/spritesheet.png); background-size: 30px 210px; }
-  .leaflet-draw-actions li:last-child a { background-position: -2px -182px; } /* Cancel */
-  .leaflet-draw-actions li:first-child a { background-position: -2px -152px; } /* Save */
-  .leaflet-draw-toolbar .leaflet-draw-draw-polyline { background-position: -2px -32px; }
-  .leaflet-draw-tooltip { background: rgba(0, 0, 0, 0.6); color: white; border: none; box-shadow: none; padding: 3px 6px; font-size: 11px; }
-`;
+
 
 // Define the props interface for this component
 interface DistanceMeasurementProps {
@@ -43,7 +35,7 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({
 
     const styleTag = document.createElement('style');
     styleTag.id = 'leaflet-draw-inline-style'; // Give it an ID for removal
-    styleTag.textContent = drawControlStyle;
+    styleTag.textContent = drawControlRef;
     document.head.appendChild(styleTag);
 
     const script = document.createElement('script');

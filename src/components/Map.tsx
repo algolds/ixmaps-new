@@ -4,8 +4,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MapConfig, SvgPoint } from '@/types';
 import { defaultMapConfig } from '@/lib/MapConfig';
-// *** Ensure this path is correct for your project ***
-import { latLngToSvg } from '@/lib/coordinates-system'; // Or coordinates-system.ts
+// Ensure correct import path for your coordinate utils
+import { latLngToSvg } from '@/lib/coordinates-system';
 import dynamic from 'next/dynamic';
 
 // Import all child components
@@ -49,7 +49,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     mapConfig.showCountryLabels
   );
   const [showCoordinates, setShowCoordinates] = useState<boolean>(true);
-  const [showPrimeMeridian, setShowPrimeMeridian] = useState<boolean>(true);
+  const [showPrimeMeridian, setShowPrimeMeridian] = useState<boolean>(true); // For CoordinatesComponent
 
   // Ref for the SVGLayerControl
   const layerControlRef = useRef<SVGLayerControlRef>(null);
@@ -61,9 +61,11 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     setIsMapReady(true);
     initToasts();
 
-    // Calculate and set primeMeridianSvg state using 2 arguments
-    const pmSvgOrigin = latLngToSvg(0, 0);
+   // Calculate and set primeMeridianSvg state
+    // *** FIX: Call latLngToSvg with only 2 arguments ***
+    const pmSvgOrigin = latLngToSvg(0, 0); // Assumes latLngToSvg uses defaultMapConfig internally
     setPrimeMeridianSvg(pmSvgOrigin);
+    // console.log('Prime Meridian SVG reference point (Custom LatLng 0,0):', pmSvgOrigin);
 
     showToast('Map initialized successfully!', 'success', 3000);
   };
@@ -74,6 +76,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const toggleCoordinates = (visible: boolean) => setShowCoordinates(visible);
   const handleTogglePrimeMeridian = (visible: boolean) => {
     setShowPrimeMeridian(visible);
+    // console.log('Prime Meridian visibility toggled:', visible);
   };
 
   return (
@@ -86,8 +89,10 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
         position: 'relative',
       }}
     >
+      {/* Load Leaflet and initialize the map */}
       <LeafletLoader mapConfig={mapConfig} onMapReady={handleMapReady} />
 
+      {/* Render components once the map is ready */}
       {isMapReady && map && leaflet && (
         <>
           {/* Country Labels */}
@@ -95,7 +100,8 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
             map={map}
             L={leaflet}
             visible={showCountryLabels}
-            mapConfig={mapConfig}
+            mapConfig={mapConfig} // <-- PASS mapConfig
+            // Remove svgWidth and svgHeight
           />
 
           {/* Grid Component */}
@@ -103,8 +109,8 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
             map={map}
             L={leaflet}
             visible={showGrid}
-            mapConfig={mapConfig}
-            // primeMeridianSvg={primeMeridianSvg} // Pass only if needed by GridComponentProps
+            mapConfig={mapConfig} // <-- Pass mapConfig (as defined in its props)
+            // primeMeridianSvg={primeMeridianSvg} // Pass if needed
           />
 
           {/* Coordinates Component */}
@@ -114,10 +120,13 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
             visible={showCoordinates}
             mapConfig={mapConfig}
             primeMeridianSvg={primeMeridianSvg}
-            showPrimeMeridian={showPrimeMeridian}
-            svgWidth={mapConfig.svgWidth} // Pass only if needed by CoordinatesComponentProps
-            svgHeight={mapConfig.svgHeight} // Pass only if needed by CoordinatesComponentProps
-            // --- *** REMOVE setPrimeMeridianSvg prop *** ---
+            showPrimeMeridian={showPrimeMeridian} // <-- Pass state
+
+            // Pass svgWidth/Height only if CoordinatesComponentProps requires them
+            svgWidth={mapConfig.svgWidth}
+            svgHeight={mapConfig.svgHeight} setPrimeMeridianSvg={function (point: SvgPoint | null): void {
+              throw new Error('Function not implemented.');
+            } }            // Do not pass setPrimeMeridianSvg unless needed and defined in props
           />
 
           {/* SVG Layer Control */}
@@ -136,23 +145,24 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
             mapConfig={mapConfig}
             layerControlRef={layerControlRef}
             onToggleGrid={toggleGrid}
-            onToggleCountryLabels={toggleCountryLabels}
-            onToggleCoordinates={toggleCoordinates}
-            onTogglePrimeMeridian={handleTogglePrimeMeridian}
+            // onToggleLabels={toggleCountryLabels} // Remove if not defined in ControlPanelProps
+            onToggleCountryLabels={toggleCountryLabels} // Ensure this matches prop name
+            onToggleCoordinates={toggleCoordinates} // Ensure this matches prop name
+            // onTogglePosition={(visible) => console.log('Position toggled:', visible)} // Remove if not defined
           />
 
           {/* Map Scale */}
           <MapScale
             map={map}
             L={leaflet}
-            mapConfig={mapConfig}
+            mapConfig={mapConfig} // Pass mapConfig
           />
 
           {/* Distance Measurement */}
           <DistanceMeasurement
             map={map}
             L={leaflet}
-            mapConfig={mapConfig}
+            mapConfig={mapConfig} // Pass mapConfig
           />
         </>
       )}
