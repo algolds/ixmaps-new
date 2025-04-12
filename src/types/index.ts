@@ -18,6 +18,7 @@ export interface MapBounds {
  * Map configuration
  */
 export interface MapConfig {
+  primeMeridianReferenceLng: number;
   masterMapPath: string;
   baseMapUrl: string;
   svgWidth: number;

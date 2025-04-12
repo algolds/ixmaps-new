@@ -4,7 +4,8 @@
 import React, { useEffect, useRef } from 'react';
 import Script from 'next/script';
 import { MapConfig } from '@/types';
-import { svgToLatLng } from '@/lib/coordinates-system'; // Import the conversion util
+// *** Ensure this path is correct for your coordinate utility file ***
+import { svgToLatLng } from '@/lib/coordinates-system'; // Or coordinates-system.ts
 
 interface LeafletLoaderProps {
   mapConfig: MapConfig;
@@ -19,80 +20,107 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
   const mapRef = useRef<any>(null);
 
   const initializeMap = () => {
-    if (initialized.current || typeof window === 'undefined' || !window.L) return;
-    initialized.current = true;
-    const L = window.L;
+    const mapContainer = document.getElementById('map');
+    if (!mapContainer) {
+      console.error("LeafletLoader Error: Map container 'map' not found.");
+      return;
+    }
+    if (initialized.current || typeof window === 'undefined' || !window.L) {
+      // console.log("LeafletLoader: Skip initialization.");
+      return;
+    }
 
-    // --- Use CRS.Simple ---
-    // We will map our custom LatLng directly onto CRS.Simple's coordinate plane.
-    // Leaflet's L.latLng(y, x) will correspond to our custom (lat, lng).
-    const customCRS = L.CRS.Simple;
+    // Delay initialization slightly to ensure DOM/CSS is ready
+    setTimeout(() => {
+      // Re-check conditions inside timeout
+      if (initialized.current || !window.L || !document.getElementById('map')) {
+        return;
+      }
 
-    // --- Calculate Bounds in Custom LatLng ---
-    // Convert SVG corners (top-left: 0,0 and bottom-right: svgWidth, svgHeight)
-    // to our custom LatLng coordinate system.
-    const topLeftLatLng = svgToLatLng(0, 0); // Provides { lat, lng } for SVG top-left
-    const bottomRightLatLng = svgToLatLng(mapConfig.svgWidth, mapConfig.svgHeight); // Provides { lat, lng } for SVG bottom-right
+      console.log('LeafletLoader: Initializing map inside setTimeout...');
+      initialized.current = true;
+      const L = window.L;
 
-    // Leaflet bounds need [southWest, northEast] corners in LatLng(lat, lng) format.
-    // Note: Lat corresponds to Y, Lng corresponds to X.
-    // Southwest corner: Max Y (min Lat), Min X (min Lng)
-    // Northeast corner: Min Y (max Lat), Max X (max Lng)
-    const southWest = L.latLng(bottomRightLatLng.lat, topLeftLatLng.lng);
-    const northEast = L.latLng(topLeftLatLng.lat, bottomRightLatLng.lng);
-    const bounds = L.latLngBounds(southWest, northEast);
+      // --- CRS and Bounds Calculation ---
+      const customCRS = L.CRS.Simple;
+      const topLeftLatLng = svgToLatLng(0, 0, mapConfig);
+      const bottomRightLatLng = svgToLatLng(
+        mapConfig.svgWidth,
+        mapConfig.svgHeight,
+        mapConfig
+      );
+      const southWest = L.latLng(bottomRightLatLng.lat, topLeftLatLng.lng);
+      const northEast = L.latLng(topLeftLatLng.lat, bottomRightLatLng.lng);
+      const bounds = L.latLngBounds(southWest, northEast);
+      const mapLngWidth = bottomRightLatLng.lng - topLeftLatLng.lng;
+      // --- End CRS/Bounds ---
 
-    console.log("Calculated Custom CRS Bounds:", bounds);
+      try {
+        const map = L.map('map', {
+          crs: customCRS,
+          minZoom: mapConfig.minZoom,
+          maxZoom: mapConfig.maxZoom,
+          zoomControl: false,
+          attributionControl: false,
+          inertia: true,
+          bounceAtZoomLimits: false,
+          worldCopyJump: true,
+        });
+        mapRef.current = map; // Store ref
 
-    // Initialize the map
-    const map = L.map('map', {
-      crs: customCRS,
-      minZoom: mapConfig.minZoom,
-      maxZoom: mapConfig.maxZoom,
-      zoomControl: false, // Added manually later
-      attributionControl: false, // Added manually later
-      inertia: true, // Keep inertia
-      bounceAtZoomLimits: false,
-    });
+        L.control.attribution({ position: 'bottomright', prefix: '© IxMaps v4.0.0' }).addTo(map);
 
-    // Add attribution control
-    L.control
-      .attribution({
-        position: 'bottomright',
-        prefix: '© IxMaps v4.0.0', // Update if needed
-      })
-      .addTo(map);
+        const initialMapUrl = (mapConfig as any).lodEnabled
+          ? mapConfig.baseMapUrl
+          : mapConfig.baseMapUrl; // Adjust as needed
 
-    // Add the base map layer using the calculated custom LatLng bounds
-    const baseMap = L.imageOverlay(mapConfig.baseMapUrl, bounds).addTo(map);
+        const baseMap = L.imageOverlay(initialMapUrl, bounds).addTo(map);
 
-    // Set the initial view
-    // Option 1: Fit to calculated bounds
-    map.fitBounds(bounds);
-    // Option 2: Set specific center and zoom (using custom LatLng)
-    // const initialCenter = L.latLng(0, 0); // Example: Center on custom equator/prime meridian
-    // map.setView(initialCenter, mapConfig.initialZoom);
+        // --- *** FIX: Correctly initialize wraparound bounds *** ---
+        // Initialize with valid LatLng points before extending
+        const leftBounds = L.latLngBounds(
+            L.latLng(bottomRightLatLng.lat, topLeftLatLng.lng - mapLngWidth),
+            L.latLng(topLeftLatLng.lat, bottomRightLatLng.lng - mapLngWidth)
+        );
+        const rightBounds = L.latLngBounds(
+            L.latLng(bottomRightLatLng.lat, topLeftLatLng.lng + mapLngWidth),
+            L.latLng(topLeftLatLng.lat, bottomRightLatLng.lng + mapLngWidth)
+        );
+        // --- *** END FIX *** ---
 
-    // Set max bounds (optional, prevents panning outside the main area)
-    // Use the same calculated bounds
-    map.setMaxBounds(bounds);
+        const leftCopy = L.imageOverlay(initialMapUrl, leftBounds).addTo(map);
+        const rightCopy = L.imageOverlay(initialMapUrl, rightBounds).addTo(map);
 
-    // Add zoom control
-    L.control.zoom({ position: 'topleft' }).addTo(map);
+        // --- Set initial view and bounds ---
+        // Call fitBounds AFTER layers are added
+        map.fitBounds(bounds);
 
-    // Pass the map and Leaflet instance back to the parent
-    onMapReady(map, L);
+        const verticalBounds = L.latLngBounds(
+          L.latLng(bounds.getSouth(), -Infinity),
+          L.latLng(bounds.getNorth(), Infinity)
+        );
+        map.setMaxBounds(verticalBounds);
+        // --- End initial view ---
 
-    // Store the map reference for cleanup
-    mapRef.current = map;
+        L.control.zoom({ position: 'topleft' }).addTo(map);
+
+        console.log('LeafletLoader: Map initialization complete.');
+        onMapReady(map, L);
+
+      } catch (error) {
+        console.error('LeafletLoader Error during map initialization:', error);
+        initialized.current = false; // Reset flag on error
+        if (mapRef.current) { try { mapRef.current.remove(); } catch (e) {} mapRef.current = null; }
+      }
+    }, 50); // Using a slightly longer delay (50ms) just in case 0ms isn't enough
   };
 
   useEffect(() => {
     return () => {
       if (mapRef.current) {
-        mapRef.current.remove();
+        console.log('LeafletLoader: Cleaning up map instance.');
+        try { mapRef.current.remove(); } catch(e) { console.error("Error removing map on cleanup:", e); }
         mapRef.current = null;
-        console.log('Leaflet map removed.');
       }
       initialized.current = false;
     };
@@ -100,22 +128,15 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
 
   return (
     <>
-      <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
-        crossOrigin="anonymous"
-      />
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
       <Script
         src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"
-        crossOrigin="anonymous"
         strategy="afterInteractive"
         onLoad={() => {
-          console.log('Leaflet script loaded.');
+          console.log('Leaflet script loaded, calling initializeMap...');
           initializeMap();
         }}
-        onError={(e) => {
-          console.error('Failed to load Leaflet script:', e);
-        }}
+        onError={(e) => console.error('Leaflet script load error:', e)}
       />
     </>
   );

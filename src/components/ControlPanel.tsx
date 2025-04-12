@@ -1,416 +1,293 @@
+// src/components/ControlPanel.tsx
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { SVGLayer } from '@/types/svg-types';
-import { SVGLayerControlRef } from './SVGLayerControl';
+import React, { useState, useEffect, useRef, RefObject } from 'react';
+import { MapConfig } from '@/types'; // Assuming types are in '@/types'
+import { SVGLayerControlRef } from './SVGLayerControl'; // Assuming this type/component exists
 
+// Define props expected by the Control Panel based on MapComponent
 interface ControlPanelProps {
   map: any;
   L: any;
+  mapConfig: MapConfig; // Make mapConfig required if always needed
+  layerControlRef?: RefObject<SVGLayerControlRef | null>; // Optional ref
+  // Toggle handlers passed from MapComponent
   onToggleGrid: (visible: boolean) => void;
-  onToggleLabels: (visible: boolean) => void;
-  onToggleCountryLabels: (visible: boolean) => void; // Add this line
-  onTogglePrimeMeridian: (visible: boolean) => void;
-  onTogglePosition: (visible: boolean) => void;
-  mapConfig?: any;
-  layerControlRef?: React.RefObject<any>;
+  onToggleCountryLabels: (visible: boolean) => void;
+  onToggleCoordinates: (visible: boolean) => void;
+  onTogglePrimeMeridian: (visible: boolean) => void; // For visibility of PM info/elements
+  // Add other necessary props here, e.g., for specific layer toggles if not handled by SVGLayerControlRef
 }
-
 
 const ControlPanel: React.FC<ControlPanelProps> = ({
   map,
   L,
-  onToggleGrid,
-  onToggleLabels,
-  onToggleCountryLabels, // Add this line
-  onTogglePrimeMeridian,
-  onTogglePosition,
   mapConfig,
-  layerControlRef
+  layerControlRef,
+  onToggleGrid,
+  onToggleCountryLabels,
+  onToggleCoordinates,
+  onTogglePrimeMeridian,
 }) => {
-  // State
-  const [collapsed, setCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState<'display' | 'layers'>('display');
-  const [showPosition, setShowPosition] = useState(true);
+  // --- State ---
+  const [collapsed, setCollapsed] = useState(false); // Panel collapsed state
+  const [activeTab, setActiveTab] = useState<'display' | 'layers'>('display'); // Active tab
+  // State for checkbox values (initialize from props/config where applicable)
   const [showGrid, setShowGrid] = useState(true);
-  const [showLabels, setShowLabels] = useState(true);
-  const [showPrimeMeridian, setShowPrimeMeridian] = useState(false);
-  const [controlAdded, setControlAdded] = useState(false);
-  const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({
-    political: true,
-    climate: false,
-    lakes: false,
-    rivers: false
-  });
-  const [showCountryLabels, setShowCountryLabels] = useState(true);
+  const [showCountryLabels, setShowCountryLabels] = useState(
+    mapConfig.showCountryLabels
+  );
+  const [showCoordinates, setShowCoordinates] = useState(true);
+  const [showPrimeMeridian, setShowPrimeMeridian] = useState(true); // Default PM info visibility
+  // State to track layer visibility (synced from SVGLayerControl if used)
+  const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
 
-  // Priority layers for ordering
-  const priorityLayers = ['political', 'climate', 'lakes', 'rivers'];
+  const controlRef = useRef<any>(null); // Ref to store the Leaflet control instance
+  const isControlAdded = useRef(false); // Ref to track if control is added
 
-  // Make sure altitude layer is initialized
+  // --- Sync Layer Visibility from SVGLayerControl ---
   useEffect(() => {
     if (layerControlRef?.current) {
-      // Force altitude layer to be added to the map but hidden initially
-      console.log("Initializing altitude layer");
-      layerControlRef.current.toggleLayer('altitude-layers', false);
-    }
-  }, [layerControlRef]);
-
-  // Sync layer visibility with SVGLayerControl
-  useEffect(() => {
-    if (layerControlRef?.current) {
-      // Get current visibility state from layer control
       const currentVisibility = layerControlRef.current.getVisibility();
-      
-      // Filter out altitude-layers since we manage it separately
-      const filteredVisibility = { ...currentVisibility };
-      delete filteredVisibility['altitude-layers'];
-      
-      setLayerVisibility(filteredVisibility);
+      // Filter out layers you don't want in the panel if necessary
+      // e.g., delete currentVisibility['altitude-layers'];
+      setLayerVisibility(currentVisibility);
+      console.log('ControlPanel: Synced layer visibility from SVGLayerControl.');
     }
-  }, [layerControlRef]);
+    // Add a listener if SVGLayerControl emits events on visibility change
+    // Example: layerControlRef.current?.on('visibilitychange', handleVisibilityChange);
+    // return () => layerControlRef.current?.off('visibilitychange', handleVisibilityChange);
+  }, [layerControlRef]); // Run when ref becomes available
 
-  // Remove any existing control panel before adding a new one
-  useEffect(() => {
-    // Remove any existing control panels first
-    const existingControlPanels = document.querySelectorAll('.ixmap-control-panel');
-    existingControlPanels.forEach(panel => {
-      if (panel.parentNode) {
-        panel.parentNode.removeChild(panel);
-      }
-    });
-    
-    // Cleanup when component unmounts
-    return () => {
-      // Remove control panel when component unmounts
-      const controlPanels = document.querySelectorAll('.ixmap-control-panel');
-      controlPanels.forEach(panel => {
-        if (panel.parentNode) {
-          panel.parentNode.removeChild(panel);
-        }
-      });
-    };
-  }, [map]);
-
-  // Handle layer toggle with special handling for political layer
+  // --- Handle Layer Toggles ---
   const handleLayerToggle = (layerId: string, checked: boolean) => {
-    // Update local state
-    setLayerVisibility(prev => ({
-      ...prev,
-      [layerId]: checked
-    }));
-    
-    // Use the layerControlRef to toggle the layer
+    // Update local state immediately for responsiveness
+    setLayerVisibility((prev) => ({ ...prev, [layerId]: checked }));
+
+    // Use the layerControlRef to toggle the actual layer
     if (layerControlRef?.current) {
-      // Toggle the selected layer
       layerControlRef.current.toggleLayer(layerId, checked);
-      
-      // Special handling for political layer
-      if (layerId === 'political') {
-        const shouldShowAltitude = !checked;
-        console.log(`Political toggled to ${checked}, setting altitude-layers to ${shouldShowAltitude}`);
-        
-        // Force toggle altitude layer with a small delay to ensure it's processed after political
-        setTimeout(() => {
-          layerControlRef.current?.toggleLayer('altitude-layers', shouldShowAltitude);
-          console.log(`Altitude layer visibility set to ${shouldShowAltitude}`);
-        }, 50);
-      }
-      
-      console.log(`ControlPanel toggled layer: ${layerId} to ${checked}`);
+      console.log(`ControlPanel: Toggled layer '${layerId}' to ${checked}`);
+
+      // --- Special handling for political/altitude layers (Example) ---
+      // if (layerId === 'political') {
+      //   const shouldShowAltitude = !checked;
+      //   // Use timeout if needed to ensure order of operations
+      //   setTimeout(() => {
+      //     layerControlRef.current?.toggleLayer('altitude-layers', shouldShowAltitude);
+      //     console.log(`ControlPanel: Set altitude-layers visibility to ${shouldShowAltitude}`);
+      //   }, 50);
+      // }
+      // --- End Special Handling ---
+
     } else {
-      console.warn('Layer control reference not available');
+      console.warn('ControlPanel: SVGLayerControl reference not available.');
     }
   };
 
-  // Add component did mount effect to initialize altitude layer visibility
+  // --- Create and Manage Leaflet Control ---
   useEffect(() => {
-    // Wait for everything to be initialized
-    const timer = setTimeout(() => {
-      if (layerControlRef?.current && layerVisibility.political === false) {
-        console.log("Initial render: Political is off, showing altitude layer");
-        layerControlRef.current.toggleLayer('altitude-layers', true);
-      }
-    }, 1000);
-    
-    return () => clearTimeout(timer);
-  }, []);
+    if (!map || !L || isControlAdded.current) return; // Only add once
 
-  // Watch for political layer changes to update altitude layer
-  useEffect(() => {
-    if (layerControlRef?.current) {
-      const shouldShowAltitude = !layerVisibility.political;
-      console.log(`Political changed to ${layerVisibility.political}, altitude should be ${shouldShowAltitude}`);
-      layerControlRef.current.toggleLayer('altitude-layers', shouldShowAltitude);
-    }
-  }, [layerVisibility.political, layerControlRef]);
-
-  useEffect(() => {
-    if (!map || !L || controlAdded) return;
-
+    // Define the custom Leaflet control
     const IxMapControl = L.Control.extend({
       options: {
-        position: 'topright'
+        position: 'topright', // Standard Leaflet control position
       },
-      
-      onAdd: function() {
+
+      onAdd: function (mapInstance: any) {
         // Create the main container
-        const container = L.DomUtil.create('div');
-        L.DomUtil.addClass(container, 'ixmap-control-panel');
-        L.DomUtil.addClass(container, collapsed ? 'collapsed' : 'expanded');
-        
-        // Create toggle button with Leaflet styling
-        const toggleButton = L.DomUtil.create('div', '', container);
-        L.DomUtil.addClass(toggleButton, 'toggle-button');
-        
-        // Use cog icon when collapsed, arrow when expanded
-        toggleButton.innerHTML = collapsed ? '<i class="cog-icon">⚙️</i>' : '≪';
-        
-        toggleButton.addEventListener('click', () => {
-          setCollapsed(prev => !prev);
-        });
-        
-        // Create content container
-        const content = L.DomUtil.create('div', '', container);
-        L.DomUtil.addClass(content, 'control-content');
-        if (collapsed) {
-          L.DomUtil.addClass(content, 'hidden');
-        }
-        
-        // Create title
-        const title = L.DomUtil.create('div', '', content);
-        L.DomUtil.addClass(title, 'control-title');
-        title.innerHTML = 'IxMaps Controls';
-        
-        // Create tab navigation
-        const tabNav = L.DomUtil.create('div', '', content);
-        L.DomUtil.addClass(tabNav, 'tab-navigation');
-        
-        // Display tab
-        const displayTab = L.DomUtil.create('div', '', tabNav);
-        L.DomUtil.addClass(displayTab, 'tab');
-        if (activeTab === 'display') L.DomUtil.addClass(displayTab, 'active');
-        displayTab.innerHTML = 'Display';
-        
-        // Layers tab
-        const layersTab = L.DomUtil.create('div', '', tabNav);
-        L.DomUtil.addClass(layersTab, 'tab');
-        if (activeTab === 'layers') L.DomUtil.addClass(layersTab, 'active');
-        layersTab.innerHTML = 'Layers';
-        
-        // Create tab content containers
-        const displayContent = L.DomUtil.create('div', '', content);
-        L.DomUtil.addClass(displayContent, 'tab-content');
-        if (activeTab === 'display') L.DomUtil.addClass(displayContent, 'active');
-        
-        const layersContent = L.DomUtil.create('div', '', content);
-        L.DomUtil.addClass(layersContent, 'tab-content');
-        if (activeTab === 'layers') L.DomUtil.addClass(layersContent, 'active');
+        const container = L.DomUtil.create('div', 'ixmap-control-panel leaflet-control leaflet-bar'); // Add Leaflet classes
+        container.setAttribute('aria-haspopup', 'true'); // Accessibility
 
-        // Add tab click handlers
-        displayTab.addEventListener('click', () => setActiveTab('display'));
-        layersTab.addEventListener('click', () => setActiveTab('layers'));
-        
-      // In the display content section
-const coordSection = L.DomUtil.create('div', '', displayContent);
-L.DomUtil.addClass(coordSection, 'control-section');
+        // Prevent map interaction when interacting with the control
+        L.DomEvent.disableClickPropagation(container);
+        L.DomEvent.disableScrollPropagation(container);
 
-const coordTitle = L.DomUtil.create('div', '', coordSection);
-L.DomUtil.addClass(coordTitle, 'section-title');
-coordTitle.innerHTML = 'Coordinates';
-
-// Add control items
-createControlItem(coordSection, 'Show Position', showPosition, (checked) => { 
-  setShowPosition(checked); 
-  onTogglePosition(checked); 
-});
-
-createControlItem(coordSection, 'Show Grid', showGrid, (checked) => { 
-  setShowGrid(checked); 
-  onToggleGrid(checked); 
-});
-
-createControlItem(coordSection, 'Show Labels', showLabels, (checked) => { 
-  setShowLabels(checked); 
-  onToggleLabels(checked); 
-});
-
-createControlItem(coordSection, 'Show Prime Meridian', showPrimeMeridian, (checked) => { 
-  setShowPrimeMeridian(checked); 
-  onTogglePrimeMeridian(checked); 
-});
-
-createControlItem(coordSection, 'Show Country Labels', showCountryLabels, (checked) => { 
-  setShowCountryLabels(checked); 
-  onToggleCountryLabels(checked); // Changed to use onToggleCountryLabels
-});
-
-
-        // == Layers tab content ==
-        const layerGroups: Record<string, string[]> = {
-          'Base Layers': ['political', 'climate'],
-          'Geographic Features': ['lakes', 'rivers']
+        // --- Toggle Button ---
+        const toggleButton = L.DomUtil.create('a', 'ixmap-control-toggle', container);
+        toggleButton.href = '#';
+        toggleButton.title = 'Toggle Controls';
+        toggleButton.role = 'button';
+        toggleButton.innerHTML = '≪'; // Initial state (expanded)
+        toggleButton.onclick = (e: MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setCollapsed(prev => !prev); // Update React state
         };
-        
-        // Create layer groups
-        Object.entries(layerGroups).forEach(([groupName, groupLayerIds]) => {
-          const groupContainer = L.DomUtil.create('div', '', layersContent);
-          L.DomUtil.addClass(groupContainer, 'layer-group');
-          
-          const groupTitle = L.DomUtil.create('div', '', groupContainer);
-          L.DomUtil.addClass(groupTitle, 'group-title');
+
+        // --- Content Container (initially hidden if collapsed starts true) ---
+        const content = L.DomUtil.create('div', 'ixmap-control-content', container);
+        if (collapsed) L.DomUtil.addClass(content, 'hidden');
+
+        // --- Title ---
+        const title = L.DomUtil.create('div', 'ixmap-control-title', content);
+        title.innerHTML = 'Controls';
+
+        // --- Tab Navigation ---
+        const tabNav = L.DomUtil.create('div', 'ixmap-tab-navigation', content);
+        const displayTab = L.DomUtil.create('button', 'ixmap-tab', tabNav);
+        displayTab.innerHTML = 'Display';
+        displayTab.onclick = () => setActiveTab('display');
+
+        const layersTab = L.DomUtil.create('button', 'ixmap-tab', tabNav);
+        layersTab.innerHTML = 'Layers';
+        layersTab.onclick = () => setActiveTab('layers');
+
+        // --- Tab Content Areas ---
+        const displayContent = L.DomUtil.create('div', 'ixmap-tab-content ixmap-display-content', content);
+        const layersContent = L.DomUtil.create('div', 'ixmap-tab-content ixmap-layers-content', content);
+
+        // --- Populate Display Tab ---
+        const displaySection = L.DomUtil.create('div', 'ixmap-control-section', displayContent);
+
+        createControlItem(displaySection, 'Show Grid', 'grid-toggle', showGrid, (checked) => {
+          setShowGrid(checked); onToggleGrid(checked);
+        });
+        createControlItem(displaySection, 'Show Labels', 'country-labels-toggle', showCountryLabels, (checked) => {
+          setShowCountryLabels(checked); onToggleCountryLabels(checked);
+        });
+        createControlItem(displaySection, 'Show Coordinates', 'coords-toggle', showCoordinates, (checked) => {
+          setShowCoordinates(checked); onToggleCoordinates(checked);
+        });
+        createControlItem(displaySection, 'Show Prime Meridian', 'pm-toggle', showPrimeMeridian, (checked) => {
+          setShowPrimeMeridian(checked); onTogglePrimeMeridian(checked);
+        });
+
+        // --- Populate Layers Tab ---
+        // Example layer grouping - adjust as needed
+        const layerGroups: Record<string, string[]> = {
+          'Base Layers': ['political', 'climate'], // Example IDs
+          'Features': ['lakes', 'rivers'],      // Example IDs
+          // Add more groups and layer IDs based on your SVGLayerControl setup
+        };
+
+        Object.entries(layerGroups).forEach(([groupName, layerIds]) => {
+          // Check if any layer in the group actually exists in the synced state
+          const relevantLayerIds = layerIds.filter(id => layerVisibility.hasOwnProperty(id));
+          if (relevantLayerIds.length === 0) return; // Skip group if no relevant layers
+
+          const groupContainer = L.DomUtil.create('div', 'ixmap-layer-group', layersContent);
+          const groupTitle = L.DomUtil.create('div', 'ixmap-group-title', groupContainer);
           groupTitle.innerHTML = groupName;
-          
-          // Create layer items
-          groupLayerIds.forEach(layerId => {
-            const name = layerId.charAt(0).toUpperCase() + layerId.slice(1).replace(/-/g, ' ');
-            const layerItem = L.DomUtil.create('div', '', groupContainer);
-            L.DomUtil.addClass(layerItem, 'layer-item');
-            
+
+          relevantLayerIds.forEach(layerId => {
+            // Attempt to get a friendlier name (or use ID)
+            const layerName = layerId.charAt(0).toUpperCase() + layerId.slice(1).replace(/-/g, ' ');
             createControlItem(
-              layerItem,
-              name,
-              layerVisibility[layerId] || false,
+              groupContainer,
+              layerName,
+              `layer-${layerId}-toggle`, // Unique ID for the checkbox
+              layerVisibility[layerId] || false, // Use synced state
               (checked) => { handleLayerToggle(layerId, checked); }
             );
           });
         });
-        
-        // Disable map events propagation
-        L.DomEvent.disableClickPropagation(container);
-        L.DomEvent.disableScrollPropagation(container);
-        
+
+        // Initial setup of active tab/content visibility
+        this.updateControlDisplay(container); // Call helper to set initial state
+
         return container;
+      },
+
+      onRemove: function (mapInstance: any) {
+        // Cleanup if needed, though React unmount handles main cleanup
+        console.log('IxMapControl removed from map.');
+      },
+
+      // Helper function to update display based on React state
+      updateControlDisplay: function(container: HTMLElement) {
+        const content = container.querySelector<HTMLElement>('.ixmap-control-content');
+        const toggleButton = container.querySelector<HTMLElement>('.ixmap-control-toggle');
+        const displayTab = container.querySelectorAll<HTMLElement>('.ixmap-tab')[0];
+        const layersTab = container.querySelectorAll<HTMLElement>('.ixmap-tab')[1];
+        const displayContent = container.querySelector<HTMLElement>('.ixmap-display-content');
+        const layersContent = container.querySelector<HTMLElement>('.ixmap-layers-content');
+
+        // Update collapsed state
+        if (toggleButton) toggleButton.innerHTML = collapsed ? '⚙️' : '≪'; // Use cog icon or arrows
+        if (content) content.style.display = collapsed ? 'none' : '';
+        L.DomUtil.removeClass(container, collapsed ? 'expanded' : 'collapsed');
+        L.DomUtil.addClass(container, collapsed ? 'collapsed' : 'expanded');
+
+
+        // Update active tab styles and content visibility (only if not collapsed)
+        if (!collapsed) {
+            if (displayTab && layersTab && displayContent && layersContent) {
+                const isDisplayActive = activeTab === 'display';
+                displayTab.classList.toggle('active', isDisplayActive);
+                layersTab.classList.toggle('active', !isDisplayActive);
+                displayContent.style.display = isDisplayActive ? '' : 'none';
+                layersContent.style.display = !isDisplayActive ? '' : 'none';
+            }
+
+            // Update checkbox states within the control
+            const updateCheckbox = (id: string, checked: boolean) => {
+                const checkbox = container.querySelector<HTMLInputElement>(`#${id}`);
+                if (checkbox) checkbox.checked = checked;
+            };
+
+            updateCheckbox('grid-toggle', showGrid);
+            updateCheckbox('country-labels-toggle', showCountryLabels);
+            updateCheckbox('coords-toggle', showCoordinates);
+            updateCheckbox('pm-toggle', showPrimeMeridian);
+
+            Object.keys(layerVisibility).forEach(layerId => {
+                updateCheckbox(`layer-${layerId}-toggle`, layerVisibility[layerId] || false);
+            });
+        }
       }
     });
-    
-    // Helper function to create control items with checkboxes
+
+    // Helper function to create control items (checkbox + label)
     function createControlItem(
-      container: HTMLElement, 
-      label: string, 
-      checked: boolean, 
+      container: HTMLElement,
+      labelText: string,
+      checkboxId: string, // Unique ID for the checkbox
+      checked: boolean,
       onChange: (checked: boolean) => void
     ) {
-      const controlItem = L.DomUtil.create('div', '', container);
-      L.DomUtil.addClass(controlItem, 'control-item');
-      
-      // Create checkbox
-      const checkbox = L.DomUtil.create('input', '', controlItem);
+      const itemContainer = L.DomUtil.create('div', 'ixmap-control-item', container);
+      const checkbox = L.DomUtil.create('input', '', itemContainer);
       checkbox.type = 'checkbox';
+      checkbox.id = checkboxId; // Assign unique ID
       checkbox.checked = checked;
-      checkbox.setAttribute('data-control', label.toLowerCase().replace(/\s+/g, '-'));
-      
-      // Create label
-      const labelElement = L.DomUtil.create('label', '', controlItem);
-      labelElement.innerHTML = label;
-      
-      // Add change handler
-      checkbox.addEventListener('change', (e: Event) => {
-        const target = e.target as HTMLInputElement;
-        onChange(target.checked);
-      });
-      
-      return controlItem;
-    }
-    
-    // Add the control to the map
-    map.addControl(new IxMapControl());
-    setControlAdded(true);
-  }, [map, L, controlAdded, collapsed, activeTab, showPosition, showGrid, showLabels, showPrimeMeridian, layerVisibility]);
+      checkbox.onchange = (e: Event) => onChange((e.target as HTMLInputElement).checked);
 
-  // Update control panel state when collapsed or activeTab changes
-  useEffect(() => {
-    if (!map || !L || !controlAdded) return;
-    
-    const controlPanel = document.querySelector('.ixmap-control-panel');
-    if (!controlPanel) return;
-    
-    // Update collapsed state
-    if (collapsed) {
-      controlPanel.classList.add('collapsed');
-      controlPanel.classList.remove('expanded');
-    } else {
-      controlPanel.classList.remove('collapsed');
-      controlPanel.classList.add('expanded');
+      const label = L.DomUtil.create('label', '', itemContainer);
+      label.htmlFor = checkboxId; // Associate label with checkbox
+      label.textContent = labelText;
+
+      return itemContainer;
     }
-    
-    // Update toggle button text
-    const toggleButton = controlPanel.querySelector('.toggle-button');
-    if (toggleButton) {
-      (toggleButton as HTMLElement).innerHTML = collapsed ? '<i class="cog-icon">⚙️</i>' : '≪';
-    }
-    
-    // Update content visibility
-    const content = controlPanel.querySelector('.control-content');
-    if (content) {
-      if (collapsed) {
-        content.classList.add('hidden');
-      } else {
-        content.classList.remove('hidden');
+
+    // Instantiate and add the control
+    const newControl = new IxMapControl();
+    controlRef.current = newControl; // Store instance in ref
+    map.addControl(newControl);
+    isControlAdded.current = true; // Mark as added
+    console.log('ControlPanel: Leaflet control added to map.');
+
+    // Cleanup function for this effect
+    return () => {
+      if (map && controlRef.current) {
+        console.log('ControlPanel: Removing Leaflet control from map.');
+        map.removeControl(controlRef.current);
+        controlRef.current = null;
       }
-    }
-    
-    // Only update tab states if panel is expanded
-    if (!collapsed) {
-      // Update active tab
-      const tabs = controlPanel.querySelectorAll('.tab');
-      const tabContents = controlPanel.querySelectorAll('.tab-content');
-      
-      tabs.forEach((tab, index) => {
-        if (index === 0) { // Display tab
-          if (activeTab === 'display') {
-            tab.classList.add('active');
-          } else {
-            tab.classList.remove('active');
-          }
-        } else if (index === 1) { // Layers tab
-          if (activeTab === 'layers') {
-            tab.classList.add('active');
-          } else {
-            tab.classList.remove('active');
-          }
-        }
-      });
-      
-      tabContents.forEach((content, index) => {
-        if (index === 0) { // Display content
-          if (activeTab === 'display') {
-            content.classList.add('active');
-          } else {
-            content.classList.remove('active');
-          }
-        } else if (index === 1) { // Layers content
-          if (activeTab === 'layers') {
-            content.classList.add('active');
-          } else {
-            content.classList.remove('active');
-          }
-        }
-      });
-      
-      // Update checkbox states
-      const updateCheckbox = (dataControlValue: string, checked: boolean) => {
-        const checkbox = controlPanel.querySelector(`input[data-control="${dataControlValue}"]`) as HTMLInputElement;
-        if (checkbox) {
-          checkbox.checked = checked;
-        }
-      };
-      
-      // Update display options
-      updateCheckbox('show-position', showPosition);
-      updateCheckbox('show-grid', showGrid);
-      updateCheckbox('show-labels', showLabels);
-      updateCheckbox('show-prime-meridian', showPrimeMeridian);
-      updateCheckbox('show-country-labels', showCountryLabels);
+      isControlAdded.current = false;
+    };
+  }, [map, L]); // Only run when map and L are available
 
-      // Update layer visibility
-      Object.entries(layerVisibility).forEach(([layerId, isVisible]) => {
-        updateCheckbox(layerId, isVisible);
-      });
+  // --- Effect to Update Control Display When State Changes ---
+  useEffect(() => {
+    if (controlRef.current && typeof controlRef.current.updateControlDisplay === 'function') {
+      // Call the update method on the control instance when React state changes
+      controlRef.current.updateControlDisplay(controlRef.current.getContainer());
     }
-  }, [collapsed, activeTab, controlAdded, showPosition, showGrid, showLabels, showPrimeMeridian, layerVisibility, map, L]);
+  }, [collapsed, activeTab, showGrid, showCountryLabels, showCoordinates, showPrimeMeridian, layerVisibility]);
 
-  // This component doesn't render anything in the DOM tree
+  // This React component manages the Leaflet control but renders null itself
   return null;
 };
 

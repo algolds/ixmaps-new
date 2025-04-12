@@ -24,7 +24,7 @@ export const defaultMapConfig: MapConfig = {
   get kmPerPixel() {
     return this.milesPerPixel * MILES_TO_KM;
   },
-  
+
   labelFontSize: 12,
   labelClassName: 'country-label',
   bounds: {
@@ -34,6 +34,7 @@ export const defaultMapConfig: MapConfig = {
     west: 0,
   },
   showCountryLabels: true,
+  primeMeridianReferenceLng: 0
 };
 
 // Prime meridian reference point

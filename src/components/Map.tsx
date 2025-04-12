@@ -1,9 +1,14 @@
+// src/components/MapComponent.tsx
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { MapConfig, SvgPoint } from '@/types';
 import { defaultMapConfig } from '@/lib/MapConfig';
+// *** Ensure this path is correct for your project ***
+import { latLngToSvg } from '@/lib/coordinates-system'; // Or coordinates-system.ts
 import dynamic from 'next/dynamic';
+
+// Import all child components
 import GridComponent from './GridComponent';
 import CountryLabelsComponent from './CountryLabelsComponent';
 import CoordinatesComponent from './CoordinatesComponent';
@@ -11,6 +16,7 @@ import SVGLayerControl, { SVGLayerControlRef } from './SVGLayerControl';
 import ControlPanel from './ControlPanel';
 import MapScale from './MapScale';
 import DistanceMeasurement from './DistanceMeasurement';
+
 import { initToasts, showToast } from '@/lib/Toast';
 
 // Dynamically load LeafletLoader
@@ -24,7 +30,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   // State for map configuration
   const [mapConfig, setMapConfig] = useState<MapConfig>({
     ...defaultMapConfig,
-    ...configOverrides,
+    ...(configOverrides || {}),
   });
 
   // State for Leaflet map and library instances
@@ -37,11 +43,13 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   // State for prime meridian SVG reference
   const [primeMeridianSvg, setPrimeMeridianSvg] = useState<SvgPoint | null>(null);
 
-  // State for grid visibility
+  // State for component visibility
   const [showGrid, setShowGrid] = useState<boolean>(true);
-
-  // State for country labels visibility
-  const [showCountryLabels, setShowCountryLabels] = useState<boolean>(true);
+  const [showCountryLabels, setShowCountryLabels] = useState<boolean>(
+    mapConfig.showCountryLabels
+  );
+  const [showCoordinates, setShowCoordinates] = useState<boolean>(true);
+  const [showPrimeMeridian, setShowPrimeMeridian] = useState<boolean>(true);
 
   // Ref for the SVGLayerControl
   const layerControlRef = useRef<SVGLayerControlRef>(null);
@@ -51,15 +59,11 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     setMap(mapInstance);
     setLeaflet(L);
     setIsMapReady(true);
-
-    // Initialize toasts
     initToasts();
 
-    // Set the prime meridian SVG point
-    setPrimeMeridianSvg({
-      x: mapConfig.primeMeridianX,
-      y: mapConfig.equatorY,
-    });
+    // Calculate and set primeMeridianSvg state using 2 arguments
+    const pmSvgOrigin = latLngToSvg(0, 0);
+    setPrimeMeridianSvg(pmSvgOrigin);
 
     showToast('Map initialized successfully!', 'success', 3000);
   };
@@ -67,6 +71,10 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   // Handlers for toggling visibility
   const toggleGrid = (visible: boolean) => setShowGrid(visible);
   const toggleCountryLabels = (visible: boolean) => setShowCountryLabels(visible);
+  const toggleCoordinates = (visible: boolean) => setShowCoordinates(visible);
+  const handleTogglePrimeMeridian = (visible: boolean) => {
+    setShowPrimeMeridian(visible);
+  };
 
   return (
     <div
@@ -78,10 +86,8 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
         position: 'relative',
       }}
     >
-      {/* Load Leaflet and initialize the map */}
       <LeafletLoader mapConfig={mapConfig} onMapReady={handleMapReady} />
 
-      {/* Render components once the map is ready */}
       {isMapReady && map && leaflet && (
         <>
           {/* Country Labels */}
@@ -90,31 +96,28 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
             L={leaflet}
             visible={showCountryLabels}
             mapConfig={mapConfig}
-            svgWidth={mapConfig.svgWidth}
-            svgHeight={mapConfig.svgHeight}
           />
 
           {/* Grid Component */}
           <GridComponent
             map={map}
             L={leaflet}
-            primeMeridianSvg={primeMeridianSvg}
             visible={showGrid}
-            svgWidth={mapConfig.svgWidth}
-            svgHeight={mapConfig.svgHeight}
+            mapConfig={mapConfig}
+            // primeMeridianSvg={primeMeridianSvg} // Pass only if needed by GridComponentProps
           />
 
           {/* Coordinates Component */}
           <CoordinatesComponent
             map={map}
             L={leaflet}
-            visible={true}
-            showPrimeMeridian={true}
+            visible={showCoordinates}
             mapConfig={mapConfig}
-            svgWidth={mapConfig.svgWidth}
-            svgHeight={mapConfig.svgHeight}
             primeMeridianSvg={primeMeridianSvg}
-            setPrimeMeridianSvg={setPrimeMeridianSvg}
+            showPrimeMeridian={showPrimeMeridian}
+            svgWidth={mapConfig.svgWidth} // Pass only if needed by CoordinatesComponentProps
+            svgHeight={mapConfig.svgHeight} // Pass only if needed by CoordinatesComponentProps
+            // --- *** REMOVE setPrimeMeridianSvg prop *** ---
           />
 
           {/* SVG Layer Control */}
@@ -133,17 +136,24 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
             mapConfig={mapConfig}
             layerControlRef={layerControlRef}
             onToggleGrid={toggleGrid}
-            onToggleLabels={toggleCountryLabels}
             onToggleCountryLabels={toggleCountryLabels}
-            onTogglePrimeMeridian={(visible) => console.log('Prime Meridian toggled:', visible)}
-            onTogglePosition={(visible) => console.log('Position toggled:', visible)}
+            onToggleCoordinates={toggleCoordinates}
+            onTogglePrimeMeridian={handleTogglePrimeMeridian}
           />
 
           {/* Map Scale */}
-          <MapScale map={map} L={leaflet} mapConfig={mapConfig} />
+          <MapScale
+            map={map}
+            L={leaflet}
+            mapConfig={mapConfig}
+          />
 
           {/* Distance Measurement */}
-          <DistanceMeasurement map={map} L={leaflet} />
+          <DistanceMeasurement
+            map={map}
+            L={leaflet}
+            mapConfig={mapConfig}
+          />
         </>
       )}
     </div>

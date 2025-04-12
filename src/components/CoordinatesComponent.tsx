@@ -1,100 +1,85 @@
+// src/components/CoordinatesComponent.tsx
 'use client';
 
-import React, { useEffect, useRef } from 'react';
-import { SvgPoint } from '@/types';
-import { svgToCustomLatLng } from '@/lib/coordinates-system';
-import { showToast } from '@/lib/Toast';
+import React, { useState, useEffect } from 'react';
+import { MapConfig, SvgPoint, LatLng } from '@/types';
+// *** Ensure this path is correct for your project ***
+import { svgToLatLng, latLngToSvg } from '@/lib/coordinates-system'; // Or coordinates-system.ts
 
 interface CoordinatesComponentProps {
   map: any;
   L: any;
   visible: boolean;
-  showPrimeMeridian: boolean;
-  mapConfig: any;
-  svgWidth: number;
-  svgHeight: number;
+  mapConfig: MapConfig;
   primeMeridianSvg: SvgPoint | null;
-  setPrimeMeridianSvg: (point: SvgPoint | null) => void;
+  showPrimeMeridian: boolean;
+  svgWidth: number; // Keep if used for positioning
+  svgHeight: number; // Keep if used for positioning
+  // NOTE: setPrimeMeridianSvg is NOT included here
 }
 
 const CoordinatesComponent: React.FC<CoordinatesComponentProps> = ({
   map,
   L,
   visible,
-  showPrimeMeridian,
   mapConfig,
+  primeMeridianSvg,
+  showPrimeMeridian,
   svgWidth,
   svgHeight,
-  primeMeridianSvg,
-  setPrimeMeridianSvg,
 }) => {
-  const clickMarkerRef = useRef<any>(null);
-
-  const addCoordinateMarker = (e: any) => {
-    if (!map || !primeMeridianSvg) return;
-
-    try {
-      if (clickMarkerRef.current) {
-        map.removeLayer(clickMarkerRef.current);
-      }
-
-      const customCoord = svgToCustomLatLng(e.latlng.lng, e.latlng.lat, mapConfig, primeMeridianSvg);
-
-      const marker = L.circleMarker(e.latlng, {
-        radius: 5,
-        color: '#FF4500',
-        fillColor: '#FFA07A',
-        fillOpacity: 1,
-        weight: 2,
-        pane: 'coordinate-marker-pane',
-      }).addTo(map);
-
-      clickMarkerRef.current = marker;
-
-      const coordText = `
-        <div style="text-align:center;">
-          <strong>Coordinates:</strong><br>
-          Lat: ${customCoord.lat.toFixed(2)}°<br>
-          Lng: ${customCoord.lng.toFixed(2)}°
-        </div>
-      `;
-
-      marker.bindPopup(coordText).openPopup();
-
-      showToast(
-        `Clicked at Lat: ${customCoord.lat.toFixed(2)}°, Lng: ${customCoord.lng.toFixed(2)}°`,
-        'info',
-        3000
-      );
-    } catch (e) {
-      console.error('Error adding coordinate marker:', e);
-    }
-  };
+  const [coords, setCoords] = useState<LatLng | null>(null);
+  const [svgCoords, setSvgCoords] = useState<SvgPoint | null>(null);
 
   useEffect(() => {
-    if (!map) return;
-
-    const markerPane = 'coordinate-marker-pane';
-    if (!map.getPane(markerPane)) {
-      map.createPane(markerPane);
-      map.getPane(markerPane).style.zIndex = '700';
+    if (!map || !visible) {
+      if (map) { map.off('mousemove'); }
+      setCoords(null);
+      setSvgCoords(null);
+      return;
     }
 
-    map.on('click', addCoordinateMarker);
+    const handleMouseMove = (e: any) => {
+      const customLatLng = e.latlng;
+      setCoords({ lat: customLatLng.lat, lng: customLatLng.lng });
+      const currentSvgCoords = latLngToSvg(customLatLng.lat, customLatLng.lng, mapConfig);
+      setSvgCoords(currentSvgCoords);
+    };
+
+    map.on('mousemove', handleMouseMove);
 
     return () => {
-      map.off('click', addCoordinateMarker);
-      if (clickMarkerRef.current) {
-        try {
-          map.removeLayer(clickMarkerRef.current);
-        } catch (e) {
-          console.warn('Error removing click marker:', e);
-        }
-      }
+      if (map) { map.off('mousemove', handleMouseMove); }
     };
-  }, [map, primeMeridianSvg]);
+  }, [map, L, visible, mapConfig]);
 
-  return null;
+  if (!visible || !coords) {
+    return null;
+  }
+
+  // --- *** DEFINE THE STYLE OBJECT *** ---
+  const displayStyle: React.CSSProperties = {
+    position: 'absolute',
+    bottom: '10px',
+    left: '10px',
+    backgroundColor: 'rgba(255, 255, 255, 0.75)', // Example style
+    padding: '3px 8px',
+    borderRadius: '3px',
+    fontSize: '12px',
+    fontFamily: 'monospace',
+    zIndex: 1000, // Ensure it's above map tiles
+    color: '#333',
+    border: '1px solid #aaa',
+  };
+
+  return (
+    // --- *** ASSIGN THE STYLE OBJECT *** ---
+    <div style={displayStyle}>
+      Lat: {coords.lat.toFixed(2)}, Lng: {coords.lng.toFixed(2)}
+      {/* Optional: Display SVG coordinates for debugging */}
+      {/* {svgCoords && ` (SVG X: ${svgCoords.x.toFixed(0)}, Y: ${svgCoords.y.toFixed(0)})`} */}
+    </div>
+  );
 };
 
 export default CoordinatesComponent;

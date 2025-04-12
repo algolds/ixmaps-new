@@ -2,7 +2,9 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { svgToLatLng } from '@/lib/coordinates-system'; // Import the conversion util
+// Ensure the import path is correct for your project structure
+import { svgToLatLng } from '@/lib/coordinates-system'; // Use the correct path and file name
+import { MapConfig } from '@/types'; // Import MapConfig type
 
 // Interface for the data fetched from country_positions_bbox.json
 interface CountryPositionData {
@@ -14,17 +16,19 @@ interface CountryPositionData {
   };
 }
 
+// Define props expected by this component
 interface CountryLabelsProps {
   map: any;
   L: any;
   visible: boolean;
-  // No longer needs svgHeight
+  mapConfig: MapConfig; // <-- ADD mapConfig prop
 }
 
 const CountryLabelsComponent: React.FC<CountryLabelsProps> = ({
   map,
   L,
   visible,
+  mapConfig, // <-- Destructure mapConfig
 }) => {
   const layerGroupRef = useRef<any>(null);
   const [countryData, setCountryData] = useState<CountryPositionData[]>([]);
@@ -36,17 +40,17 @@ const CountryLabelsComponent: React.FC<CountryLabelsProps> = ({
     const fetchData = async () => {
       setIsLoading(true);
       setError(null);
-      console.log('CountryLabelsComponent: Fetching country positions...');
+      // console.log('CountryLabelsComponent: Fetching country positions...');
       try {
         const response = await fetch('/data/country_positions_bbox.json');
-        if (!response.ok) { /* ... error handling ... */ throw new Error(`HTTP error! status: ${response.status}`); }
+        if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`); }
         const data: CountryPositionData[] = await response.json();
-        console.log(`CountryLabelsComponent: Fetched ${data.length} positions.`);
-        if (!Array.isArray(data)) { /* ... error handling ... */ throw new Error('Expected array.'); }
+        // console.log(`CountryLabelsComponent: Fetched ${data.length} positions.`);
+        if (!Array.isArray(data)) { throw new Error('Expected array.'); }
         const validData = data.filter(item => item && typeof item.id === 'string' && typeof item.name === 'string' && typeof item.position?.x === 'number' && typeof item.position?.y === 'number');
         if (validData.length !== data.length) { console.warn("CountryLabelsComponent: Some items filtered."); }
         setCountryData(validData);
-      } catch (e: any) { /* ... error handling ... */ setError(e.message || 'Failed'); setCountryData([]); }
+      } catch (e: any) { setError(e.message || 'Failed'); setCountryData([]); }
       finally { setIsLoading(false); }
     };
     fetchData();
@@ -54,7 +58,7 @@ const CountryLabelsComponent: React.FC<CountryLabelsProps> = ({
 
   // Effect 2: Manage Leaflet markers
   useEffect(() => {
-    if (!map || !L) {
+    if (!map || !L || !mapConfig) { // Check for mapConfig too
       if (layerGroupRef.current) { layerGroupRef.current.remove(); layerGroupRef.current = null; }
       return;
     }
@@ -67,19 +71,22 @@ const CountryLabelsComponent: React.FC<CountryLabelsProps> = ({
 
     // Conditions to NOT add markers
     if (!visible || isLoading || error || countryData.length === 0) {
-      // ... (logging) ...
       return;
     }
 
     // --- Create and add new layer ---
-    console.log(`CountryLabelsComponent: Creating labels for ${countryData.length} countries (Custom CRS).`);
+    // console.log(`CountryLabelsComponent: Creating labels for ${countryData.length} countries (Custom CRS).`);
     const markers: any[] = [];
     layerGroupRef.current = L.layerGroup();
 
     countryData.forEach((country) => {
-      // --- *** CONVERT SVG coordinates TO CUSTOM LatLng *** ---
-      const customLatLng = svgToLatLng(country.position.x, country.position.y);
-      // --- *** END CONVERSION *** ---
+      // --- CONVERT SVG coordinates TO CUSTOM LatLng, passing mapConfig ---
+      const customLatLng = svgToLatLng(
+          country.position.x,
+          country.position.y,
+          mapConfig // <-- PASS mapConfig here
+      );
+      // --- END CONVERSION ---
 
       // Use the custom LatLng for the marker position
       const markerLatLng = L.latLng(customLatLng.lat, customLatLng.lng);
@@ -102,7 +109,7 @@ const CountryLabelsComponent: React.FC<CountryLabelsProps> = ({
 
     markers.forEach((marker) => layerGroupRef.current.addLayer(marker));
     layerGroupRef.current.addTo(map);
-    console.log('CountryLabelsComponent: Labels added to map using custom LatLng.');
+    // console.log('CountryLabelsComponent: Labels added to map using custom LatLng.');
 
     // Cleanup function
     return () => {
@@ -111,8 +118,7 @@ const CountryLabelsComponent: React.FC<CountryLabelsProps> = ({
         layerGroupRef.current = null;
       }
     };
-    // Removed svgHeight from dependency array
-  }, [map, L, visible, countryData, isLoading, error]);
+  }, [map, L, visible, countryData, isLoading, error, mapConfig]); // Add mapConfig to dependency array
 
   return null;
 };
