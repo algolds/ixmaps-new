@@ -1,48 +1,38 @@
-import { LatLng, SvgPoint } from '@/types';
-import { defaultMapConfig } from '@/lib/MapConfig';
+// src/lib/coordinateUtils.ts (Example Update)
+
+import { LatLng } from '@/types'; // Keep LatLng if used elsewhere
 
 /**
- * Convert geographic coordinates (latitude and longitude) to SVG coordinates.
- * @param lat - Latitude in geographic space.
- * @param lng - Longitude in geographic space.
- * @returns SVG coordinates (X and Y).
+ * Converts SVG pixel coordinates (origin top-left) to Leaflet LatLng
+ * for use with CRS.Simple.
+ * @param svgX - X coordinate in SVG pixel space.
+ * @param svgY - Y coordinate in SVG pixel space.
+ * @param L - Leaflet instance (required to create L.LatLng)
+ * @returns Leaflet LatLng object [y, x].
  */
-export const latLngToSvg = (lat: number, lng: number): SvgPoint => {
-  const y = defaultMapConfig.equatorY - lat * defaultMapConfig.pixelsPerLatitude;
-  const x =
-    defaultMapConfig.primeMeridianX + (lng - 30) * defaultMapConfig.pixelsPerLongitude;
-  return { x, y };
+export const svgToLeafletLatLng = (svgX: number, svgY: number, L: any): any => {
+  if (!L || !L.latLng) {
+    console.error('Leaflet instance (L) is required for svgToLeafletLatLng');
+    return null; // Or throw an error
+  }
+  // Leaflet uses [y, x] for LatLng in CRS.Simple context
+  return L.latLng(svgY, svgX);
 };
 
 /**
- * Convert SVG coordinates to geographic coordinates (latitude and longitude).
- * @param svgX - X coordinate in the SVG space.
- * @param svgY - Y coordinate in the SVG space.
- * @returns Geographic coordinates (latitude and longitude).
+ * Converts Leaflet LatLng (used with CRS.Simple) back to SVG pixel coordinates.
+ * @param latLng - Leaflet LatLng object [y, x].
+ * @returns SVG coordinates { x: number, y: number }.
  */
-export const svgToLatLng = (svgX: number, svgY: number): { lat: number; lng: number } => {
-  const lat = (defaultMapConfig.equatorY - svgY) / defaultMapConfig.pixelsPerLatitude;
-  const lng =
-    (svgX - defaultMapConfig.primeMeridianX) / defaultMapConfig.pixelsPerLongitude + 30;
-  return { lat, lng };
+export const leafletLatLngToSvg = (latLng: any): { x: number; y: number } => {
+  // In CRS.Simple, lat corresponds to Y, lng corresponds to X
+  return { x: latLng.lng, y: latLng.lat };
 };
 
-/**
- * Convert geographic coordinates to a custom coordinate system.
- * @param lng - Longitude in geographic space.
- * @param lat - Latitude in geographic space.
- * @param mapConfig - Map configuration object.
- * @param primeMeridianSvg - Prime meridian reference point in SVG space.
- * @returns Custom coordinates.
- */
-export const svgToCustomLatLng = (
-  lng: number,
-  lat: number,
-  mapConfig: any,
-  primeMeridianSvg: SvgPoint
-): LatLng => {
-  const customLat = (mapConfig.equatorY - lat) / mapConfig.pixelsPerLatitude;
-  const customLng =
-    (lng - primeMeridianSvg.x) / mapConfig.pixelsPerLongitude + 30;
-  return { lat: customLat, lng: customLng };
-};
+// --- Deprecated Functions ---
+// /** @deprecated Use svgToLeafletLatLng with CRS.Simple */
+// export const latLngToSvg = (lat: number, lng: number): SvgPoint => { ... };
+// /** @deprecated Use leafletLatLngToSvg with CRS.Simple */
+// export const svgToLatLng = (svgX: number, svgY: number): { lat: number; lng: number } => { ... };
+// /** @deprecated Custom coordinate system removed */
+// export const svgToCustomLatLng = (...) => { ... };

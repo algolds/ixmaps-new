@@ -1,273 +1,139 @@
+// src/components/CountryLabelsComponent.tsx
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { MapConfig, SvgPoint } from '@/types';
-import { svgToLatLng, latLngToSvg } from '@/lib/coordinates-system';
 
-interface CountryLabelsProps {
-  map: any; // Leaflet map instance
-  L: any; // Leaflet library
-  visible: boolean;
-  mapConfig: MapConfig;
-  svgWidth: number;
-  svgHeight: number;
-  onLabelsLoaded?: (countryIds: string[]) => void;
+// Interface for the data fetched
+interface CountryPositionData {
+  id: string;
+  name: string;
+  position: {
+    x: number;
+    y: number;
+  };
 }
 
-interface CountryData {
-  id: string;
-  center: SvgPoint;
-  bounds: {
-    minX: number;
-    minY: number;
-    maxX: number;
-    maxY: number;
-  };
+interface CountryLabelsProps {
+  map: any;
+  L: any;
+  visible: boolean;
+  svgHeight: number; // Add svgHeight prop
 }
 
 const CountryLabelsComponent: React.FC<CountryLabelsProps> = ({
   map,
   L,
   visible,
-  mapConfig,
-  svgWidth,
-  svgHeight,
-  onLabelsLoaded
+  svgHeight, // Destructure the prop
 }) => {
-  const [countryData, setCountryData] = useState<CountryData[]>([]);
-  const [currentZoom, setCurrentZoom] = useState<number>(map?.getZoom() || mapConfig.initialZoom);
-  const labelsRef = useRef<Record<string, any>>({});
-  const labelGroupRef = useRef<any>(null);
-  
-  // Listen for zoom changes
+  const layerGroupRef = useRef<any>(null);
+  const [countryData, setCountryData] = useState<CountryPositionData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Effect 1: Fetch data (remains the same)
   useEffect(() => {
-    if (!map) return;
-    
-    const handleZoomEnd = () => {
-      const newZoom = map.getZoom();
-      setCurrentZoom(newZoom);
-    };
-    
-    map.on('zoomend', handleZoomEnd);
-    
-    return () => {
-      map.off('zoomend', handleZoomEnd);
-    };
-  }, [map]);
-
-  // Extract country IDs and centers from SVG
-  const extractCountryData = async (svgPath: string): Promise<CountryData[]> => {
-    try {
-      console.log(`Fetching SVG from ${svgPath} to extract country data`);
-      const response = await fetch(svgPath);
-      if (!response.ok) {
-        throw new Error(`Failed to load SVG: ${response.status} ${response.statusText}`);
-      }
-
-      const svgContent = await response.text();
-      
-      // Create a temporary DOM element to parse the SVG
-      const parser = new DOMParser();
-      const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
-      
-      // Find the political layer
-      const politicalLayer = svgDoc.getElementById('political');
-      if (!politicalLayer) {
-        console.warn('Political layer not found in SVG');
-        return [];
-      }
-
-      // Find all path elements within the political layer
-      const countryPaths = politicalLayer.querySelectorAll('path[id]');
-      
-      const extractedData: CountryData[] = [];
-      
-      countryPaths.forEach((path) => {
-        const id = path.getAttribute('id');
-        if (id && !id.startsWith('border-')) {
-          // Calculate bounding box for the path
-          const bbox = (path as SVGPathElement).getBBox();
-          
-          // Calculate center point
-          const centerX = bbox.x + (bbox.width / 2);
-          const centerY = bbox.y + (bbox.height / 2);
-          
-          extractedData.push({
-            id,
-            center: { x: centerX, y: centerY },
-            bounds: {
-              minX: bbox.x,
-              minY: bbox.y,
-              maxX: bbox.x + bbox.width,
-              maxY: bbox.y + bbox.height
-            }
-          });
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      console.log('CountryLabelsComponent: Fetching country positions...');
+      try {
+        const response = await fetch('/data/country_positions_bbox.json');
+        if (!response.ok) { /* ... error handling ... */
+           const errorText = await response.text();
+           throw new Error(`HTTP error! status: ${response.status}, ${errorText}`);
         }
-      });
-      
-      console.log(`Extracted ${extractedData.length} country IDs from political layer`);
-      return extractedData;
-    } catch (error) {
-      console.error('Error extracting country data:', error);
-      return [];
-    }
-  };
+        const data: CountryPositionData[] = await response.json();
+        console.log(`CountryLabelsComponent: Fetched ${data.length} positions.`);
+        if (!Array.isArray(data)) { /* ... error handling ... */
+           throw new Error('Expected an array of country positions.');
+        }
+        // Basic validation
+         const validData = data.filter(item =>
+             item && typeof item.id === 'string' && typeof item.name === 'string' &&
+             typeof item.position?.x === 'number' && typeof item.position?.y === 'number'
+         );
+         if (validData.length !== data.length) {
+             console.warn("CountryLabelsComponent: Some items filtered out.");
+         }
+        setCountryData(validData);
+      } catch (e: any) { /* ... error handling ... */
+         console.error('CountryLabelsComponent: Fetch/process error:', e);
+         setError(e.message || 'Failed to load labels');
+         setCountryData([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
-  // Create labels on the map
-  const createLabels = () => {
-    if (!map || !L || countryData.length === 0) return;
-    
-    // Remove existing labels
-    if (labelGroupRef.current) {
-      labelGroupRef.current.removeFrom(map);
+  // Effect 2: Manage Leaflet markers
+  useEffect(() => {
+    if (!map || !L || !svgHeight) { // Also check if svgHeight is available
+      console.log('CountryLabelsComponent: Map, Leaflet, or svgHeight not ready.');
+      // Ensure cleanup if layer exists even if we exit early
+      if (layerGroupRef.current) {
+          layerGroupRef.current.remove();
+          layerGroupRef.current = null;
+      }
+      return;
     }
-    
-    // Create a new layer group for labels
-    const labelGroup = L.layerGroup();
-    
-    // Create a label for each country
+
+    // Clear previous layer
+    if (layerGroupRef.current) {
+      layerGroupRef.current.remove();
+      layerGroupRef.current = null;
+    }
+
+    // Conditions to NOT add markers
+    if (!visible || isLoading || error || countryData.length === 0) {
+      // ... (logging as before) ...
+      return;
+    }
+
+    // --- Create and add new layer ---
+    console.log(`CountryLabelsComponent: Creating labels for ${countryData.length} countries.`);
+    const markers: any[] = [];
+    layerGroupRef.current = L.layerGroup();
+
     countryData.forEach((country) => {
-      // Convert SVG coordinates to geographic coordinates
-      const { lat, lng } = svgToLatLng(country.center.x, country.center.y);
-      
-      // Create a tooltip
-      const tooltip = L.tooltip({
-        permanent: true,
-        direction: 'center',
-        className: `${mapConfig.labelClassName} country-id-label`,
-        opacity: 0.8
-      }).setContent(country.id);
-      
-      // Create a marker (invisible) to hold the tooltip
-      const marker = L.marker([lat, lng], {
-        icon: L.divIcon({
-          className: 'country-label-container',
-          iconSize: [0, 0]
-        }),
-        interactive: false
+      // --- *** INVERT THE Y-COORDINATE *** ---
+      // Subtract the SVG Y coordinate from the total SVG height
+      const invertedY = svgHeight - country.position.y;
+      const latLng = L.latLng(invertedY, country.position.x);
+      // --- *** END INVERSION *** ---
+
+      const labelIcon = L.divIcon({
+        className: 'country-label-icon',
+        html: `<span>${country.name}</span>`,
+        iconSize: undefined,
       });
-      
-      // Add tooltip to marker
-      marker.bindTooltip(tooltip).openTooltip();
-      
-      // Add to layer group
-      labelGroup.addLayer(marker);
-      
-      // Save reference
-      labelsRef.current[country.id] = marker;
-      
-      // For horizontal wrapping, create additional markers if needed
-      // Left copy (for countries that may wrap around on the left edge)
-      if (country.center.x < mapConfig.svgWidth * 0.25) {
-        const leftCopy = L.marker([lat, lng + mapConfig.svgWidth], {
-          icon: L.divIcon({
-            className: 'country-label-container',
-            iconSize: [0, 0]
-          }),
-          interactive: false
-        });
-        leftCopy.bindTooltip(tooltip).openTooltip();
-        labelGroup.addLayer(leftCopy);
-      }
-      
-      // Right copy (for countries that may wrap around on the right edge)
-      if (country.center.x > mapConfig.svgWidth * 0.75) {
-        const rightCopy = L.marker([lat, lng - mapConfig.svgWidth], {
-          icon: L.divIcon({
-            className: 'country-label-container',
-            iconSize: [0, 0]
-          }),
-          interactive: false
-        });
-        rightCopy.bindTooltip(tooltip).openTooltip();
-        labelGroup.addLayer(rightCopy);
-      }
+
+      const marker = L.marker(latLng, {
+        icon: labelIcon,
+        zIndexOffset: 500,
+        interactive: false,
+        title: country.name,
+      });
+
+      markers.push(marker);
     });
-    
-    // Add layer group to map if visible
-    if (visible) {
-      labelGroup.addTo(map);
-    }
-    
-    // Save reference to layer group
-    labelGroupRef.current = labelGroup;
-    
-    // Notify parent component if needed
-    if (onLabelsLoaded) {
-      onLabelsLoaded(countryData.map(c => c.id));
-    }
-  };
 
-  // Load country data when component mounts or when LOD changes
-  useEffect(() => {
-    const loadCountryData = async () => {
-      // Use the appropriate SVG path based on LOD settings
-      const svgPath = mapConfig.lodEnabled 
-        ? mapConfig.baseMapUrl 
-        : mapConfig.masterMapPath;
-        
-      console.log(`Loading country data from ${svgPath}`);
-      const data = await extractCountryData(svgPath);
-      setCountryData(data);
-    };
-    
-    loadCountryData();
-  }, [mapConfig.masterMapPath, mapConfig.baseMapUrl, mapConfig.lodEnabled]);
+    markers.forEach((marker) => layerGroupRef.current.addLayer(marker));
+    layerGroupRef.current.addTo(map);
+    console.log('CountryLabelsComponent: Labels added to map with inverted Y.');
 
-  // Create labels when country data is loaded or zoom level changes
-  useEffect(() => {
-    createLabels();
-    
-    // Scale the labels based on zoom level
-    const fontSizeBase = 10; // Base font size in pixels
-    const zoomFactor = 1 + (currentZoom * 0.15); // Adjust label size based on zoom
-    const fontSize = Math.max(fontSizeBase * zoomFactor, 8); // Minimum size of 8px
-    
-    // Apply font size to all labels
-    const labels = document.querySelectorAll('.country-id-label');
-    labels.forEach(label => {
-      (label as HTMLElement).style.fontSize = `${fontSize}px`;
-    });
-    
-  }, [countryData, map, L, currentZoom]);
-  
-  // Reload country data when base map URL changes (LOD level changes)
-  useEffect(() => {
-    if (mapConfig.lodEnabled) {
-      const loadCountryData = async () => {
-        const data = await extractCountryData(mapConfig.baseMapUrl);
-        setCountryData(data);
-      };
-      
-      loadCountryData();
-    }
-  }, [mapConfig.baseMapUrl]);
-
-  // Update visibility
-  useEffect(() => {
-    if (!labelGroupRef.current) return;
-    
-    if (visible) {
-      if (!map.hasLayer(labelGroupRef.current)) {
-        labelGroupRef.current.addTo(map);
-      }
-    } else {
-      if (map.hasLayer(labelGroupRef.current)) {
-        labelGroupRef.current.removeFrom(map);
-      }
-    }
-  }, [visible, map]);
-
-  // Clean up on unmount
-  useEffect(() => {
+    // Cleanup function
     return () => {
-      if (labelGroupRef.current && map) {
-        labelGroupRef.current.removeFrom(map);
+      if (layerGroupRef.current) {
+        layerGroupRef.current.remove();
+        layerGroupRef.current = null;
       }
     };
-  }, [map]);
+    // Add svgHeight to dependency array
+  }, [map, L, visible, countryData, isLoading, error, svgHeight]);
 
-  // This component doesn't render any DOM elements
   return null;
 };
 
