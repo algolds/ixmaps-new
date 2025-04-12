@@ -61,12 +61,11 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     setIsMapReady(true);
     initToasts();
 
-   // Calculate and set primeMeridianSvg state
-    // *** FIX: Call latLngToSvg with only 2 arguments ***
-    const pmSvgOrigin = latLngToSvg(0, 0); // Assumes latLngToSvg uses defaultMapConfig internally
+    // Calculate and set primeMeridianSvg state
+    // Pass mapConfig to ensure correct calculations
+    const pmSvgOrigin = latLngToSvg(0, 0, mapConfig);
     setPrimeMeridianSvg(pmSvgOrigin);
-    // console.log('Prime Meridian SVG reference point (Custom LatLng 0,0):', pmSvgOrigin);
-
+    
     showToast('Map initialized successfully!', 'success', 3000);
   };
 
@@ -76,7 +75,6 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const toggleCoordinates = (visible: boolean) => setShowCoordinates(visible);
   const handleTogglePrimeMeridian = (visible: boolean) => {
     setShowPrimeMeridian(visible);
-    // console.log('Prime Meridian visibility toggled:', visible);
   };
 
   return (
@@ -100,8 +98,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
             map={map}
             L={leaflet}
             visible={showCountryLabels}
-            mapConfig={mapConfig} // <-- PASS mapConfig
-            // Remove svgWidth and svgHeight
+            mapConfig={mapConfig}
           />
 
           {/* Grid Component */}
@@ -109,24 +106,19 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
             map={map}
             L={leaflet}
             visible={showGrid}
-            mapConfig={mapConfig} // <-- Pass mapConfig (as defined in its props)
-            // primeMeridianSvg={primeMeridianSvg} // Pass if needed
+            mapConfig={mapConfig}
           />
 
-          {/* Coordinates Component */}
+          {/* Coordinates Component - Fixed props */}
           <CoordinatesComponent
             map={map}
             L={leaflet}
             visible={showCoordinates}
             mapConfig={mapConfig}
             primeMeridianSvg={primeMeridianSvg}
-            showPrimeMeridian={showPrimeMeridian} // <-- Pass state
-
-            // Pass svgWidth/Height only if CoordinatesComponentProps requires them
+            showPrimeMeridian={showPrimeMeridian}
             svgWidth={mapConfig.svgWidth}
-            svgHeight={mapConfig.svgHeight} setPrimeMeridianSvg={function (point: SvgPoint | null): void {
-              throw new Error('Function not implemented.');
-            } }            // Do not pass setPrimeMeridianSvg unless needed and defined in props
+            svgHeight={mapConfig.svgHeight}
           />
 
           {/* SVG Layer Control */}
@@ -138,31 +130,30 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
             position="topright"
           />
 
-          {/* Control Panel */}
+          {/* Control Panel - Fixed with all required props */}
           <ControlPanel
             map={map}
             L={leaflet}
             mapConfig={mapConfig}
             layerControlRef={layerControlRef}
             onToggleGrid={toggleGrid}
-            // onToggleLabels={toggleCountryLabels} // Remove if not defined in ControlPanelProps
-            onToggleCountryLabels={toggleCountryLabels} // Ensure this matches prop name
-            onToggleCoordinates={toggleCoordinates} // Ensure this matches prop name
-            // onTogglePosition={(visible) => console.log('Position toggled:', visible)} // Remove if not defined
+            onToggleCountryLabels={toggleCountryLabels}
+            onToggleCoordinates={toggleCoordinates}
+            onTogglePrimeMeridian={handleTogglePrimeMeridian}
           />
 
           {/* Map Scale */}
           <MapScale
             map={map}
             L={leaflet}
-            mapConfig={mapConfig} // Pass mapConfig
+            mapConfig={mapConfig}
           />
 
           {/* Distance Measurement */}
           <DistanceMeasurement
             map={map}
             L={leaflet}
-            mapConfig={mapConfig} // Pass mapConfig
+            mapConfig={mapConfig}
           />
         </>
       )}

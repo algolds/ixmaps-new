@@ -35,7 +35,11 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({
 
     const styleTag = document.createElement('style');
     styleTag.id = 'leaflet-draw-inline-style'; // Give it an ID for removal
-    styleTag.textContent = drawControlRef;
+    styleTag.textContent = `
+      .leaflet-draw-toolbar .leaflet-draw-draw-polyline { 
+        background-position: -2px -2px;
+      }
+    `; // Appropriate CSS string instead of the ref
     document.head.appendChild(styleTag);
 
     const script = document.createElement('script');
@@ -68,7 +72,7 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({
     map.addLayer(drawnItemsRef.current);
 
     drawControlRef.current = new L.Control.Draw({
-      position: 'topright',
+      position: 'topleft',
       draw: {
         polyline: { shapeOptions: { color: '#f357a1', weight: 4 }, metric: true, feet: false, showLength: true },
         polygon: false, rectangle: false, circle: false, marker: false, circlemarker: false,
