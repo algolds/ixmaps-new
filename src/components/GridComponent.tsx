@@ -86,7 +86,6 @@ const GridComponent: React.FC<GridComponentProps> = ({
       try {
         const bounds = map.getBounds();
         const zoom = map.getZoom();
-        const svgBounds = map.getPixelBounds(); // Get viewport in pixels
 
         // Define grid spacing based on zoom (example logic)
         let latSpacing = 30;
@@ -99,9 +98,8 @@ const GridComponent: React.FC<GridComponentProps> = ({
           latSpacing = 10;
           lngSpacing = 10;
         }
-        // Add more levels if needed
 
-        // Calculate visible lat/lng range (approximate)
+        // Calculate visible lat/lng range
         const northEast = bounds.getNorthEast();
         const southWest = bounds.getSouthWest();
 
@@ -110,24 +108,18 @@ const GridComponent: React.FC<GridComponentProps> = ({
         const endLat = Math.ceil(northEast.lat / latSpacing) * latSpacing;
 
         for (let lat = startLat; lat <= endLat; lat += latSpacing) {
-          if (lat < mapConfig.bounds.south || lat > mapConfig.bounds.north)
-            continue; // Skip if outside map bounds
+          // Skip if outside map bounds
+          if (lat < mapConfig.bounds.south || lat > mapConfig.bounds.north) continue;
 
           try {
-            // Need points far left and far right in SVG coords for the line
-            const leftPointSvg = latLngToSvg(lat, -180, mapConfig); // Approx west edge
-            const rightPointSvg = latLngToSvg(lat, 180, mapConfig); // Approx east edge
-
-            // Convert SVG Y back to LatLng for Leaflet polyline (using a fixed Lng, e.g., 0)
-            // This seems overly complex. Let's draw directly if possible or use bounds.
-            // Alternative: Use map bounds directly
+            // Use the full map width for the latitude line
             const linePoints: L.LatLngExpression[] = [
               [lat, bounds.getWest()],
               [lat, bounds.getEast()],
             ];
 
-            const isMajor = lat % 30 === 0; // Example: Major line every 30 degrees
-            L.polyline(linePoints, {
+            const isMajor = lat % 30 === 0; // Major line every 30 degrees
+            const polyline = L.polyline(linePoints, {
               color: gridStyle.GRID_COLOR || '#666',
               weight: isMajor
                 ? gridStyle.MAJOR_LINE_WEIGHT || 1.5
@@ -137,9 +129,24 @@ const GridComponent: React.FC<GridComponentProps> = ({
                 ? gridStyle.MAJOR_DASH_ARRAY || undefined
                 : gridStyle.DASH_ARRAY || '5,5',
               interactive: false,
-            }).addTo(gridLayerRef.current);
+              bubblingMouseEvents: false, // Avoid handling mouse events
+            });
+            
+            polyline.addTo(gridLayerRef.current);
 
-            // TODO: Add Latitude Labels if needed (similar logic using L.marker/L.divIcon)
+            // Add latitude label if it's a major line
+            if (isMajor) {
+              const labelPos: L.LatLngExpression = [lat, bounds.getWest() + 5]; // Position label at left + offset
+              L.marker(labelPos, {
+                icon: L.divIcon({
+                  className: 'grid-label',
+                  html: `${Math.abs(lat)}°${lat >= 0 ? 'N' : 'S'}`,
+                  iconSize: [40, 20],
+                  iconAnchor: [20, 10],
+                }),
+                interactive: false,
+              }).addTo(gridLayerRef.current);
+            }
           } catch (lineError) {
             console.warn(`Error drawing latitude line at ${lat}:`, lineError);
           }
@@ -150,17 +157,17 @@ const GridComponent: React.FC<GridComponentProps> = ({
         const endLng = Math.ceil(northEast.lng / lngSpacing) * lngSpacing;
 
         for (let lng = startLng; lng <= endLng; lng += lngSpacing) {
-          if (lng < mapConfig.bounds.west || lng > mapConfig.bounds.east)
-            continue; // Skip if outside map bounds
+          // Skip if outside map bounds
+          if (lng < mapConfig.bounds.west || lng > mapConfig.bounds.east) continue;
 
           try {
             const linePoints: L.LatLngExpression[] = [
               [bounds.getSouth(), lng],
               [bounds.getNorth(), lng],
             ];
-            const isMajor = lng % 30 === 0; // Example: Major line every 30 degrees
+            const isMajor = lng % 30 === 0; // Major line every 30 degrees
 
-            L.polyline(linePoints, {
+            const polyline = L.polyline(linePoints, {
               color: gridStyle.GRID_COLOR || '#666',
               weight: isMajor
                 ? gridStyle.MAJOR_LINE_WEIGHT || 1.5
@@ -170,9 +177,24 @@ const GridComponent: React.FC<GridComponentProps> = ({
                 ? gridStyle.MAJOR_DASH_ARRAY || undefined
                 : gridStyle.DASH_ARRAY || '5,5',
               interactive: false,
-            }).addTo(gridLayerRef.current);
+              bubblingMouseEvents: false, // Avoid handling mouse events
+            });
+            
+            polyline.addTo(gridLayerRef.current);
 
-            // TODO: Add Longitude Labels if needed
+            // Add longitude label if it's a major line
+            if (isMajor) {
+              const labelPos: L.LatLngExpression = [bounds.getSouth() + 5, lng]; // Position label at bottom + offset
+              L.marker(labelPos, {
+                icon: L.divIcon({
+                  className: 'grid-label',
+                  html: `${Math.abs(lng)}°${lng >= 0 ? 'E' : 'W'}`,
+                  iconSize: [40, 20],
+                  iconAnchor: [20, 10],
+                }),
+                interactive: false,
+              }).addTo(gridLayerRef.current);
+            }
           } catch (lineError) {
             console.warn(`Error drawing longitude line at ${lng}:`, lineError);
           }
@@ -185,19 +207,11 @@ const GridComponent: React.FC<GridComponentProps> = ({
     // --- Draw Prime Meridian Line ---
     if (showPrimeMeridian && primeMeridianSvg) {
       try {
-        // Calculate the geographic coordinates for the top and bottom of the PM line
-        // using the SVG origin X and the SVG height from mapConfig.
-        // We need the LatLng equivalent for the line.
-        // The PM is at a constant *longitude* (0 degrees in the custom system,
-        // which corresponds to primeMeridianRef.lng in the standard system if needed,
-        // but visually it's a vertical line at primeMeridianSvg.x).
-        // We need the top/bottom latitude corresponding to the map bounds.
-
         // Get the LatLng for the top-left and bottom-right corners of the *SVG*
         const svgTopLeftLatLng = svgToLatLng(0, 0, mapConfig);
         const svgBottomRightLatLng = svgToLatLng(
-          mapConfig.svgWidth,
-          mapConfig.svgHeight,
+          mapConfig.svgWidth || 8200,  // Provide default value if undefined
+          mapConfig.svgHeight || 4900, // Provide default value if undefined
           mapConfig,
         );
 
@@ -210,7 +224,7 @@ const GridComponent: React.FC<GridComponentProps> = ({
         );
         const endPointLatLng = svgToLatLng(
           primeMeridianSvg.x,
-          mapConfig.svgHeight, // Bottom of SVG
+          mapConfig.svgHeight || 4900, // Bottom of SVG, provide default if undefined
           mapConfig,
         );
 
@@ -229,13 +243,22 @@ const GridComponent: React.FC<GridComponentProps> = ({
           },
         );
 
-        // Add the newly created line to the *same* layer group
+        // Add the newly created line to the layer group
         gridLayerRef.current.addLayer(line);
       } catch (error) {
         console.error('Error calculating/drawing prime meridian:', error);
       }
     }
-    // Dependencies: Include all props used in drawing logic
+    
+    // Force redraw of the grid layer
+    if (gridLayerRef.current) {
+      gridLayerRef.current.eachLayer((layer) => {
+        if (layer.redraw) {
+          layer.redraw();
+        }
+      });
+    }
+    
   }, [
     map,
     L,
@@ -243,8 +266,8 @@ const GridComponent: React.FC<GridComponentProps> = ({
     primeMeridianSvg,
     showGrid,
     showPrimeMeridian,
-    // Add map zoom/move dependencies if grid spacing depends on them
-    // map.getZoom(), map.getBounds() // These might cause too many redraws, consider throttling
+    map && map.getZoom(), // Add zoom as dependency to redraw when zooming
+    map && map.getBounds(), // Add bounds as dependency to redraw on pan/zoom
   ]);
 
   // --- Effect for Position Display Control ---
@@ -284,15 +307,19 @@ const GridComponent: React.FC<GridComponentProps> = ({
     if (showPositionDisplay) {
       map.addControl(control);
     } else {
-      // Ensure removal if prop becomes false
-      if (map.addControl(control)) {
-        map.removeControl(control);
+      // Remove control if it exists on the map
+      if (control && map.hasLayer) {
+        try {
+          map.removeControl(control);
+        } catch (e) {
+          // Control might not be added yet
+        }
       }
     }
 
     // Cleanup: Remove control when component unmounts
     return () => {
-      if (map && control && map.addControl(control)) {
+      if (map && control) {
         try {
           map.removeControl(control);
         } catch (e) {
