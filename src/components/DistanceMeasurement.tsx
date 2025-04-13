@@ -2,120 +2,192 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { MapConfig, LatLng } from '@/types'; // Make sure MapConfig is imported
-import { calculateDistance } from '@/lib/coordinates-system'; // Ensure correct path
+import { MapConfig } from '@/types';
+import { calculateDistance } from '@/lib/DistanceCalculator';
 
+// Import Leaflet types/base
+import L from 'leaflet';
+// REMOVED: import 'leaflet-draw'; // <-- *** REMOVE THIS LINE ***
 
+// Import the Leaflet Draw CSS ONLY
+import 'leaflet-draw/dist/leaflet.draw.css'; // <-- *** KEEP THIS LINE ***
 
 // Define the props interface for this component
 interface DistanceMeasurementProps {
-  map: any;
-  L: any;
-  mapConfig: MapConfig; // <-- *** ENSURE THIS LINE EXISTS ***
+  map: L.Map | null;
+  L: typeof window.L | null; // Or typeof L if you prefer consistency
+  mapConfig: MapConfig | null;
 }
 
 const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({
   map,
-  L,
-  mapConfig, // <-- Destructure the prop
+  L: LeafletInstance, // Use the passed L instance
+  mapConfig,
 }) => {
-  const drawnItemsRef = useRef<any>(null);
-  const drawControlRef = useRef<any>(null);
-  const [isLoaded, setIsLoaded] = useState(false); // Track if draw plugin is loaded
+  const drawnItemsRef = useRef<L.FeatureGroup | null>(null);
+  const drawControlRef = useRef<L.Control.Draw | null>(null);
 
-  // Load Leaflet.draw CSS and JS
+  // Initialize Draw Controls when map/L are ready
   useEffect(() => {
-    if (document.getElementById('leaflet-draw-css')) return; // Prevent duplicate loads
+    // --- Pre-conditions Check ---
+    const LRef = LeafletInstance; // Use the L instance passed from MapComponent
+    if (!map || !LRef) {
+      console.log(
+        '[DistanceMeasurement] Skipping draw control initialization (Map or L not ready).',
+        { hasMap: !!map, hasL: !!LRef },
+      );
+      return;
+    }
 
-    const cssLink = document.createElement('link');
-    cssLink.id = 'leaflet-draw-css';
-    cssLink.rel = 'stylesheet';
-    cssLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css';
-    document.head.appendChild(cssLink);
+    // Check if L.Control.Draw is available (should be, as import is now in MapComponent)
+    // This check is still good as a safeguard
+    if (!LRef.Control.Draw) {
+      console.error(
+        '[DistanceMeasurement] L.Control.Draw not found! Check import order in parent component.',
+      );
+      return; // Stop if Draw is still missing
+    }
 
-    const styleTag = document.createElement('style');
-    styleTag.id = 'leaflet-draw-inline-style'; // Give it an ID for removal
-    styleTag.textContent = `
-      .leaflet-draw-toolbar .leaflet-draw-draw-polyline { 
-        background-position: -2px -2px;
+    console.log('[DistanceMeasurement] Initializing draw controls...');
+
+    // --- Cleanup previous instances ---
+    // ... (cleanup code remains the same) ...
+     if (drawControlRef.current) {
+      console.log('[DistanceMeasurement] Removing previous draw control.');
+      try {
+        drawControlRef.current.remove();
+      } catch (err) {
+        console.warn('Error removing previous draw control:', err);
       }
-    `; // Appropriate CSS string instead of the ref
-    document.head.appendChild(styleTag);
-
-    const script = document.createElement('script');
-    script.id = 'leaflet-draw-script'; // Give it an ID for removal
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js';
-    script.async = true;
-    script.onload = () => setIsLoaded(true);
-    script.onerror = () => console.error('Failed to load Leaflet.draw');
-    document.body.appendChild(script);
-
-    return () => {
-      // Cleanup script and style tags
-      document.getElementById('leaflet-draw-css')?.remove();
-      document.getElementById('leaflet-draw-inline-style')?.remove();
-      document.getElementById('leaflet-draw-script')?.remove();
-    };
-  }, []);
+      drawControlRef.current = null;
+    }
+    if (drawnItemsRef.current) {
+      console.log('[DistanceMeasurement] Removing previous drawn items layer.');
+      try {
+        drawnItemsRef.current.remove();
+        drawnItemsRef.current.clearLayers();
+      } catch (err) {
+        console.warn('Error removing previous drawn items:', err);
+      }
+      drawnItemsRef.current = null;
+    }
 
 
-  useEffect(() => {
-    // Initialize only when everything is ready
-    if (!map || !L || !L.Draw || !isLoaded || !mapConfig) return;
-
-    // --- Cleanup previous controls/layers ---
-    if (drawControlRef.current) { drawControlRef.current.remove(); drawControlRef.current = null; }
-    if (drawnItemsRef.current) { drawnItemsRef.current.remove(); drawnItemsRef.current = null; }
-    // --- End Cleanup ---
-
-    drawnItemsRef.current = new L.FeatureGroup();
+    // --- Initialize ---
+    drawnItemsRef.current = new LRef.FeatureGroup();
     map.addLayer(drawnItemsRef.current);
 
-    drawControlRef.current = new L.Control.Draw({
-      position: 'topleft',
+    drawControlRef.current = new LRef.Control.Draw({
+      // ... (options remain the same) ...
+       position: 'topleft',
       draw: {
-        polyline: { shapeOptions: { color: '#f357a1', weight: 4 }, metric: true, feet: false, showLength: true },
-        polygon: false, rectangle: false, circle: false, marker: false, circlemarker: false,
+        polyline: {
+          shapeOptions: { color: '#f357a1', weight: 4 },
+          metric: true,
+          feet: false,
+          showLength: true,
+          repeatMode: true,
+        },
+        polygon: false,
+        rectangle: false,
+        circle: false,
+        marker: false,
+        circlemarker: false,
       },
-      edit: { featureGroup: drawnItemsRef.current, remove: true },
+      edit: {
+        featureGroup: drawnItemsRef.current,
+        remove: true,
+      },
     });
     map.addControl(drawControlRef.current);
+    console.log('[DistanceMeasurement] Draw controls added to map.');
 
-    const handleDrawCreated = (e: any) => {
-      const type = e.layerType;
-      const layer = e.layer;
-      if (type === 'polyline') {
-        const latlngs = layer.getLatLngs() as LatLng[];
+    // --- Event Handler ---
+    const handleDrawCreated = (e: L.LeafletEvent) => {
+       // ... (handler code remains the same, using LRef if needed for types) ...
+       const layer = (e as any).layer;
+      const layerType = (e as any).layerType;
+
+      if (layerType === 'polyline' && layer instanceof LRef.Polyline) {
+        const polylineLayer = layer as L.Polyline;
+        const latlngs = polylineLayer.getLatLngs() as L.LatLng[];
+
         if (latlngs.length >= 2) {
           let totalDistanceKm = 0;
           let totalDistanceMiles = 0;
+
           for (let i = 1; i < latlngs.length; i++) {
-             // Use the passed mapConfig for calculation
-             const dist = calculateDistance(latlngs[i-1], latlngs[i], mapConfig);
-             totalDistanceKm += dist.km;
-             totalDistanceMiles += dist.miles;
+            try {
+              // calculateDistance now expects the map object
+              const dist = calculateDistance(latlngs[i - 1], latlngs[i], map);
+              totalDistanceKm += dist.kilometers;
+              totalDistanceMiles += dist.miles;
+            } catch (calcError) {
+              console.error('Error calculating distance segment:', calcError);
+              layer.bindPopup('Error calculating distance.').openPopup();
+              return;
+            }
           }
-          const popupContent = `Distance:<br>${totalDistanceMiles.toFixed(2)} miles<br>${totalDistanceKm.toFixed(2)} km`;
+
+          const popupContent = `Distance:<br>${totalDistanceMiles.toFixed(
+            2,
+          )} miles<br>${totalDistanceKm.toFixed(2)} km`;
           layer.bindPopup(popupContent).openPopup();
+          console.log(
+            `[DistanceMeasurement] Polyline drawn. Distance: ${totalDistanceKm.toFixed(2)} km`,
+          );
         }
       }
-      drawnItemsRef.current.addLayer(layer);
-    };
-
-    map.on(L.Draw.Event.CREATED, handleDrawCreated);
-
-    // Cleanup event listeners and controls
-    return () => {
-      if (map) {
-         map.off(L.Draw.Event.CREATED, handleDrawCreated);
-         if (drawControlRef.current) { try { drawControlRef.current.remove(); } catch (err) {} }
-         if (drawnItemsRef.current) { try { drawnItemsRef.current.remove(); } catch (err) {} }
+      if (drawnItemsRef.current) {
+        drawnItemsRef.current.addLayer(layer);
+      } else {
+        console.error(
+          '[DistanceMeasurement] drawnItemsRef is null, cannot add layer.',
+        );
       }
-       drawControlRef.current = null;
-       drawnItemsRef.current = null;
     };
-  }, [map, L, mapConfig, isLoaded]); // Include mapConfig in dependency array
 
+    // Use LRef here too
+    map.on(LRef.Draw.Event.CREATED, handleDrawCreated);
+    console.log('[DistanceMeasurement] CREATED event listener added.');
+
+    // --- Cleanup for this effect ---
+    return () => {
+      // ... (cleanup code remains the same, using LRef if needed) ...
+       console.log('[DistanceMeasurement] Cleaning up draw controls effect...');
+      if (map) {
+        console.log('[DistanceMeasurement] Removing CREATED event listener.');
+        // Use LRef here too
+        map.off(LRef.Draw.Event.CREATED, handleDrawCreated);
+
+        if (drawControlRef.current) {
+          console.log('[DistanceMeasurement] Removing draw control from map.');
+          try {
+            drawControlRef.current.remove();
+          } catch (err) {
+            console.warn('Error removing draw control on cleanup:', err);
+          }
+        }
+        if (drawnItemsRef.current) {
+          console.log(
+            '[DistanceMeasurement] Removing drawn items layer from map.',
+          );
+          try {
+            drawnItemsRef.current.remove();
+          } catch (err) {
+            console.warn(
+              'Error removing drawn items layer on cleanup:',
+              err,
+            );
+          }
+        }
+      }
+      drawControlRef.current = null;
+      drawnItemsRef.current = null;
+    };
+  }, [map, LeafletInstance, mapConfig]); // Dependencies remain the same
+
+  // This component doesn't render anything itself
   return null;
 };
 
