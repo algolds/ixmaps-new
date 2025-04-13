@@ -11,17 +11,40 @@ import {
   formatLatitude,
   formatLongitude,
 } from '@/lib/coordinates-system';
-// Import grid styles
-import { gridStyle } from '@/lib/MapConfig';
 
-// Define special latitudes
+// Define enhanced grid styles with more prominent highlights
+const GRID_STYLES = {
+  // Regular grid
+  GRID_COLOR: '#aaaaaa',
+  MINOR_LINE_WEIGHT: 0.5,
+  LINE_OPACITY: 0.6,
+  DASH_ARRAY: '3, 5',
+  MAJOR_LINE_WEIGHT: 1,
+  MAJOR_DASH_ARRAY: null,
+  
+  // Special lines
+  EQUATOR_COLOR: '#ff3333',
+  EQUATOR_WEIGHT: 2,
+  EQUATOR_OPACITY: 0.8,
+  
+  TROPIC_COLOR: '#ff9900',
+  TROPIC_WEIGHT: 1.5,
+  TROPIC_OPACITY: 0.8,
+  TROPIC_DASH_ARRAY: '5, 5',
+  
+  PRIME_MERIDIAN_COLOR: '#3388ff',
+  PRIME_MERIDIAN_WEIGHT: 2,
+  PRIME_MERIDIAN_OPACITY: 0.8,
+  PRIME_MERIDIAN_DASH_ARRAY: null,
+};
+
+// Define special latitudes with enhanced data
 const NAMED_LATITUDES = [
-  { lat: 23.5, name: 'Tropic of Cancer' },
-  { lat: 0, name: 'Equator' },
-  { lat: -23.5, name: 'Tropic of Capricorn' },
-  // Add Arctic/Antarctic Circles if needed:
-  // { lat: 66.5, name: 'Arctic Circle' },
-  // { lat: -66.5, name: 'Antarctic Circle' },
+  { lat: 23.5, name: 'Tropic of Cancer', type: 'tropic' },
+  { lat: 0, name: 'Equator', type: 'equator' },
+  { lat: -23.5, name: 'Tropic of Capricorn', type: 'tropic' },
+  { lat: 66.5, name: 'Arctic Circle', type: 'circle' },
+  { lat: -66.5, name: 'Antarctic Circle', type: 'circle' },
 ];
 const LATITUDE_TOLERANCE = 0.1; // Tolerance for matching named latitudes
 
@@ -82,62 +105,92 @@ const GridComponent: React.FC<GridComponentProps> = ({
     // --- Draw Grid Lines (only if showGrid is true) ---
     if (showGrid) {
       try {
-        // Define spacing for MINOR grid lines
+        // Define spacing for grid lines based on zoom level
         let minorLatSpacing = 15;
         let minorLngSpacing = 15;
         if (zoom >= 2) { minorLatSpacing = 10; minorLngSpacing = 10; }
         if (zoom >= 4) { minorLatSpacing = 5; minorLngSpacing = 5; }
+        if (zoom >= 6) { minorLatSpacing = 2; minorLngSpacing = 2; }
+        if (zoom >= 8) { minorLatSpacing = 1; minorLngSpacing = 1; }
 
+        // Calculate visible area with buffer
         const northEast = bounds.getNorthEast();
         const southWest = bounds.getSouthWest();
         const buffer = Math.max(minorLatSpacing, minorLngSpacing) * 2;
-        const calcSouth = Math.max(mapConfig.bounds.south, southWest.lat - buffer);
-        const calcNorth = Math.min(mapConfig.bounds.north, northEast.lat + buffer);
-        const calcWest = Math.max(mapConfig.bounds.west, southWest.lng - buffer);
-        const calcEast = Math.min(mapConfig.bounds.east, northEast.lng + buffer);
+        
+        // Calculate grid bounds - use standard -180 to 180 longitude and -90 to 90 latitude
+        const calcSouth = Math.max(-90, southWest.lat - buffer);
+        const calcNorth = Math.min(90, northEast.lat + buffer);
+        const calcWest = Math.max(-180, southWest.lng - buffer);
+        const calcEast = Math.min(180, northEast.lng + buffer);
 
         // --- Draw Latitude Lines ---
         const startLat = Math.ceil(calcSouth / minorLatSpacing) * minorLatSpacing;
         const endLat = Math.floor(calcNorth / minorLatSpacing) * minorLatSpacing;
         const drawnNamedLats: number[] = []; // Keep track of drawn named lines
 
-        // 1. Draw Named Latitudes first
+        // 1. Draw Named Latitudes first with enhanced styling
         NAMED_LATITUDES.forEach(namedLat => {
           // Check if within calculation bounds
           if (namedLat.lat >= calcSouth && namedLat.lat <= calcNorth) {
-            const isEquator = Math.abs(namedLat.lat) < LATITUDE_TOLERANCE;
-            const lineStyle: L.PolylineOptions = {
-              color: isEquator ? gridStyle.EQUATOR_COLOR : gridStyle.GRID_COLOR, // Use specific color for Equator
-              weight: gridStyle.MAJOR_LINE_WEIGHT, // Use major weight
-              opacity: gridStyle.LINE_OPACITY,
-              dashArray: gridStyle.MAJOR_DASH_ARRAY || undefined, // Use major dash (solid)
-              interactive: false,
-              bubblingMouseEvents: false,
-            };
+            // Different styling based on line type
+            let lineStyle: L.PolylineOptions;
+            
+            if (namedLat.type === 'equator') {
+              lineStyle = {
+                color: GRID_STYLES.EQUATOR_COLOR,
+                weight: GRID_STYLES.EQUATOR_WEIGHT,
+                opacity: GRID_STYLES.EQUATOR_OPACITY,
+                dashArray: null,
+                interactive: false,
+                bubblingMouseEvents: false,
+              };
+            } else if (namedLat.type === 'tropic') {
+              lineStyle = {
+                color: GRID_STYLES.TROPIC_COLOR,
+                weight: GRID_STYLES.TROPIC_WEIGHT,
+                opacity: GRID_STYLES.TROPIC_OPACITY,
+                dashArray: GRID_STYLES.TROPIC_DASH_ARRAY,
+                interactive: false,
+                bubblingMouseEvents: false,
+              };
+            } else {
+              // Arctic/Antarctic circles
+              lineStyle = {
+                color: GRID_STYLES.GRID_COLOR,
+                weight: GRID_STYLES.MAJOR_LINE_WEIGHT,
+                opacity: GRID_STYLES.LINE_OPACITY,
+                dashArray: GRID_STYLES.MAJOR_DASH_ARRAY || undefined,
+                interactive: false,
+                bubblingMouseEvents: false,
+              };
+            }
 
             try {
+              // Draw the line across the entire visible longitude range
               const linePoints: L.LatLngExpression[] = [
-                [namedLat.lat, bounds.getWest()],
-                [namedLat.lat, bounds.getEast()],
+                [namedLat.lat, calcWest],
+                [namedLat.lat, calcEast],
               ];
               L.polyline(linePoints, lineStyle).addTo(gridLayerRef.current!);
               drawnNamedLats.push(namedLat.lat); // Mark as drawn
 
-              // Add Label
-              const labelLng = bounds.getWest() + (bounds.getEast() - bounds.getWest()) * 0.01;
-              const labelPos: L.LatLngExpression = [namedLat.lat, labelLng];
-              const labelClass = isEquator ? 'grid-label equator-label' : 'grid-label tropic-label'; // Specific class for tropics?
-
-              L.marker(labelPos, {
-                icon: L.divIcon({
-                  className: labelClass,
-                  html: namedLat.name,
-                  iconSize: [namedLat.name.length * 6 + 10, 20], // Auto-adjust width roughly
-                  iconAnchor: [0, 10],
-                }),
-                interactive: false,
-              }).addTo(gridLayerRef.current!);
-
+              // Add Label with type-specific styling
+              if (namedLat.type === 'equator' || namedLat.type === 'tropic') {
+                const labelLng = calcWest + (calcEast - calcWest) * 0.02;
+                const labelPos: L.LatLngExpression = [namedLat.lat, labelLng];
+                const labelClass = `grid-label ${namedLat.type}-label`;
+                
+                L.marker(labelPos, {
+                  icon: L.divIcon({
+                    className: labelClass,
+                    html: `<strong>${namedLat.name}</strong>`,
+                    iconSize: [namedLat.name.length * 7 + 20, 20],
+                    iconAnchor: [0, 10],
+                  }),
+                  interactive: false,
+                }).addTo(gridLayerRef.current!);
+              }
             } catch (lineError) {
               console.warn(`Error drawing named latitude line at ${namedLat.lat}:`, lineError);
             }
@@ -146,28 +199,46 @@ const GridComponent: React.FC<GridComponentProps> = ({
 
         // 2. Draw Minor Latitude Lines
         for (let lat = startLat; lat <= endLat; lat += minorLatSpacing) {
-          if (lat < mapConfig.bounds.south || lat > mapConfig.bounds.north) continue;
+          if (lat < -90 || lat > 90) continue;
 
           // Skip if this latitude is close to an already drawn named latitude
           const isNearNamed = drawnNamedLats.some(namedLat => Math.abs(lat - namedLat) < LATITUDE_TOLERANCE);
           if (isNearNamed) continue;
 
-          // Draw as a minor line
+          // For standard grid, every 15° should be more prominent
+          const isMajorLine = lat % 15 === 0;
+          
+          // Draw line with appropriate styling
           const lineStyle: L.PolylineOptions = {
-            color: gridStyle.GRID_COLOR,
-            weight: gridStyle.MINOR_LINE_WEIGHT,
-            opacity: gridStyle.LINE_OPACITY * 0.7, // Make minor lines fainter
-            dashArray: gridStyle.DASH_ARRAY,
+            color: GRID_STYLES.GRID_COLOR,
+            weight: isMajorLine ? GRID_STYLES.MAJOR_LINE_WEIGHT : GRID_STYLES.MINOR_LINE_WEIGHT,
+            opacity: GRID_STYLES.LINE_OPACITY * (isMajorLine ? 1 : 0.7),
+            dashArray: isMajorLine ? undefined : GRID_STYLES.DASH_ARRAY,
             interactive: false,
             bubblingMouseEvents: false,
           };
 
           try {
             const linePoints: L.LatLngExpression[] = [
-              [lat, bounds.getWest()],
-              [lat, bounds.getEast()],
+              [lat, calcWest],
+              [lat, calcEast],
             ];
             L.polyline(linePoints, lineStyle).addTo(gridLayerRef.current!);
+            
+            // Add label for major lines
+            if (isMajorLine && zoom >= 2) {
+              const labelLng = calcWest + (calcEast - calcWest) * 0.02;
+              const labelPos: L.LatLngExpression = [lat, labelLng];
+              L.marker(labelPos, {
+                icon: L.divIcon({
+                  className: 'grid-label',
+                  html: `${Math.abs(lat)}°${lat >= 0 ? 'N' : 'S'}`,
+                  iconSize: [40, 20],
+                  iconAnchor: [0, 10],
+                }),
+                interactive: false,
+              }).addTo(gridLayerRef.current!);
+            }
           } catch (lineError) {
             console.warn(`Error drawing minor latitude line at ${lat}:`, lineError);
           }
@@ -176,58 +247,76 @@ const GridComponent: React.FC<GridComponentProps> = ({
         // --- Draw Longitude Lines ---
         const startLng = Math.ceil(calcWest / minorLngSpacing) * minorLngSpacing;
         const endLng = Math.floor(calcEast / minorLngSpacing) * minorLngSpacing;
+        
+        // Keep track of prime meridian to avoid duplicate drawing
+        let primeMeridianActualLng: number | null = null;
+        
+        // If we're showing the prime meridian, calculate its actual longitude
+        if (showPrimeMeridian && primeMeridianSvg) {
+          try {
+            const pmPoint = svgToLatLng(primeMeridianSvg.x, mapConfig.svgHeight / 2, mapConfig);
+            primeMeridianActualLng = pmPoint.lng;
+            // Allow some tolerance
+            if (Math.abs(primeMeridianActualLng) < 0.1) primeMeridianActualLng = 0;
+          } catch (e) { 
+            console.warn('Error computing prime meridian longitude:', e);
+          }
+        }
 
+        // Draw longitude lines
         for (let lng = startLng; lng <= endLng; lng += minorLngSpacing) {
-          if (lng < mapConfig.bounds.west || lng > mapConfig.bounds.east) continue;
+          if (lng < -180 || lng > 180) continue;
 
-          // Check if this longitude corresponds to the Prime Meridian's visual line
-          let isPrimeMeridianLng = false;
-          if (primeMeridianSvg) {
-             try {
-                const svgPointForLng = latLngToSvg(bounds.getCenter().lat, lng, mapConfig);
-                if (Math.abs(svgPointForLng.x - primeMeridianSvg.x) < 1) {
-                    isPrimeMeridianLng = true;
-                }
-             } catch (e) { /* Ignore */ }
+          // Skip the prime meridian if it's shown separately
+          if (primeMeridianActualLng !== null && Math.abs(lng - primeMeridianActualLng) < 0.1 && showPrimeMeridian) {
+            continue;
           }
 
-          // Skip drawing this grid line if it's the Prime Meridian AND PM is shown separately
-          if (isPrimeMeridianLng && showPrimeMeridian) {
-              continue;
-          }
-
-          // Draw all non-PM longitude lines as minor lines
+          // For standard grid, every 15° should be more prominent
+          const isMajorLine = lng % 15 === 0;
+          
+          // Special style for Greenwich (0°) if not showing PM separately
+          const isGreenwich = Math.abs(lng) < 0.1;
+          
           const lineStyle: L.PolylineOptions = {
-            color: gridStyle.GRID_COLOR,
-            weight: gridStyle.MINOR_LINE_WEIGHT,
-            opacity: gridStyle.LINE_OPACITY * 0.7, // Make minor lines fainter
-            dashArray: gridStyle.DASH_ARRAY,
+            color: isGreenwich && !showPrimeMeridian ? GRID_STYLES.PRIME_MERIDIAN_COLOR : GRID_STYLES.GRID_COLOR,
+            weight: isGreenwich && !showPrimeMeridian ? GRID_STYLES.PRIME_MERIDIAN_WEIGHT : 
+                    (isMajorLine ? GRID_STYLES.MAJOR_LINE_WEIGHT : GRID_STYLES.MINOR_LINE_WEIGHT),
+            opacity: isGreenwich && !showPrimeMeridian ? GRID_STYLES.PRIME_MERIDIAN_OPACITY : 
+                     GRID_STYLES.LINE_OPACITY * (isMajorLine ? 1 : 0.7),
+            dashArray: isGreenwich && !showPrimeMeridian ? undefined : 
+                       (isMajorLine ? undefined : GRID_STYLES.DASH_ARRAY),
             interactive: false,
             bubblingMouseEvents: false,
           };
 
           try {
             const linePoints: L.LatLngExpression[] = [
-              [bounds.getSouth(), lng],
-              [bounds.getNorth(), lng],
+              [calcSouth, lng],
+              [calcNorth, lng],
             ];
             L.polyline(linePoints, lineStyle).addTo(gridLayerRef.current!);
 
-            // Optional: Add labels for minor longitude lines if needed (e.g., every 30 deg)
-            if (lng % 30 === 0 && !isPrimeMeridianLng) { // Example: Label every 30 deg minor line
-                 const labelLat = bounds.getSouth() + (bounds.getNorth() - bounds.getSouth()) * 0.02;
-                 const labelPos: L.LatLngExpression = [labelLat, lng];
-                 L.marker(labelPos, {
-                    icon: L.divIcon({
-                       className: 'grid-label minor-label', // Style minor labels differently?
-                       html: `${Math.abs(lng).toFixed(0)}°${lng >= 0 ? 'E' : 'W'}`,
-                       iconSize: [40, 20],
-                       iconAnchor: [20, 0],
-                    }),
-                    interactive: false,
-                 }).addTo(gridLayerRef.current!);
+            // Add label for major lines and Greenwich
+            if ((isMajorLine || isGreenwich) && zoom >= 2) {
+              const labelLat = calcSouth + (calcNorth - calcSouth) * 0.02;
+              const labelPos: L.LatLngExpression = [labelLat, lng];
+              
+              let labelHtml = `${Math.abs(lng)}°${lng > 0 ? 'E' : (lng < 0 ? 'W' : '')}`;
+              if (isGreenwich && !showPrimeMeridian) {
+                labelHtml = '<strong>Prime Meridian (0°)</strong>';
+              }
+              
+              L.marker(labelPos, {
+                icon: L.divIcon({
+                  className: isGreenwich ? 'grid-label prime-meridian-label' : 'grid-label',
+                  html: labelHtml,
+                  iconSize: [isGreenwich ? 120 : 40, 20],
+                  iconAnchor: [isGreenwich ? 60 : 20, 0],
+                }),
+                interactive: false,
+              }).addTo(gridLayerRef.current!);
             }
-
           } catch (lineError) {
             console.warn(`Error drawing longitude line at ${lng}:`, lineError);
           }
@@ -240,19 +329,24 @@ const GridComponent: React.FC<GridComponentProps> = ({
     // --- Draw Prime Meridian Line (only if showPrimeMeridian is true) ---
     if (showPrimeMeridian && primeMeridianSvg) {
       try {
+        // For a standard grid approach, we'd expect the prime meridian to be at longitude 0
+        // But the map might use a different prime meridian, so we'll calculate its actual longitude
+        
+        // Calculate actual longitude of the prime meridian on the map
         const startPointLatLng = svgToLatLng(primeMeridianSvg.x, 0, mapConfig);
         const endPointLatLng = svgToLatLng(primeMeridianSvg.x, mapConfig.svgHeight, mapConfig);
-
+        
+        // Create a line with enhanced prime meridian styling
         const line = L.polyline(
           [
-            [startPointLatLng.lat, startPointLatLng.lng],
-            [endPointLatLng.lat, endPointLatLng.lng],
+            [bounds.getSouth(), startPointLatLng.lng],
+            [bounds.getNorth(), startPointLatLng.lng],
           ],
-          { // Use specific PM styles
-            color: gridStyle.PRIME_MERIDIAN_COLOR,
-            weight: gridStyle.PRIME_MERIDIAN_WEIGHT,
-            opacity: gridStyle.PRIME_MERIDIAN_OPACITY,
-            dashArray: gridStyle.PRIME_MERIDIAN_DASH_ARRAY || undefined,
+          {
+            color: GRID_STYLES.PRIME_MERIDIAN_COLOR,
+            weight: GRID_STYLES.PRIME_MERIDIAN_WEIGHT,
+            opacity: GRID_STYLES.PRIME_MERIDIAN_OPACITY,
+            dashArray: GRID_STYLES.PRIME_MERIDIAN_DASH_ARRAY || undefined,
             interactive: false,
           },
         );
@@ -261,15 +355,16 @@ const GridComponent: React.FC<GridComponentProps> = ({
         // Add Prime Meridian Label
         const pmLabelLat = bounds.getSouth() + (bounds.getNorth() - bounds.getSouth()) * 0.02;
         const pmLabelPos: L.LatLngExpression = [pmLabelLat, startPointLatLng.lng];
-         L.marker(pmLabelPos, {
-            icon: L.divIcon({
-              className: 'grid-label prime-meridian-label',
-              html: 'Prime Meridian', // Use full name?
-              iconSize: [100, 20], // Adjust size
-              iconAnchor: [50, 0], // Center above line
-            }),
-            interactive: false,
-          }).addTo(gridLayerRef.current!);
+        
+        L.marker(pmLabelPos, {
+          icon: L.divIcon({
+            className: 'grid-label prime-meridian-label',
+            html: '<strong>Prime Meridian</strong>',
+            iconSize: [120, 20],
+            iconAnchor: [60, 0],
+          }),
+          interactive: false,
+        }).addTo(gridLayerRef.current!);
 
       } catch (error) {
         console.error('Error calculating/drawing prime meridian:', error);
@@ -289,7 +384,6 @@ const GridComponent: React.FC<GridComponentProps> = ({
 
   // --- Effect for Position Display Control ---
   useEffect(() => {
-    // ... (Position display control logic remains the same) ...
     if (!map || !L) return;
     if (!positionDisplayControlRef.current) {
       const PositionControl = L.Control.extend({
@@ -316,7 +410,7 @@ const GridComponent: React.FC<GridComponentProps> = ({
     }
     const control = positionDisplayControlRef.current;
     if (showPositionDisplay) {
-      if (control && !map.addControl(control)) { map.addControl(control); }
+      if (control && !map.hasLayer(control)) { map.addControl(control); }
     } else {
       if (control) { map.removeControl(control); }
     }
@@ -327,8 +421,7 @@ const GridComponent: React.FC<GridComponentProps> = ({
 
   // --- Effect for Mouse Move Coordinate Display ---
   useEffect(() => {
-    // ... (Mouse move coordinate display logic remains the same) ...
-     if (!map || !showPositionDisplay) {
+    if (!map || !showPositionDisplay) {
       if (positionDisplayDivRef.current) { positionDisplayDivRef.current.innerHTML = ''; }
       return;
     }
