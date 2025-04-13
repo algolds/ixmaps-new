@@ -40,13 +40,17 @@ export interface MapConfig {
   equatorY: number; // Y-coordinate of the equator in SVG space
   primeMeridianX: number; // X-coordinate of the prime meridian in SVG space
   milesPerPixel: number; // Scale factor at a reference zoom level
-  kmPerPixel: number; // Scale factor at a reference zoom level
+  kmPerPixel: number; // Scale factor at a reference zoom level (often calculated)
   labelFontSize?: number; // Default font size for labels
   labelClassName?: string; // CSS class for labels
-  bounds: MapBounds; // Geographic bounds of the map
+  bounds: MapBounds; // Geographic bounds of the map {N, S, E, W}
   showCountryLabels: boolean; // Initial visibility for country labels
   primeMeridianReferenceLng?: number; // Reference longitude for PM calculations (often 0)
   initialLayerVisibility?: Record<string, boolean>; // Initial visibility states for SVG layers
+
+  // Add the prime meridian reference Lat/Lng (make optional '?' if not always present)
+  primeMeridianRef?: { lat: number; lng: number };
+
   // LOD properties (Optional)
   lodEnabled?: boolean;
   lodConfig?: {
@@ -61,19 +65,12 @@ export interface MapConfig {
 export type ToastType = 'info' | 'success' | 'warning' | 'error';
 
 // Layer visibility settings type
-// Use Record for a flexible key-value map of layer IDs (string) to visibility (boolean)
 export type LayerVisibility = Record<string, boolean>;
 
-/* --- Remove or comment out the conflicting interface ---
+/* --- Commented out conflicting interface ---
 export interface LayerVisibility {
-  [key: string]: boolean; // Allows any string key for layer IDs
-  // Example specific layers (optional, for type hinting if needed)
-  political?: boolean;
-  climate?: boolean;
-  lakes?: boolean;
-  rivers?: boolean;
-  'altitude-layers'?: boolean;
-  // Add others as needed
+  [key: string]: boolean;
+  // ... specific layers ...
 }
 */
 
@@ -92,7 +89,7 @@ export interface DistanceResult {
   miles: number;
 }
 
-// SVG dimensions interface (Potentially redundant with MapConfig.svgWidth/Height)
+// SVG dimensions interface (Potentially redundant)
 export interface SVGDimensions {
   width: number;
   height: number;
@@ -109,22 +106,22 @@ export interface SvgPoint {
   y: number;
 }
 
-// Grid style (Consider moving defaults to a config/theme file)
+// Grid style interface
 export interface GridStyle {
   MAJOR_LINE_WEIGHT: number;
   MINOR_LINE_WEIGHT: number;
   LINE_OPACITY: number;
   DASH_ARRAY: string;
-  MAJOR_DASH_ARRAY: string | null; // Keep as string | null if that's how it's defined in MapConfig.js
+  MAJOR_DASH_ARRAY: string | null;
   PRIME_MERIDIAN_COLOR: string;
   PRIME_MERIDIAN_WEIGHT: number;
   PRIME_MERIDIAN_OPACITY: number;
-  PRIME_MERIDIAN_DASH_ARRAY: string; // Assuming PM dash array is always a string
+  PRIME_MERIDIAN_DASH_ARRAY: string;
   EQUATOR_COLOR: string;
   GRID_COLOR: string;
 }
 
-// Label style (Consider moving defaults to a config/theme file)
+// Label style interface
 export interface LabelStyle {
   MIN_DISTANCE: number;
   BACKGROUND_COLOR: string;
@@ -141,15 +138,10 @@ export interface LabelStyle {
   PRIME_MERIDIAN_TEXT_SHADOW: string;
 }
 
-// Consider if IxMapsNamespace is still needed in a React context
-// Helper functions might be better organized in utility modules.
+// Consider if IxMapsNamespace is still needed
 export interface IxMapsNamespace {
-  // ... (Define if still necessary for legacy or specific patterns)
+  // ...
 }
 
-// Define SVGLayerControlRef if needed by external components,
-// although the goal is to remove its necessity for ControlPanel.
-// export interface SVGLayerControlRef {
-//   toggleLayer: (layerId: string, visible: boolean) => void;
-//   getVisibility: () => Record<string, boolean>;
-// }
+// SVGLayerControlRef likely not needed with current approach
+// export interface SVGLayerControlRef { ... }

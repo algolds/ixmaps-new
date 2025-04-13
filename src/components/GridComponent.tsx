@@ -3,279 +3,347 @@
 
 import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
-// Import types and coordinate functions
-import { MapConfig, SvgPoint, LatLng } from '@/types';
-import { latLngToSvg, svgToLatLng } from '@/lib/coordinates-system';
-// Import default styles/config if needed, or get from mapConfig
-import { gridStyle } from '@/lib/MapConfig'; // Assuming gridStyle is defined here
+import { MapConfig, SvgPoint } from '@/types';
+// Import necessary coordinate functions
+import {
+  svgToLatLng,
+  latLngToSvg,
+  formatLatitude,
+  formatLongitude,
+} from '@/lib/coordinates-system';
+import { gridStyle } from '@/lib/MapConfig'; // Assuming grid styles are here
 
-// Define the props interface to match what MapComponent provides
 interface GridComponentProps {
   map: L.Map;
   L: typeof L;
-  visible: boolean;
-  mapConfig: MapConfig; // Accept the full map config
-  primeMeridianSvg: SvgPoint | null; // Accept the calculated PM SVG origin
+  mapConfig: MapConfig;
+  primeMeridianSvg: SvgPoint | null; // Needed for PM line and potentially grid labels
+  showGrid: boolean; // Renamed from 'visible' for clarity - controls grid lines
+  showPrimeMeridian: boolean; // Controls visibility of the PM line
+  showPositionDisplay: boolean; // Controls visibility of the mouse coordinate display
 }
 
 const GridComponent: React.FC<GridComponentProps> = ({
   map,
   L,
-  visible,
-  mapConfig, // Use the passed mapConfig
-  primeMeridianSvg, // Use the passed primeMeridianSvg
+  mapConfig,
+  primeMeridianSvg,
+  showGrid, // Use the specific prop name
+  showPrimeMeridian,
+  showPositionDisplay,
 }) => {
   const gridLayerRef = useRef<L.LayerGroup | null>(null);
-  const initializedRef = useRef<boolean>(false); // To track initialization
+  const positionDisplayControlRef = useRef<L.Control | null>(null); // Ref for the Leaflet control
+  const positionDisplayDivRef = useRef<HTMLDivElement | null>(null); // Ref for the DOM element
 
-  // Destructure necessary values from mapConfig for easier use
-  // const { svgWidth, svgHeight, pixelsPerLongitude } = mapConfig; // Not directly used in draw logic below
-
-  // Initialize grid layers and pane when component mounts
+  // --- Effect for Managing the Grid Layer Group ---
   useEffect(() => {
     if (!map || !L) return;
 
-    // Create custom pane with high z-index for the grid
-    const gridPaneName = 'grid-pane';
-    if (!map.getPane(gridPaneName)) {
-      const pane = map.createPane(gridPaneName);
-      pane.style.zIndex = '650'; // Ensure grid is on top of most layers
-      pane.style.pointerEvents = 'none'; // Grid shouldn't capture clicks
-    }
-
-    // Create layer group in the custom pane
-    if (!gridLayerRef.current) {
-      gridLayerRef.current = L.layerGroup([], { pane: gridPaneName });
-      // Add to map immediately; visibility is controlled by adding/removing layers later
-      gridLayerRef.current.addTo(map);
-    }
-
-    // Handler to redraw grid on map events
-    const updateGrid = () => {
-      // Only draw if visible and necessary data is available
-      if (visible && primeMeridianSvg) {
-        drawGrid();
-      }
-    };
-
-    // Attach event listeners
-    map.on('zoomend', updateGrid);
-    map.on('moveend', updateGrid);
-    // map.on('move', updateGrid); // 'move' can be very frequent, consider if needed
-
-    initializedRef.current = true;
-
-    // Initial draw if possible (with a slight delay)
-    if (visible && primeMeridianSvg) {
-      setTimeout(drawGrid, 100); // Increased delay slightly
-    }
-
-    // Cleanup function
-    return () => {
-      map.off('zoomend', updateGrid);
-      map.off('moveend', updateGrid);
-      // map.off('move', updateGrid);
-
-      // Remove layer group from map on unmount
-      if (gridLayerRef.current && map.hasLayer(gridLayerRef.current)) {
-        map.removeLayer(gridLayerRef.current);
-      }
-      gridLayerRef.current = null; // Clear ref
-    };
-    // Dependencies for setting up the layer group and listeners
-  }, [map, L]); // mapConfig values like svgWidth/Height are stable after init usually
-
-  // Effect to handle visibility changes or prime meridian updates
-  useEffect(() => {
-    if (!initializedRef.current || !gridLayerRef.current) return; // Wait for init
-
-    if (visible && primeMeridianSvg) {
-      drawGrid(); // Redraw if becoming visible or PM changes
-    } else {
-      gridLayerRef.current.clearLayers(); // Clear layers if becoming hidden
-    }
-  }, [visible, primeMeridianSvg, mapConfig]); // Redraw if visibility, PM, or config changes
-
-  // Function to draw the coordinate grid
-  const drawGrid = () => {
-    // Ensure all required elements are present
-    if (!map || !gridLayerRef.current || !primeMeridianSvg || !visible) return;
-
-    try {
-      // Clear existing grid lines from the layer group
-      gridLayerRef.current.clearLayers();
-
-      const zoom = map.getZoom();
-
-      // Determine grid spacing based on zoom level
-      let spacing = 30; // Default spacing
-      if (zoom > 4) spacing = 5;
-      else if (zoom > 3) spacing = 10;
-      else if (zoom > 2) spacing = 15;
-
-      // Get prime meridian's SVG X coordinate
-      // const primeMeridianX = primeMeridianSvg.x; // Not directly used for LatLng calculations
-
-      // Get map's current geographic bounds
-      const bounds = map.getBounds();
-      const visibleWestLng = bounds.getWest();
-      const visibleEastLng = bounds.getEast();
-      const visibleNorthLat = bounds.getNorth();
-      const visibleSouthLat = bounds.getSouth();
-
-      // --- Draw Longitude Lines (Meridians) ---
-      const minLng = Math.floor(visibleWestLng / spacing) * spacing - spacing; // Start drawing slightly left
-      const maxLng = Math.ceil(visibleEastLng / spacing) * spacing + spacing; // Stop drawing slightly right
-
-      for (let lng = minLng; lng <= maxLng; lng += spacing) {
-        // Skip drawing if longitude is exactly 0 (handled by Prime Meridian draw)
-        if (lng === 0) continue;
-
-        const isMajor = lng % 30 === 0;
-        try {
-          // Create and add the polyline using LatLng
-          L.polyline(
-            [
-              [visibleNorthLat, lng], // Use LatLng for Leaflet polyline
-              [visibleSouthLat, lng],
-            ],
-            {
-              color: gridStyle.GRID_COLOR,
-              weight: isMajor
-                ? gridStyle.MAJOR_LINE_WEIGHT
-                : gridStyle.MINOR_LINE_WEIGHT,
-              opacity: gridStyle.LINE_OPACITY,
-              // FIX: Use undefined for dashArray if MAJOR_DASH_ARRAY is null
-              dashArray: isMajor
-                ? gridStyle.MAJOR_DASH_ARRAY ?? undefined
-                : gridStyle.DASH_ARRAY,
-              interactive: false,
-              pane: 'grid-pane', // Ensure it's drawn in the correct pane
-            }
-          ).addTo(gridLayerRef.current);
-
-          // Add labels for major lines (consider label overlap logic if needed)
-          if (isMajor) {
-            const labelLat = visibleSouthLat + (visibleNorthLat - visibleSouthLat) * 0.05; // Position near bottom
-            const labelLng = lng;
-             L.marker([labelLat, labelLng], {
-               icon: L.divIcon({
-                 className: 'grid-label longitude-label', // Add specific class
-                 html: `${Math.abs(lng)}° ${lng > 0 ? 'E' : 'W'}`,
-                 iconSize: [40, 20], // Adjust size as needed
-                 iconAnchor: [20, 0], // Center label above point
-               }),
-               interactive: false,
-               pane: 'grid-pane',
-             }).addTo(gridLayerRef.current);
-          }
-        } catch (e) {
-          // console.warn(`Error drawing longitude line at ${lng}:`, e);
+    // Ensure the layer group exists if any part is visible
+    if (showGrid || showPrimeMeridian) {
+      if (!gridLayerRef.current) {
+        gridLayerRef.current = L.layerGroup();
+        // Add to map only if it wasn't already added
+        if (!map.hasLayer(gridLayerRef.current)) {
+          gridLayerRef.current.addTo(map);
         }
       }
+    } else {
+      // If neither grid nor PM should be shown, remove the layer group
+      if (gridLayerRef.current && map.hasLayer(gridLayerRef.current)) {
+        gridLayerRef.current.remove();
+        // Optionally clear the ref, but clearLayers in the drawing effect handles content
+        // gridLayerRef.current = null;
+      }
+    }
 
-      // --- Draw Prime Meridian Separately (including wraparound if needed) ---
+    // Cleanup: Ensure layer group is removed on component unmount if it exists
+    return () => {
+      if (gridLayerRef.current && map && map.hasLayer(gridLayerRef.current)) {
+        try {
+          gridLayerRef.current.remove();
+        } catch (e) {
+          console.warn('Error removing grid layer group on unmount:', e);
+        }
+      }
+    };
+    // Dependencies: map, L, showGrid, showPrimeMeridian
+  }, [map, L, showGrid, showPrimeMeridian]);
+
+  // --- Effect for Drawing Grid and Prime Meridian ---
+  useEffect(() => {
+    // Exit if map/L not ready or the layer group isn't created/added
+    if (!map || !L || !gridLayerRef.current) {
+      return;
+    }
+
+    // Clear previous grid lines and PM line from the layer group
+    gridLayerRef.current.clearLayers();
+
+    // --- Draw Grid Lines ---
+    if (showGrid) {
       try {
-        L.polyline(
+        const bounds = map.getBounds();
+        const zoom = map.getZoom();
+        const svgBounds = map.getPixelBounds(); // Get viewport in pixels
+
+        // Define grid spacing based on zoom (example logic)
+        let latSpacing = 30;
+        let lngSpacing = 30;
+        if (zoom > 1) {
+          latSpacing = 15;
+          lngSpacing = 15;
+        }
+        if (zoom > 3) {
+          latSpacing = 10;
+          lngSpacing = 10;
+        }
+        // Add more levels if needed
+
+        // Calculate visible lat/lng range (approximate)
+        const northEast = bounds.getNorthEast();
+        const southWest = bounds.getSouthWest();
+
+        // --- Draw Latitude Lines ---
+        const startLat = Math.floor(southWest.lat / latSpacing) * latSpacing;
+        const endLat = Math.ceil(northEast.lat / latSpacing) * latSpacing;
+
+        for (let lat = startLat; lat <= endLat; lat += latSpacing) {
+          if (lat < mapConfig.bounds.south || lat > mapConfig.bounds.north)
+            continue; // Skip if outside map bounds
+
+          try {
+            // Need points far left and far right in SVG coords for the line
+            const leftPointSvg = latLngToSvg(lat, -180, mapConfig); // Approx west edge
+            const rightPointSvg = latLngToSvg(lat, 180, mapConfig); // Approx east edge
+
+            // Convert SVG Y back to LatLng for Leaflet polyline (using a fixed Lng, e.g., 0)
+            // This seems overly complex. Let's draw directly if possible or use bounds.
+            // Alternative: Use map bounds directly
+            const linePoints: L.LatLngExpression[] = [
+              [lat, bounds.getWest()],
+              [lat, bounds.getEast()],
+            ];
+
+            const isMajor = lat % 30 === 0; // Example: Major line every 30 degrees
+            L.polyline(linePoints, {
+              color: gridStyle.GRID_COLOR || '#666',
+              weight: isMajor
+                ? gridStyle.MAJOR_LINE_WEIGHT || 1.5
+                : gridStyle.MINOR_LINE_WEIGHT || 0.8,
+              opacity: gridStyle.LINE_OPACITY || 0.6,
+              dashArray: isMajor
+                ? gridStyle.MAJOR_DASH_ARRAY || undefined
+                : gridStyle.DASH_ARRAY || '5,5',
+              interactive: false,
+            }).addTo(gridLayerRef.current);
+
+            // TODO: Add Latitude Labels if needed (similar logic using L.marker/L.divIcon)
+          } catch (lineError) {
+            console.warn(`Error drawing latitude line at ${lat}:`, lineError);
+          }
+        }
+
+        // --- Draw Longitude Lines ---
+        const startLng = Math.floor(southWest.lng / lngSpacing) * lngSpacing;
+        const endLng = Math.ceil(northEast.lng / lngSpacing) * lngSpacing;
+
+        for (let lng = startLng; lng <= endLng; lng += lngSpacing) {
+          if (lng < mapConfig.bounds.west || lng > mapConfig.bounds.east)
+            continue; // Skip if outside map bounds
+
+          try {
+            const linePoints: L.LatLngExpression[] = [
+              [bounds.getSouth(), lng],
+              [bounds.getNorth(), lng],
+            ];
+            const isMajor = lng % 30 === 0; // Example: Major line every 30 degrees
+
+            L.polyline(linePoints, {
+              color: gridStyle.GRID_COLOR || '#666',
+              weight: isMajor
+                ? gridStyle.MAJOR_LINE_WEIGHT || 1.5
+                : gridStyle.MINOR_LINE_WEIGHT || 0.8,
+              opacity: gridStyle.LINE_OPACITY || 0.6,
+              dashArray: isMajor
+                ? gridStyle.MAJOR_DASH_ARRAY || undefined
+                : gridStyle.DASH_ARRAY || '5,5',
+              interactive: false,
+            }).addTo(gridLayerRef.current);
+
+            // TODO: Add Longitude Labels if needed
+          } catch (lineError) {
+            console.warn(`Error drawing longitude line at ${lng}:`, lineError);
+          }
+        }
+      } catch (gridError) {
+        console.error('Error calculating or drawing grid:', gridError);
+      }
+    }
+
+    // --- Draw Prime Meridian Line ---
+    if (showPrimeMeridian && primeMeridianSvg) {
+      try {
+        // Calculate the geographic coordinates for the top and bottom of the PM line
+        // using the SVG origin X and the SVG height from mapConfig.
+        // We need the LatLng equivalent for the line.
+        // The PM is at a constant *longitude* (0 degrees in the custom system,
+        // which corresponds to primeMeridianRef.lng in the standard system if needed,
+        // but visually it's a vertical line at primeMeridianSvg.x).
+        // We need the top/bottom latitude corresponding to the map bounds.
+
+        // Get the LatLng for the top-left and bottom-right corners of the *SVG*
+        const svgTopLeftLatLng = svgToLatLng(0, 0, mapConfig);
+        const svgBottomRightLatLng = svgToLatLng(
+          mapConfig.svgWidth,
+          mapConfig.svgHeight,
+          mapConfig,
+        );
+
+        // Get the LatLng corresponding to the prime meridian's SVG X coordinate
+        // at the top and bottom of the SVG canvas.
+        const startPointLatLng = svgToLatLng(
+          primeMeridianSvg.x,
+          0, // Top of SVG
+          mapConfig,
+        );
+        const endPointLatLng = svgToLatLng(
+          primeMeridianSvg.x,
+          mapConfig.svgHeight, // Bottom of SVG
+          mapConfig,
+        );
+
+        // Create the polyline using the calculated LatLng points
+        const line = L.polyline(
           [
-            [visibleNorthLat, 0],
-            [visibleSouthLat, 0],
+            [startPointLatLng.lat, startPointLatLng.lng],
+            [endPointLatLng.lat, endPointLatLng.lng],
           ],
           {
-            color: gridStyle.PRIME_MERIDIAN_COLOR,
-            weight: gridStyle.PRIME_MERIDIAN_WEIGHT,
-            opacity: gridStyle.PRIME_MERIDIAN_OPACITY,
-            // Use undefined for dashArray if PRIME_MERIDIAN_DASH_ARRAY is null (though PM is usually dashed)
-            dashArray: gridStyle.PRIME_MERIDIAN_DASH_ARRAY ?? undefined,
+            color: gridStyle.PRIME_MERIDIAN_COLOR || 'red',
+            weight: gridStyle.PRIME_MERIDIAN_WEIGHT || 2,
+            opacity: gridStyle.PRIME_MERIDIAN_OPACITY || 0.8,
+            dashArray: gridStyle.PRIME_MERIDIAN_DASH_ARRAY || '8, 6',
             interactive: false,
-            pane: 'grid-pane',
-          }
-        ).addTo(gridLayerRef.current);
+          },
+        );
 
-        // Add Prime Meridian label
-        const pmLabelLat = visibleSouthLat + (visibleNorthLat - visibleSouthLat) * 0.05;
-         L.marker([pmLabelLat, 0], {
-           icon: L.divIcon({
-             className: 'grid-label prime-meridian-label',
-             html: '0°',
-             iconSize: [40, 20],
-             iconAnchor: [20, 0],
-           }),
-           interactive: false,
-           pane: 'grid-pane',
-         }).addTo(gridLayerRef.current);
-
-        // Add logic here to draw wrapped Prime Meridians if your map wraps horizontally
-        // e.g., draw at +360 and -360 longitude if necessary based on visible bounds
-
-      } catch (e) {
-         // console.warn(`Error drawing prime meridian:`, e);
+        // Add the newly created line to the *same* layer group
+        gridLayerRef.current.addLayer(line);
+      } catch (error) {
+        console.error('Error calculating/drawing prime meridian:', error);
       }
+    }
+    // Dependencies: Include all props used in drawing logic
+  }, [
+    map,
+    L,
+    mapConfig,
+    primeMeridianSvg,
+    showGrid,
+    showPrimeMeridian,
+    // Add map zoom/move dependencies if grid spacing depends on them
+    // map.getZoom(), map.getBounds() // These might cause too many redraws, consider throttling
+  ]);
 
+  // --- Effect for Position Display Control ---
+  useEffect(() => {
+    if (!map || !L) return;
 
-      // --- Draw Latitude Lines (Parallels) ---
-      const minLat = Math.floor(visibleSouthLat / spacing) * spacing;
-      const maxLat = Math.ceil(visibleNorthLat / spacing) * spacing;
+    // Create control instance if it doesn't exist
+    if (!positionDisplayControlRef.current) {
+      const PositionControl = L.Control.extend({
+        options: { position: 'bottomleft' },
+        onAdd: function () {
+          const container = L.DomUtil.create(
+            'div',
+            'leaflet-control-coordinates leaflet-control', // Standard Leaflet control classes
+          );
+          container.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+          container.style.padding = '2px 5px';
+          container.style.fontSize = '11px';
+          container.style.whiteSpace = 'nowrap';
+          container.style.borderRadius = '3px';
+          container.style.boxShadow = '0 1px 5px rgba(0,0,0,0.4)';
+          positionDisplayDivRef.current = container; // Store ref to the div
+          L.DomEvent.disableClickPropagation(container);
+          L.DomEvent.disableScrollPropagation(container);
+          container.innerHTML = ''; // Start empty or with placeholder
+          return container;
+        },
+        onRemove: function () {
+          positionDisplayDivRef.current = null;
+        },
+      });
+      positionDisplayControlRef.current = new PositionControl();
+    }
 
-      for (let lat = minLat; lat <= maxLat; lat += spacing) {
-        const isMajor = lat % 30 === 0;
-        const isEquator = lat === 0;
+    // Add/Remove control based on 'showPositionDisplay' prop
+    const control = positionDisplayControlRef.current;
+    if (showPositionDisplay) {
+      map.addControl(control);
+    } else {
+      // Ensure removal if prop becomes false
+      if (map.addControl(control)) {
+        map.removeControl(control);
+      }
+    }
 
+    // Cleanup: Remove control when component unmounts
+    return () => {
+      if (map && control && map.addControl(control)) {
         try {
-          // Define the line segment slightly wider than the visible area
-          const lineWestLng = visibleWestLng - 10; // Extend beyond view
-          const lineEastLng = visibleEastLng + 10;
-
-          // Create and add the polyline
-          L.polyline(
-            [
-              [lat, lineWestLng],
-              [lat, lineEastLng],
-            ],
-            {
-              color: isEquator
-                ? gridStyle.EQUATOR_COLOR
-                : gridStyle.GRID_COLOR,
-              weight:
-                isMajor || isEquator
-                  ? gridStyle.MAJOR_LINE_WEIGHT
-                  : gridStyle.MINOR_LINE_WEIGHT,
-              opacity: gridStyle.LINE_OPACITY,
-              // FIX: Use undefined for dashArray for solid lines (major/equator)
-              dashArray:
-                isMajor || isEquator
-                  ? undefined // Use undefined for solid line
-                  : gridStyle.DASH_ARRAY,
-              interactive: false,
-              pane: 'grid-pane',
-            }
-          ).addTo(gridLayerRef.current);
-
-          // Add labels for major lines or the equator
-          if (isMajor || isEquator) {
-             const labelLat = lat;
-             const labelLng = visibleWestLng + (visibleEastLng - visibleWestLng) * 0.05; // Position near left edge
-             L.marker([labelLat, labelLng], {
-               icon: L.divIcon({
-                 className: `grid-label ${isEquator ? 'equator-label' : 'latitude-label'}`,
-                 html: `${Math.abs(lat)}° ${lat >= 0 ? 'N' : 'S'}`,
-                 iconSize: [40, 20],
-                 iconAnchor: [0, 10], // Anchor left-middle
-               }),
-               interactive: false,
-               pane: 'grid-pane',
-             }).addTo(gridLayerRef.current);
-          }
+          map.removeControl(control);
         } catch (e) {
-          // console.warn(`Error drawing latitude line at ${lat}:`, e);
+          console.warn('Could not remove position control on unmount:', e);
         }
       }
-    } catch (error) {
-      console.error('Error during drawGrid execution:', error);
-    }
-  };
+    };
+    // Dependencies: map, L, showPositionDisplay
+  }, [map, L, showPositionDisplay]);
 
-  // This component manages Leaflet layers and doesn't render React DOM
+  // --- Effect for Mouse Move Coordinate Display ---
+  useEffect(() => {
+    // Only attach listener if the control should be visible and the div exists
+    if (!map || !showPositionDisplay || !positionDisplayDivRef.current) {
+      // Clear text if display is hidden but control might still exist briefly
+      if (positionDisplayDivRef.current) {
+        positionDisplayDivRef.current.innerHTML = ''; // Clear text
+      }
+      return; // Don't attach listener
+    }
+
+    const handleMouseMove = (e: L.LeafletMouseEvent) => {
+      if (!positionDisplayDivRef.current) return; // Check ref again
+
+      try {
+        const latLng = e.latlng;
+        // Format coordinates using imported functions
+        const latStr = formatLatitude(latLng.lat);
+        const lonStr = formatLongitude(latLng.lng);
+        positionDisplayDivRef.current.innerHTML = `Lat: ${latStr} Lon: ${lonStr}`;
+      } catch (error) {
+        console.error('Error formatting coordinates:', error);
+        if (positionDisplayDivRef.current) {
+          positionDisplayDivRef.current.innerHTML = 'Lat/Lon Error';
+        }
+      }
+    };
+
+    map.on('mousemove', handleMouseMove);
+
+    // Cleanup: Remove listener and clear text
+    return () => {
+      map.off('mousemove', handleMouseMove);
+      if (positionDisplayDivRef.current) {
+        positionDisplayDivRef.current.innerHTML = '';
+      }
+    };
+    // Dependencies: map, showPositionDisplay, L (for format funcs, though stable)
+  }, [map, showPositionDisplay, L]);
+
+  // This component manages Leaflet layers/controls directly
   return null;
 };
 
