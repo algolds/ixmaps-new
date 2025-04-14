@@ -1,9 +1,12 @@
+// src/config/mapConfig.ts
+
 import { MapConfig } from '@/types';
-import { getAssetPath } from './config';
+import { getAssetPath } from './config'; // Assuming './config' is the correct path
 
 // Scale constants
 export const BASE_MILES_PER_PIXEL = 10; // Base scale at zoom level 0: 1px = 10 sq mi
 export const MILES_TO_KM = 2.59; // Conversion factor from square miles to square kilometers
+
 // Default map configuration
 export const defaultMapConfig: MapConfig = {
   masterMapPath: getAssetPath('/maps/master-map.svg'),
@@ -14,20 +17,20 @@ export const defaultMapConfig: MapConfig = {
     paths: {
       low: '',
       medium: '',
-      high: ''
+      high: '',
     },
     zoomThresholds: {
       low: 0,
-      medium: 0
-    }
-  }, // Added missing property
+      medium: 0,
+    },
+  },
   initialLayerVisibility: {
     political: true,
     climate: false,
     lakes: false,
     rivers: false,
-    'altitude-layers': false
-  }, // Added missing property
+    'altitude-layers': false,
+  },
   initialZoom: -2,
   minZoom: -2,
   maxZoom: 4.0,
@@ -45,16 +48,22 @@ export const defaultMapConfig: MapConfig = {
   labelFontSize: 12,
   labelClassName: 'country-label',
   bounds: {
-    north: 0,
+    north: 0, // Assuming these are SVG bounds, adjust if geographic
     south: 4900,
     east: 8200,
     west: 0,
   },
   showCountryLabels: true,
-  primeMeridianReferenceLng: 0
+  primeMeridianReferenceLng: 0,
+
+  // NEW: Default country label offset (no offset)
+  countryLabelOffset: { x: -50, y: -50 },
+
+  // Optional prime meridian reference point (if needed directly in config)
+  // primeMeridianRef: { lat: -14.08, lng: 30.0 }, // Example if needed
 };
 
-// Prime meridian reference point
+// Prime meridian reference point (kept separate for clarity if used elsewhere)
 export const primeMeridianRef = {
   lat: -14.08, // Negative value for Southern hemisphere
   lng: 30.0, // This is 30°E in geographic coordinates, but will be treated as 0°

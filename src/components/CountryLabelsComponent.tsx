@@ -43,27 +43,48 @@ const CountryLabelsComponent: React.FC<CountryLabelsProps> = ({
       // console.log('CountryLabelsComponent: Fetching country positions...');
       try {
         const response = await fetch('/data/country_positions_bbox.json');
-        if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`); }
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data: CountryPositionData[] = await response.json();
         // console.log(`CountryLabelsComponent: Fetched ${data.length} positions.`);
-        if (!Array.isArray(data)) { throw new Error('Expected array.'); }
-        const validData = data.filter(item => item && typeof item.id === 'string' && typeof item.name === 'string' && typeof item.position?.x === 'number' && typeof item.position?.y === 'number');
-        if (validData.length !== data.length) { console.warn("CountryLabelsComponent: Some items filtered."); }
+        if (!Array.isArray(data)) {
+          throw new Error('Expected array.');
+        }
+        const validData = data.filter(
+          (item) =>
+            item &&
+            typeof item.id === 'string' &&
+            typeof item.name === 'string' &&
+            typeof item.position?.x === 'number' &&
+            typeof item.position?.y === 'number'
+        );
+        if (validData.length !== data.length) {
+          console.warn('CountryLabelsComponent: Some items filtered.');
+        }
         setCountryData(validData);
-      } catch (e: any) { setError(e.message || 'Failed'); setCountryData([]); }
-      finally { setIsLoading(false); }
+      } catch (e: any) {
+        setError(e.message || 'Failed');
+        setCountryData([]);
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchData();
   }, []);
 
   // Effect 2: Manage Leaflet markers
   useEffect(() => {
-    if (!map || !L || !mapConfig) { // Check for mapConfig too
-      if (layerGroupRef.current) { layerGroupRef.current.remove(); layerGroupRef.current = null; }
+    // Ensure map, L, and mapConfig are available
+    if (!map || !L || !mapConfig) {
+      if (layerGroupRef.current) {
+        layerGroupRef.current.remove();
+        layerGroupRef.current = null;
+      }
       return;
     }
 
-    // Clear previous layer
+    // Clear previous layer if it exists
     if (layerGroupRef.current) {
       layerGroupRef.current.remove();
       layerGroupRef.current = null;
@@ -74,17 +95,25 @@ const CountryLabelsComponent: React.FC<CountryLabelsProps> = ({
       return;
     }
 
+    // --- Get the offset from mapConfig, providing defaults ---
+    const { countryLabelOffset = { x: 0, y: 0 } } = mapConfig;
+
     // --- Create and add new layer ---
     // console.log(`CountryLabelsComponent: Creating labels for ${countryData.length} countries (Custom CRS).`);
     const markers: any[] = [];
     layerGroupRef.current = L.layerGroup();
 
     countryData.forEach((country) => {
-      // --- CONVERT SVG coordinates TO CUSTOM LatLng, passing mapConfig ---
+      // --- APPLY OFFSET to SVG coordinates ---
+      const adjustedX = country.position.x + countryLabelOffset.x;
+      const adjustedY = country.position.y + countryLabelOffset.y;
+      // --- END OFFSET APPLICATION ---
+
+      // --- CONVERT ADJUSTED SVG coordinates TO CUSTOM LatLng ---
       const customLatLng = svgToLatLng(
-          country.position.x,
-          country.position.y,
-          mapConfig // <-- PASS mapConfig here
+        adjustedX, // Use adjusted X
+        adjustedY, // Use adjusted Y
+        mapConfig // Pass mapConfig for conversion context
       );
       // --- END CONVERSION ---
 
@@ -92,34 +121,39 @@ const CountryLabelsComponent: React.FC<CountryLabelsProps> = ({
       const markerLatLng = L.latLng(customLatLng.lat, customLatLng.lng);
 
       const labelIcon = L.divIcon({
-        className: 'country-label-icon',
+        className: mapConfig.labelClassName || 'country-label-icon', // Use class from config or default
         html: `<span>${country.name}</span>`,
-        iconSize: undefined,
+        iconSize: undefined, // Let CSS handle size
       });
 
-      const marker = L.marker(markerLatLng, { // Use the converted LatLng
+      const marker = L.marker(markerLatLng, {
         icon: labelIcon,
-        zIndexOffset: 500,
-        interactive: false,
-        title: country.name,
+        zIndexOffset: 500, // Keep labels above most layers
+        interactive: false, // Labels typically aren't interactive
+        title: country.name, // Tooltip on hover
       });
 
       markers.push(marker);
     });
 
+    // Add all markers to the layer group at once
     markers.forEach((marker) => layerGroupRef.current.addLayer(marker));
+    // Add the layer group to the map
     layerGroupRef.current.addTo(map);
     // console.log('CountryLabelsComponent: Labels added to map using custom LatLng.');
 
-    // Cleanup function
+    // Cleanup function: remove the layer group when dependencies change or component unmounts
     return () => {
       if (layerGroupRef.current) {
+        // console.log('CountryLabelsComponent: Cleaning up labels.');
         layerGroupRef.current.remove();
         layerGroupRef.current = null;
       }
     };
-  }, [map, L, visible, countryData, isLoading, error, mapConfig]); // Add mapConfig to dependency array
+    // Dependencies: Re-run effect if map, Leaflet, visibility, data, loading state, error state, or mapConfig changes
+  }, [map, L, visible, countryData, isLoading, error, mapConfig]);
 
+  // This component doesn't render anything itself, it manages Leaflet layers
   return null;
 };
 

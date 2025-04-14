@@ -57,6 +57,9 @@ export interface MapConfig {
     paths: LODMapPaths;
     zoomThresholds: { low: number; medium: number };
   };
+
+  // NEW: Optional offset for country labels in SVG pixels
+  countryLabelOffset?: { x: number; y: number };
 }
 
 /**
