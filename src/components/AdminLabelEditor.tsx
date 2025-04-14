@@ -11,6 +11,7 @@ import React, {
 import { MapConfig } from '@/types'; // Use your specific LatLng type if needed
 import { latLngToSvg, svgToLatLng } from '@/lib/coordinates-system'; // Import both conversion functions
 import L from 'leaflet'; // Import Leaflet type
+import getConfig from 'next/config';
 
 // Interface for the position data - includes optional layerId
 interface CountryPositionData {
@@ -41,7 +42,7 @@ interface AdminLabelEditorProps {
 const TARGET_LAYER_ID = 'political';
 // --- FILENAME TO LOAD/SAVE ---
 // Ensure this matches the file your API writes to!
-const DATA_FILE_PATH = '/data/country_positions_ctm.json';
+const DATA_FILE_PATH = '/projects/ixmaps/data/country_positions_ctm.json';
 
 const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
   map,

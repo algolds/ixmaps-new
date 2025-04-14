@@ -1,48 +1,50 @@
 // /wiki/prod/v14/projects/ixmaps/ecosystem.config.js
 module.exports = {
-    apps: [
-      {
-        name: 'ixmaps', // Application name displayed in PM2
-        cwd: '/wiki/prod/v14/projects/ixmaps', // Set the current working directory
-        script: 'npm', // Use npm to run the start script
-        args: 'start', // Arguments to pass to the script (npm run start)
-        exec_mode: 'cluster', // Enable cluster mode for Node.js apps
-        instances: 'max', // Use max available CPUs (or specify a number)
-        watch: false, // Do NOT watch for file changes in production
-        max_memory_restart: '512M', // Restart if memory exceeds 512MB (adjust as needed)
-        log_date_format: 'YYYY-MM-DD HH:mm:ss', // Format for logs
-        error_file: './logs/ixmaps-err.log', // Path to error log
-        out_file: './logs/ixmaps-out.log', // Path to standard output log
-        merge_logs: true, // Merge logs from all instances
-        env_production: {
-          // Environment variables for production
-          NODE_ENV: 'production',
-          PORT: 3003, // Default Next.js port, change if your app uses a different one
-          // --- IMPORTANT ---
-          // Add ALL other required production environment variables here
-          // Example:
-          // DATABASE_URL: process.env.DATABASE_URL, // Best practice: Load from server env
-          // NEXTAUTH_URL: process.env.NEXTAUTH_URL,
-          // NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
-          // API_KEY: process.env.API_KEY
-          // Ensure these variables are actually available in the environment
-          // where you run `pm2 start` or define them directly here (less secure for secrets)
-        },
+  apps: [
+    {
+      name: 'ixmaps',
+      cwd: '/wiki/prod/v14/projects/ixmaps', // Project root directory
+      script: 'node_modules/.bin/next', // More direct path to next executable
+      args: 'start -p 3003', // Use '-p' to specify the port
+      exec_mode: 'cluster',
+      instances: 'max',
+      watch: false,
+      max_memory_restart: '512M',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      error_file: './logs/ixmaps-err.log', // Relative to cwd
+      out_file: './logs/ixmaps-out.log', // Relative to cwd
+      merge_logs: true,
+      env_production: {
+        // --- VITAL ---
+        NODE_ENV: 'production', // Tells next.config.js to use production settings
+        PORT: 3003, // Port Next.js listens on (matches args)
+
+        // --- Production Environment Variables ---
+        // Load sensitive variables from the server environment if possible
+        // Or define them here (less secure for secrets)
+        DATABASE_URL:
+          process.env.DATABASE_URL ||
+          'postgresql://ixmapsuser:ghantisghont448@localhost:5432/ixmapsdb?schema=public', // Example: prefer server env
+
+        // --- CRITICAL for Auth ---
+        // This MUST be the public URL where your app is accessed
+        NEXTAUTH_URL:
+          process.env.NEXTAUTH_URL || 'https://ixwiki.com/projects/ixmaps',
+        AUTH_SECRET: process.env.AUTH_SECRET, // Load from server env!
+        AUTH_DISCORD_ID: process.env.AUTH_DISCORD_ID, // Load from server env!
+        AUTH_DISCORD_SECRET: process.env.AUTH_DISCORD_SECRET, // Load from server env!
+        AUTH_TRUST_HOST: 'true', // Or configure properly if behind specific proxy
+
+        // --- Clerk Vars (Load from server env!) ---
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
+          process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+        CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
+        CLERK_WEBHOOK_SIGNING_SECRET:
+          process.env.CLERK_WEBHOOK_SIGNING_SECRET,
+
+        // NEXT_PUBLIC_BASE_PATH is not strictly needed here if next.config.js handles it
       },
-    ],
-  
-    // Optional: Deployment configuration (if using pm2 deploy)
-    // deploy : {
-    //   production : {
-    //     user : 'SSH_USERNAME',
-    //     host : 'SSH_HOSTMACHINE',
-    //     ref  : 'origin/main',
-    //     repo : 'GIT_REPOSITORY',
-    //     path : '/wiki/prod/v14/projects/ixmaps', // Destination path on the server
-    //     'pre-deploy-local': '',
-    //     'post-deploy' : 'npm install && npm run build && pm2 reload ecosystem.config.js --env production',
-    //     'pre-setup': ''
-    //   }
-    // }
-  };
-  
+    },
+  ],
+  // deploy section omitted for brevity
+};

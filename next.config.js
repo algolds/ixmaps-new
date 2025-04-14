@@ -1,3 +1,4 @@
+// next.config.js
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -5,16 +6,30 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // --- Conditional Base Path & Asset Prefix ---
+  // When NODE_ENV is 'production' (set by PM2), use the subpath.
+  // Otherwise (in development), use the root path ('').
   basePath: process.env.NODE_ENV === 'production' ? '/projects/ixmaps' : '',
   assetPrefix: process.env.NODE_ENV === 'production' ? '/projects/ixmaps' : '',
+
+  // --- publicRuntimeConfig ---
+  // This makes the calculated basePath available on the client-side via getConfig()
+  // Although often not needed if you fetch relative paths correctly (see point 3)
   publicRuntimeConfig: {
     basePath: process.env.NODE_ENV === 'production' ? '/projects/ixmaps' : '',
-    environment: process.env.NODE_ENV
+    environment: process.env.NODE_ENV,
   },
 };
 
-// Debugging output
-console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('basePath config:', nextConfig.basePath);
+// Debugging output (useful during build/start)
+console.log('[next.config.js] NODE_ENV:', process.env.NODE_ENV);
+console.log(
+  '[next.config.js] Calculated basePath:',
+  nextConfig.basePath,
+);
+console.log(
+  '[next.config.js] Calculated assetPrefix:',
+  nextConfig.assetPrefix,
+);
 
 module.exports = nextConfig;
