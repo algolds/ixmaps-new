@@ -6,8 +6,8 @@ import L from 'leaflet';
 import { SVGLayer } from '@/types'; // Import SVGLayer type
 
 interface ControlPanelProps {
-  map: L.Map;
-  L: typeof L;
+  map: L.Map | null; // Allow null initially
+  L: typeof L | null; // Allow null initially
   // Display Toggles Props
   showGrid: boolean;
   showCountryLabels: boolean;
@@ -23,6 +23,9 @@ interface ControlPanelProps {
   onToggleLayer: (layerId: string, isVisible: boolean) => void;
   isLoadingLayers: boolean; // To disable/indicate loading
   layerError: string | null; // To show layer errors
+  // --- ADDED Admin Mode Props ---
+  isAdminMode: boolean;
+  onToggleAdminMode: () => void;
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = ({
@@ -43,18 +46,24 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   onToggleLayer,
   isLoadingLayers,
   layerError,
+  // --- ADDED Admin Mode Props ---
+  isAdminMode,
+  onToggleAdminMode,
 }) => {
-  const [collapsed, setCollapsed] = useState(true); // Start collapsed
+  const [isExpanded, setIsExpanded] = useState(false); // Start collapsed for better initial map view
   const [activeTab, setActiveTab] = useState<'display' | 'layers'>('display');
   const controlRef = useRef<L.Control | null>(null);
   const controlContainerRef = useRef<HTMLElement | null>(null);
 
   // Define layer groups for UI organization (adjust as needed)
-  const layerGroups: Record<string, string[]> = {
-    'Base Layers': ['political', 'climate', 'altitude-layers'], // Group altitude here if manually toggled
-    'Geographic Features': ['lakes', 'rivers'], //  
-    // Add 'Other' group logic if needed later
-  };
+  // Using useCallback to memoize this structure if it were more complex
+  const layerGroups = useCallback((): Record<string, string[]> => {
+    return {
+      'Base Layers': ['political', 'climate', 'altitude-layers'],
+      'Geographic Features': ['lakes', 'rivers'],
+      // 'Other': [] // Placeholder if needed
+    };
+  }, []);
 
   // --- Helper to create checkboxes (memoized) ---
   const createCheckboxItem = useCallback(
@@ -66,8 +75,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       onChangeCallback: (checked: boolean) => void,
       disabled: boolean = false,
     ) => {
+      if (!L) return null; // Guard against L not being available
+
       const itemDiv = L.DomUtil.create('div', 'control-item', parent);
-      // itemDiv styles moved to CSS
 
       const checkbox = L.DomUtil.create('input', '', itemDiv);
       checkbox.type = 'checkbox';
@@ -75,9 +85,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       checkbox.checked = isChecked;
       checkbox.disabled = disabled;
       checkbox.style.marginRight = '8px';
-      checkbox.style.cursor = disabled ? 'not-allowed' : 'pointer'; // Indicate disabled state
+      checkbox.style.cursor = disabled ? 'not-allowed' : 'pointer';
 
-      // Use L.DomEvent for potentially better handling
       L.DomEvent.on(checkbox, 'change', (e) => {
         onChangeCallback((e.target as HTMLInputElement).checked);
       });
@@ -86,94 +95,77 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       label.htmlFor = checkbox.id;
       label.textContent = labelText;
       label.style.cursor = disabled ? 'default' : 'pointer';
-      label.style.flexGrow = '1';
+      label.style.flexGrow = '1'; // Allow label to take space
       if (disabled) {
-        label.style.opacity = '0.6'; // Visually indicate disabled
+        label.style.opacity = '0.6';
       }
 
       return itemDiv;
     },
-    [L], // L is stable, so this is effectively memoized
+    [L], // Dependency on L
   );
 
-  // --- Function to Update Control UI (REVISED) ---
+  // --- Function to Update Control UI ---
   const updateControlUI = useCallback(() => {
     const container = controlContainerRef.current;
     if (!container || !L) return;
 
     // Clear previous content
     container.innerHTML = '';
-    // Remove specific sizing classes if they exist from previous logic
-    L.DomUtil.removeClass(container, 'collapsed');
+    L.DomUtil.removeClass(container, 'collapsed'); // Use L.DomUtil for consistency
     L.DomUtil.removeClass(container, 'expanded');
-    // Reset padding, border will be handled by button or content area
     container.style.padding = '0';
-    container.style.border = 'none'; // Base container has no border itself
+    container.style.border = 'none';
 
-    if (collapsed) {
+    if (!isExpanded) {
       // --- RENDER COLLAPSED STATE ---
-      container.style.width = 'auto'; // Let button define size
+      L.DomUtil.addClass(container, 'collapsed'); // Add class for potential styling
+      container.style.width = 'auto';
       container.style.height = 'auto';
 
       const toggleButton = L.DomUtil.create('div', 'toggle-button', container);
       toggleButton.innerHTML = '⚙️'; // Gear Icon
       toggleButton.title = 'Expand Controls';
-      // Styles for collapsed button are now primarily from CSS class '.toggle-button'
 
       L.DomEvent.on(toggleButton, 'click', (e) => {
-        L.DomEvent.stop(e); // Prevent map click
-        setCollapsed(false);
+        L.DomEvent.stop(e);
+        setIsExpanded(true);
       });
-
     } else {
       // --- RENDER EXPANDED STATE ---
-      container.style.width = ''; // Remove fixed width if set
-      container.style.height = ''; // Remove fixed height if set
+      L.DomUtil.addClass(container, 'expanded'); // Add class for potential styling
+      container.style.width = ''; // Let CSS handle max-width
+      container.style.height = ''; // Let CSS handle max-height
       container.style.border = '1px solid #ccc'; // Add border for expanded panel
 
       // --- Toggle Button (Expanded Look) ---
-      const toggleButton = L.DomUtil.create('div', 'toggle-button expanded-state', container);
+      const toggleButton = L.DomUtil.create(
+        'div',
+        'toggle-button expanded-state', // Use both classes
+        container,
+      );
       toggleButton.innerHTML = '≪ Collapse';
       toggleButton.title = 'Collapse Controls';
-      // Styles for expanded button from CSS classes '.toggle-button.expanded-state'
 
       L.DomEvent.on(toggleButton, 'click', (e) => {
-         L.DomEvent.stop(e); // Prevent map click
-         setCollapsed(true);
+        L.DomEvent.stop(e);
+        setIsExpanded(false);
       });
 
       // --- Content Area ---
       const content = L.DomUtil.create('div', 'control-content', container);
-      // Styles for content area from CSS
 
       // --- Tab Navigation ---
       const tabNav = L.DomUtil.create('div', 'tab-navigation', content);
-      // Styles from CSS
 
-      const createTab = (tabId: 'display' | 'layers', tabText: string): HTMLDivElement => {
+      const createTab = (
+        tabId: 'display' | 'layers',
+        tabText: string,
+      ): HTMLDivElement => {
         const tab = L.DomUtil.create('div', `tab tab-${tabId}`, tabNav);
         tab.textContent = tabText;
-        // Apply base tab styles (consider moving more to CSS if static)
-        tab.style.flex = '1';
-        tab.style.padding = '8px 0';
-        tab.style.textAlign = 'center';
-        tab.style.cursor = 'pointer';
-        tab.style.border = '1px solid #ddd';
-        tab.style.borderBottom = 'none'; // Default non-active state
-        tab.style.backgroundColor = '#f1f1f1';
-        tab.style.borderTopLeftRadius = '3px';
-        tab.style.borderTopRightRadius = '3px';
-        tab.style.marginRight = '-1px'; // Overlap borders
-
         if (activeTab === tabId) {
-          tab.style.backgroundColor = '#fff'; // Active tab background
-          tab.style.fontWeight = 'bold';
-          tab.style.borderBottom = '1px solid #fff'; // Hide bottom border
-          tab.style.marginBottom = '-1px'; // Pull up to overlap content border
-        } else {
-           // Hover effect for non-active tabs
-           tab.onmouseenter = () => { if (activeTab !== tabId) tab.style.backgroundColor = '#e9e9e9'; };
-           tab.onmouseleave = () => { if (activeTab !== tabId) tab.style.backgroundColor = '#f1f1f1'; };
+          L.DomUtil.addClass(tab, 'active'); // Use class for active state
         }
         L.DomEvent.on(tab, 'click', () => setActiveTab(tabId));
         return tab;
@@ -183,88 +175,187 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       createTab('layers', 'Layers');
 
       // --- Tab Content Area ---
-      const tabContentArea = L.DomUtil.create('div', 'tab-content-area', content);
-      // Styles from CSS
+      const tabContentArea = L.DomUtil.create(
+        'div',
+        'tab-content-area',
+        content,
+      );
 
       // --- Display Tab Content ---
       if (activeTab === 'display') {
-        const displaySection = L.DomUtil.create('div', 'control-section', tabContentArea);
-        createCheckboxItem(displaySection, 'pos', 'Show Position', showPosition, onTogglePosition);
-        createCheckboxItem(displaySection, 'grid', 'Show Grid', showGrid, onToggleGrid);
-        createCheckboxItem(displaySection, 'country-labels', 'Show Country Labels', showCountryLabels, onToggleCountryLabels);
-        createCheckboxItem(displaySection, 'pm', 'Show Prime Meridian', showPrimeMeridian, onTogglePrimeMeridian);
+        const displaySection = L.DomUtil.create(
+          'div',
+          'control-section',
+          tabContentArea,
+        );
+        // Standard Display Toggles
+        createCheckboxItem(
+          displaySection,
+          'pos',
+          'Show Position',
+          showPosition,
+          onTogglePosition,
+        );
+        createCheckboxItem(
+          displaySection,
+          'grid',
+          'Show Grid',
+          showGrid,
+          onToggleGrid,
+        );
+        createCheckboxItem(
+          displaySection,
+          'country-labels',
+          'Show Country Labels',
+          showCountryLabels,
+          onToggleCountryLabels,
+        );
+        createCheckboxItem(
+          displaySection,
+          'pm',
+          'Show Prime Meridian',
+          showPrimeMeridian,
+          onTogglePrimeMeridian,
+        );
+
+        // --- Admin Mode Toggle ---
+        const adminSection = L.DomUtil.create(
+          'div',
+          'control-section', // Reuse section styling
+          tabContentArea, // Add within the display tab content area
+        );
+        const groupTitle = L.DomUtil.create('div', 'group-title', adminSection); // Add title
+        groupTitle.textContent = 'Admin';
+        createCheckboxItem(
+          adminSection,
+          'admin-mode', // Unique ID
+          'Label Editor Mode', // Label text
+          isAdminMode, // Checked state from props
+          onToggleAdminMode, // Callback function from props
+        );
       }
 
       // --- Layers Tab Content ---
       if (activeTab === 'layers') {
-        const layersSection = L.DomUtil.create('div', 'control-section', tabContentArea);
+        const layersSection = L.DomUtil.create(
+          'div',
+          'control-section',
+          tabContentArea,
+        );
 
         if (isLoadingLayers) {
           layersSection.textContent = 'Loading layers...';
-          Object.assign(layersSection.style, { fontStyle: 'italic', color: '#666' });
+          Object.assign(layersSection.style, {
+            fontStyle: 'italic',
+            color: '#666',
+          });
         } else if (layerError) {
           layersSection.textContent = `Error: ${layerError}`;
-          Object.assign(layersSection.style, { color: 'red', fontWeight: 'bold' });
+          Object.assign(layersSection.style, {
+            color: 'red',
+            fontWeight: 'bold',
+          });
         } else if (Object.keys(layers).length === 0) {
           layersSection.textContent = 'No layers available.';
-           Object.assign(layersSection.style, { fontStyle: 'italic', color: '#666' });
+          Object.assign(layersSection.style, {
+            fontStyle: 'italic',
+            color: '#666',
+          });
         } else {
-            // Grouping and rendering logic
-          // Filter out 'icecaps' before grouping/rendering
-          const layerKeys = Object.keys(layers).filter(key => key !== 'icecaps'); // <--- MODIFIED LINE
+          // Grouping and rendering logic
+          const currentLayerGroups = layerGroups(); // Get groups
+          const layerKeys = Object.keys(layers).filter((key) => key !== 'icecaps'); // Filter out internal layers if needed
           const groupedRenderedKeys: Record<string, string[]> = {};
           const otherRenderedKeys: string[] = [];
 
-          layerKeys.forEach(key => {
-             let foundGroup = false;
-             for (const groupName in layerGroups) {
-                if (layerGroups[groupName].includes(key)) {
-                   if (!groupedRenderedKeys[groupName]) groupedRenderedKeys[groupName] = [];
-                   groupedRenderedKeys[groupName].push(key);
-                   foundGroup = true;
-                   break;
-                }
-             }
-             if (!foundGroup) otherRenderedKeys.push(key);
+          layerKeys.forEach((key) => {
+            let foundGroup = false;
+            for (const groupName in currentLayerGroups) {
+              if (currentLayerGroups[groupName].includes(key)) {
+                if (!groupedRenderedKeys[groupName])
+                  groupedRenderedKeys[groupName] = [];
+                groupedRenderedKeys[groupName].push(key);
+                foundGroup = true;
+                break;
+              }
+            }
+            if (!foundGroup) otherRenderedKeys.push(key);
           });
+          // Add ungrouped layers to an 'Other' group
           if (otherRenderedKeys.length > 0) groupedRenderedKeys['Other'] = otherRenderedKeys;
 
-          const sortedGroupNames = Object.keys(groupedRenderedKeys).sort((a, b) => {
-             if (a === 'Base Layers') return -1; if (b === 'Base Layers') return 1;
-             if (a === 'Other') return 1; if (b === 'Other') return -1;
-             return a.localeCompare(b);
-          });
+          // Sort group names (e.g., Base Layers first, Other last)
+          const sortedGroupNames = Object.keys(groupedRenderedKeys).sort(
+            (a, b) => {
+              if (a === 'Base Layers') return -1;
+              if (b === 'Base Layers') return 1;
+              if (a === 'Other') return 1;
+              if (b === 'Other') return -1;
+              return a.localeCompare(b);
+            },
+          );
 
-          sortedGroupNames.forEach(groupName => {
-             const groupContainer = L.DomUtil.create('div', 'layer-group', layersSection);
-             const groupTitle = L.DomUtil.create('div', 'group-title', groupContainer);
-             groupTitle.textContent = groupName;
+          // Render each group
+          sortedGroupNames.forEach((groupName) => {
+            const groupContainer = L.DomUtil.create(
+              'div',
+              'layer-group',
+              layersSection,
+            );
+            const groupTitle = L.DomUtil.create(
+              'div',
+              'group-title',
+              groupContainer,
+            );
+            groupTitle.textContent = groupName;
 
-             groupedRenderedKeys[groupName].sort((a, b) => (layers[a]?.name || a).localeCompare(layers[b]?.name || b))
-               .forEach((layerId) => {
-                 const layerInfo = layers[layerId];
-                 if (layerInfo) {
-                   const name = layerInfo.name || layerId;
-                   const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1);
-                   createCheckboxItem(
-                     groupContainer, layerId, capitalizedName,
-                     layerVisibility[layerId] ?? false,
-                     (checked) => onToggleLayer(layerId, checked),
-                     isLoadingLayers,
-                   );
-                 }
-               });
+            // Sort layers within the group alphabetically by name
+            groupedRenderedKeys[groupName]
+              .sort((a, b) =>
+                (layers[a]?.name || a).localeCompare(layers[b]?.name || b),
+              )
+              .forEach((layerId) => {
+                const layerInfo = layers[layerId];
+                if (layerInfo) {
+                  const name = layerInfo.name || layerId;
+                  // Simple capitalization
+                  const capitalizedName =
+                    name.charAt(0).toUpperCase() + name.slice(1);
+                  createCheckboxItem(
+                    groupContainer,
+                    layerId,
+                    capitalizedName,
+                    layerVisibility[layerId] ?? false,
+                    (checked) => onToggleLayer(layerId, checked),
+                    isLoadingLayers, // Disable while loading
+                  );
+                }
+              });
           });
         }
       }
     } // End of expanded state rendering
   }, [
-    // Include all props and state that affect the UI rendering
-    L, collapsed, activeTab,
-    showGrid, showCountryLabels, showPrimeMeridian, showPosition,
-    layers, layerVisibility, isLoadingLayers, layerError,
-    onToggleGrid, onToggleCountryLabels, onTogglePrimeMeridian, onTogglePosition, onToggleLayer,
-    createCheckboxItem, layerGroups // Include memoized helper and layerGroups
+    L,
+    isExpanded,
+    activeTab,
+    showGrid,
+    showCountryLabels,
+    showPrimeMeridian,
+    showPosition,
+    layers,
+    layerVisibility,
+    isLoadingLayers,
+    layerError,
+    isAdminMode, // Include admin state
+    onToggleGrid,
+    onToggleCountryLabels,
+    onTogglePrimeMeridian,
+    onTogglePosition,
+    onToggleLayer,
+    onToggleAdminMode, // Include admin toggle handler
+    createCheckboxItem,
+    layerGroups,
   ]);
 
   // Effect to create and manage the Leaflet Control
@@ -272,63 +363,68 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
     if (!map || !L) return;
 
     const IxMapControl = L.Control.extend({
-      options: { position: 'topright' },
+      options: { position: 'topright' }, // Standard Leaflet control position
       onAdd: function (_map: L.Map) {
-        const container = L.DomUtil.create('div', 'leaflet-control leaflet-control-custom ixmap-control-panel');
+        // Create the main container div
+        const container = L.DomUtil.create(
+          'div',
+          'leaflet-control leaflet-control-custom ixmap-control-panel', // Use base class + custom class
+        );
+        // Prevent map interactions when clicking on the control
         L.DomEvent.disableClickPropagation(container);
         L.DomEvent.disableScrollPropagation(container);
+        // Store the reference to the container element
         controlContainerRef.current = container;
-        updateControlUI(); // Initial build
+        // Build the initial UI inside the container
+        updateControlUI();
         return container;
       },
       onRemove: function (_map: L.Map) {
-        // Leaflet handles removing the container, just nullify our ref
-        controlContainerRef.current = null;
+        // Cleanup when the control is removed from the map
+        controlContainerRef.current = null; // Clear the container reference
       },
     });
 
-    // Ensure control is added only once
+    // Add the control to the map only if it hasn't been added yet
     if (!controlRef.current) {
       controlRef.current = new IxMapControl();
       map.addControl(controlRef.current);
     } else {
-      // If control exists but container ref got lost, try re-assigning
+      // If control exists, ensure the container ref is up-to-date
+      // (This handles potential edge cases during hot-reloading)
       if (!controlContainerRef.current && controlRef.current.getContainer) {
-         // FIX for Error 1: Handle potential undefined return
-         controlContainerRef.current = controlRef.current.getContainer() ?? null;
+        controlContainerRef.current = controlRef.current.getContainer() ?? null;
       }
-      // Always update UI in case props changed before control was re-rendered
-      // This might be redundant if the second useEffect handles it, but safe
+      // Update the UI in case props changed while the control existed
       updateControlUI();
     }
 
-
+    // Cleanup function for this effect
     return () => {
-      // FIX for Error 2: Remove map.hasControl check
-      // Rely on try...catch for safe removal
-      if (map && controlRef.current) { // Check if controlRef exists
+      // Remove the control from the map when the component unmounts or dependencies change
+      if (map && controlRef.current) {
         try {
           map.removeControl(controlRef.current);
         } catch (e) {
           console.warn('Error removing control panel:', e);
         }
       }
-      controlRef.current = null;
-      // controlContainerRef is handled by onRemove
+      controlRef.current = null; // Clear the control reference
     };
-  // Add updateControlUI as dependency because it's called inside this effect
-  }, [map, L, updateControlUI]);
+  }, [map, L, updateControlUI]); // Dependencies: map, L, and the UI update function
 
-  // Effect to update the control's UI when props or internal state change
+  // Effect to update the control's UI whenever its dependencies change
   useEffect(() => {
-    // Only call update if the container exists (control has been added)
+    // Only update if the control's container element exists
     if (controlContainerRef.current) {
       updateControlUI();
     }
-    // updateControlUI is memoized and includes all relevant dependencies
+    // The updateControlUI function is memoized and its dependency array
+    // includes all props/state that should trigger a UI rebuild.
   }, [updateControlUI]);
 
-  return null; // Component manages Leaflet control, doesn't render React DOM
+  // This component renders nothing itself; it manages a Leaflet control
+  return null;
 };
 
 export default ControlPanel;
