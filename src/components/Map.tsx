@@ -2,23 +2,24 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import L, { Map as LeafletMap, LatLngBounds } from 'leaflet'; // Import LatLngBounds if needed locally
+import L, { Map as LeafletMap, LatLngBounds } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 import {
   MapConfig,
   SvgPoint,
   SVGLayer,
-  MapBounds, // Import MapBounds type
+  MapBounds,
 } from '@/types';
-import { defaultMapConfig } from '@/lib/MapConfig';
+// Import the primeMeridianRef constant along with the default config
+import { defaultMapConfig, primeMeridianRef as defaultPrimeMeridianRef } from '@/lib/MapConfig';
 import { latLngToSvg } from '@/lib/coordinates-system';
 import { parseSVGLayers } from '@/lib/SVGLayerParser';
 import { initToasts, showToast } from '@/lib/Toast';
 import dynamic from 'next/dynamic';
 
 // Import child components
-const GridComponent = dynamic(() => import('./GridComponent'), { ssr: false }); // Now handles Grid, PM, Coords Display
+const GridComponent = dynamic(() => import('./GridComponent'), { ssr: false });
 const CountryLabelsComponent = dynamic(() => import('./CountryLabelsComponent'), {
   ssr: false,
 });
@@ -40,26 +41,23 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   // --- Core State ---
   const [mapConfig, setMapConfig] = useState<MapConfig>(() => {
     const overrides = configOverrides || {};
-    let initialBounds: MapBounds; // Variable to hold the validated bounds
+    let initialBounds: MapBounds;
 
     // --- Step 1: Determine the correct bounds object ---
+    // (Bounds logic remains the same)
     if (overrides.bounds) {
-      // Check if the provided override bounds are in the correct {N,S,E,W} format
       if (
         typeof overrides.bounds.north === 'number' &&
         typeof overrides.bounds.south === 'number' &&
         typeof overrides.bounds.east === 'number' &&
         typeof overrides.bounds.west === 'number'
       ) {
-        // Valid format, use the override bounds
         initialBounds = overrides.bounds;
         console.log('Using bounds from configOverrides:', initialBounds);
       } else {
-        // Invalid format in overrides (e.g., might be LatLngBounds)
         console.warn(
           'MapComponent: Invalid bounds format in configOverrides. Using default bounds.',
         );
-        // Ensure defaultMapConfig.bounds exists and is valid before assigning
         if (
           defaultMapConfig.bounds &&
           typeof defaultMapConfig.bounds.north === 'number'
@@ -69,61 +67,58 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
           console.error(
             'MapComponent: CRITICAL - Default bounds are invalid or missing! Using hardcoded fallback.',
           );
-          initialBounds = { north: 85, south: -85, east: 180, west: -180 };
+          initialBounds = { north: 85, south: -85, east: 180, west: -180 }; // Fallback geographic bounds if default is bad
         }
       }
     } else if (
       defaultMapConfig.bounds &&
       typeof defaultMapConfig.bounds.north === 'number'
     ) {
-      // No bounds in overrides, use the default config bounds if valid
       initialBounds = defaultMapConfig.bounds;
       console.log('Using default bounds:', initialBounds);
     } else {
-      // Critical fallback: No bounds in overrides OR default config is invalid/missing
       console.error(
         'MapComponent: CRITICAL - No valid bounds defined in configOverrides or defaultMapConfig! Using hardcoded fallback.',
       );
-      initialBounds = { north: 85, south: -85, east: 180, west: -180 };
+      initialBounds = { north: 85, south: -85, east: 180, west: -180 }; // Fallback geographic bounds
     }
 
+
     // --- Step 2: Create the final config object ---
-    // Start with defaults, spread overrides (excluding bounds), then set validated bounds
     const finalConfig: MapConfig = {
-      ...defaultMapConfig, // Apply defaults first
-      ...overrides, // Apply overrides (this might temporarily include incorrect bounds type)
-      bounds: initialBounds, // **Explicitly set the validated MapBounds object**
+      ...defaultMapConfig,
+      ...overrides,
+      bounds: initialBounds,
+      // *** FIX: Explicitly add primeMeridianRef, allowing overrides ***
+      primeMeridianRef: overrides.primeMeridianRef ?? defaultPrimeMeridianRef,
     };
 
     // --- Step 3: Apply other defaults/checks ---
+    // (Remaining logic remains the same)
     if (finalConfig.minZoom === undefined) {
-      finalConfig.minZoom = defaultMapConfig.minZoom ?? 0; // Use default if available
+      finalConfig.minZoom = defaultMapConfig.minZoom ?? 0;
     }
     if (finalConfig.maxZoom === undefined) {
-      finalConfig.maxZoom = defaultMapConfig.maxZoom ?? 4; // Use default if available
+      finalConfig.maxZoom = defaultMapConfig.maxZoom ?? 4;
     }
     if (!finalConfig.baseMapUrl && !finalConfig.masterMapPath) {
       console.error(
         'MapComponent: No map URL defined (baseMapUrl or masterMapPath)! Map may not display.',
       );
     }
-    // Ensure kmPerPixel is calculated if using the getter in defaultMapConfig
-    // This might not be strictly necessary if the getter works, but ensures the value exists
-    // Check if kmPerPixel is missing or potentially zero from overrides
     if (finalConfig.milesPerPixel && !finalConfig.kmPerPixel) {
-      // Use the getter from defaultMapConfig if available, otherwise calculate
       if (typeof defaultMapConfig.kmPerPixel === 'number') {
          finalConfig.kmPerPixel = defaultMapConfig.kmPerPixel;
       } else {
-         // Fallback calculation (ensure correct conversion factor)
          finalConfig.kmPerPixel = finalConfig.milesPerPixel * 1.60934;
       }
     }
 
     console.log('Final computed mapConfig:', finalConfig);
-    return finalConfig; // Return the fully validated and typed config
+    return finalConfig;
   });
 
+  // (Rest of the MapComponent remains the same...)
   const [map, setMap] = useState<LeafletMap | null>(null);
   const [leaflet, setLeaflet] = useState<typeof L | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
@@ -141,12 +136,12 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const [svgError, setSvgError] = useState<string | null>(null);
 
   // --- Display Toggle State ---
-  const [showGrid, setShowGrid] = useState<boolean>(true); // Controls grid lines
+  const [showGrid, setShowGrid] = useState<boolean>(true);
   const [showCountryLabels, setShowCountryLabels] = useState<boolean>(
     mapConfig.showCountryLabels ?? true,
   );
-  const [showPrimeMeridian, setShowPrimeMeridian] = useState<boolean>(true); // Controls PM line visibility
-  const [showPositionDisplay, setShowPositionDisplay] = useState<boolean>(true); // Controls mouse coordinate display
+  const [showPrimeMeridian, setShowPrimeMeridian] = useState<boolean>(true);
+  const [showPositionDisplay, setShowPositionDisplay] = useState<boolean>(true);
 
   // --- Debug State ---
   const [debugMessages, setDebugMessages] = useState<string[]>([]);
@@ -161,12 +156,15 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   // --- Initial Config Logging ---
   useEffect(() => {
     console.log('MapComponent initialized with config:', mapConfig);
-    // Log the N/S/E/W bounds directly
     addDebugMessage(
       `Initializing MapComponent with bounds: N:${mapConfig.bounds.north}, S:${mapConfig.bounds.south}, E:${mapConfig.bounds.east}, W:${mapConfig.bounds.west}`,
     );
     addDebugMessage(
       `Map URLs - Base: ${mapConfig.baseMapUrl}, Master: ${mapConfig.masterMapPath}`,
+    );
+    // *** FIX: Check for primeMeridianRef in logging ***
+    addDebugMessage(
+        `Prime Meridian Ref LatLng: ${JSON.stringify(mapConfig.primeMeridianRef)}`
     );
     if (!mapConfig.baseMapUrl && !mapConfig.masterMapPath) {
       addDebugMessage(
@@ -177,7 +175,11 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     if (!mapConfig.bounds) {
       addDebugMessage('CRITICAL: No bounds defined in mapConfig', 'error');
     }
-  }, [mapConfig, addDebugMessage]); // mapConfig dependency is correct
+    // *** FIX: Check if primeMeridianRef is actually missing after merge ***
+    if (!mapConfig.primeMeridianRef) {
+        addDebugMessage('CRITICAL: primeMeridianRef is missing from final mapConfig', 'error');
+    }
+  }, [mapConfig, addDebugMessage]);
 
   // --- Map Initialization Callback ---
   const handleMapReady = useCallback(
@@ -188,7 +190,6 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       setLeaflet(LInstance);
       setIsMapReady(true);
 
-      // Dynamically import leaflet-draw
       if (!leafletDrawLoadedRef.current) {
         try {
           addDebugMessage('Dynamically importing leaflet-draw...');
@@ -203,7 +204,6 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
         }
       }
 
-      // Initialize toasts
       if (typeof initToasts === 'function') {
         try {
           initToasts();
@@ -215,22 +215,27 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
 
       // Calculate PM SVG origin using the reference LatLng from config
       try {
-        // Use optional chaining (?.) as primeMeridianRef is optional in the type
+        // *** FIX: Access primeMeridianRef directly (it should exist now) ***
         const refLat = mapConfig.primeMeridianRef?.lat;
         const refLng = mapConfig.primeMeridianRef?.lng;
 
         if (refLat !== undefined && refLng !== undefined) {
+          // *** Ensure latLngToSvg is robust against potential errors ***
           const pmSvgOrigin = latLngToSvg(refLat, refLng, mapConfig);
-          setPrimeMeridianSvg(pmSvgOrigin);
-          addDebugMessage(
-            `Prime meridian SVG origin calculated: ${JSON.stringify(
-              pmSvgOrigin,
-            )} based on Ref Lat: ${refLat}, Ref Lng: ${refLng}`,
-          );
+          if (pmSvgOrigin && typeof pmSvgOrigin.x === 'number' && typeof pmSvgOrigin.y === 'number') {
+              setPrimeMeridianSvg(pmSvgOrigin);
+              addDebugMessage(
+                `Prime meridian SVG origin calculated: ${JSON.stringify(
+                  pmSvgOrigin,
+                )} based on Ref Lat: ${refLat}, Ref Lng: ${refLng}`,
+              );
+          } else {
+              throw new Error('latLngToSvg returned invalid result for Prime Meridian');
+          }
         } else {
-          // Handle case where primeMeridianRef is not defined in config
+          // This warning should ideally not appear now if default is set
           addDebugMessage(
-            'Prime meridian reference (primeMeridianRef) not found in mapConfig. Cannot calculate PM origin.',
+            'Prime meridian reference (primeMeridianRef) lat/lng is undefined in mapConfig. Cannot calculate PM origin.',
             'warn',
           );
           setPrimeMeridianSvg(null);
@@ -253,6 +258,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     [mapConfig, addDebugMessage], // mapConfig is a dependency
   );
 
+  // (SVG Fetching, Toggles, Render logic remains the same...)
   // --- Fetch and Parse SVG ---
   useEffect(() => {
     const fetchAndParseSVG = async () => {
@@ -288,12 +294,8 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
           const initialVisibility = mapConfig.initialLayerVisibility || {};
           const newVisibility: Record<string, boolean> = {};
           Object.keys(parsedLayers).forEach((id) => {
-            // Default to false if not specified in initial config
             newVisibility[id] = initialVisibility[id] ?? false;
           });
-
-          // Auto-toggle altitude based on political state (if altitude exists)
-          // Ensure political layer exists before trying to access its visibility
           if (
             parsedLayers['altitude-layers'] &&
             newVisibility['political'] !== undefined
@@ -324,7 +326,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     }
   }, [
     mapConfig.masterMapPath,
-    mapConfig.initialLayerVisibility, // Add dependency
+    mapConfig.initialLayerVisibility,
     isMapReady,
     addDebugMessage,
   ]);
@@ -336,13 +338,12 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const handleTogglePrimeMeridian = (visible: boolean) =>
     setShowPrimeMeridian(visible);
   const handleTogglePosition = (visible: boolean) =>
-    setShowPositionDisplay(visible); // Renamed handler for clarity
+    setShowPositionDisplay(visible);
 
   const handleToggleLayer = useCallback(
     (layerId: string, isVisible: boolean) => {
       setLayerVisibility((prev) => {
         const newState = { ...prev, [layerId]: isVisible };
-        // Auto-toggle altitude layer based on political layer
         if (
           layerId === 'political' &&
           newState['altitude-layers'] !== undefined
@@ -355,7 +356,6 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
           layerId === 'altitude-layers' &&
           newState['political'] !== undefined
         ) {
-          // If altitude is manually toggled, ensure political is off
           if (isVisible) {
             newState['political'] = false;
             addDebugMessage(
@@ -377,7 +377,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       style={{
         width: '100%',
         height: '100vh',
-        backgroundColor: '#D5FFFF', // Consider making this configurable
+        backgroundColor: '#D5FFFF',
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -419,13 +419,10 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
         </div>
       )}
 
-      {/* Load Leaflet and Initialize Map */}
       <LeafletLoader mapConfig={mapConfig} onMapReady={handleMapReady} />
 
-      {/* Render map elements only when map is ready */}
       {isMapReady && map && leaflet && (
         <>
-          {/* Manages SVG Overlays */}
           <SvgLayerManager
             map={map}
             L={leaflet}
@@ -435,57 +432,45 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
             isLoading={isLoadingSvg}
             error={svgError}
           />
-
-          {/* Country Labels */}
           <CountryLabelsComponent
             map={map}
             L={leaflet}
             visible={showCountryLabels}
             mapConfig={mapConfig}
           />
-
-          {/* Grid Component (Includes PM Line and Position Display) */}
           <GridComponent
             map={map}
             L={leaflet}
             mapConfig={mapConfig}
             primeMeridianSvg={primeMeridianSvg}
-            showGrid={showGrid} // Pass grid visibility
-            showPrimeMeridian={showPrimeMeridian} // Pass PM visibility
-            showPositionDisplay={showPositionDisplay} // Pass position display visibility
+            showGrid={showGrid}
+            showPrimeMeridian={showPrimeMeridian}
+            showPositionDisplay={showPositionDisplay}
           />
-
-          {/* Unified Control Panel */}
           <ControlPanel
             map={map}
             L={leaflet}
-            showGrid={showGrid} // For Grid toggle
-            showCountryLabels={showCountryLabels} // For Labels toggle
-            showPrimeMeridian={showPrimeMeridian} // For PM toggle
-            showPosition={showPositionDisplay} // For Position Display toggle
+            showGrid={showGrid}
+            showCountryLabels={showCountryLabels}
+            showPrimeMeridian={showPrimeMeridian}
+            showPosition={showPositionDisplay}
             onToggleGrid={handleToggleGrid}
             onToggleCountryLabels={handleToggleCountryLabels}
             onTogglePrimeMeridian={handleTogglePrimeMeridian}
-            onTogglePosition={handleTogglePosition} // Use the correct handler
+            onTogglePosition={handleTogglePosition}
             layers={svgLayers}
             layerVisibility={layerVisibility}
             onToggleLayer={handleToggleLayer}
             isLoadingLayers={isLoadingSvg}
             layerError={svgError}
           />
-
-          {/* Map Scale */}
           <MapScale map={map} L={leaflet} mapConfig={mapConfig} />
-
-          {/* Distance Measurement Tool */}
-          {/* Ensure leaflet-draw is loaded before rendering */}
           {leafletDrawLoadedRef.current && (
             <DistanceMeasurement map={map} L={leaflet} mapConfig={mapConfig} />
           )}
         </>
       )}
 
-      {/* Loading Indicator */}
       {isLoadingSvg && (
         <div
           style={{
@@ -497,15 +482,14 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
             background: 'rgba(0, 0, 0, 0.7)',
             color: 'white',
             borderRadius: '5px',
-            zIndex: 1001, // Above map layers, below debug/controls
+            zIndex: 1001,
           }}
         >
           Loading Map Layers...
         </div>
       )}
 
-      {/* Error message */}
-      {svgError && !isLoadingSvg && ( // Show only if not loading
+      {svgError && !isLoadingSvg && (
         <div
           style={{
             position: 'absolute',
