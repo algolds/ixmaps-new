@@ -1,130 +1,147 @@
 // src/lib/DistanceCalculator.ts
-import { DistanceResult, MapConfig } from '@/types'; // Ensure MapConfig is imported if needed by calculateScaleFactor
-import type { LatLng, Map } from 'leaflet';
+import { DistanceResult, MapConfig } from '@/types'; // Import necessary types
+import type { LatLng, Map as LeafletMap, Point } from 'leaflet'; // Use LeafletMap alias
 
-// Constants for scale calculations
-import { defaultMapConfig } from '@/lib/MapConfig';
-
-const BASE_MILES_PER_PIXEL = defaultMapConfig.milesPerPixel; // Use milesPerPixel from mapConfig
-// FIX: MILES_TO_KM should be approx 1.60934, not 2.59 (which is sq mi to sq km)
-const MILES_TO_KM = 1.60934; // Conversion factor from miles to kilometers
-const BASE_KM_PER_PIXEL = BASE_MILES_PER_PIXEL * MILES_TO_KM; // Convert to km
+// Import the corrected conversion factor from the central configuration
+import { MILES_TO_KM } from '@/lib/MapConfig';
 
 /**
- * Calculate distance between two LatLng points using the map's projection and zoom level.
- * @param latlng1 First point
- * @param latlng2 Second point
- * @param map The Leaflet map object
- * @returns Object containing distances in miles and kilometers
+ * Calculate the geodesic distance between two LatLng points using the map's
+ * projection and the Earth's ellipsoid model.
+ * Relies on Leaflet's built-in `map.distance()` method for accuracy.
+ *
+ * @param latlng1 - The starting geographic point.
+ * @param latlng2 - The ending geographic point.
+ * @param map - The Leaflet map instance.
+ * @returns An object containing the calculated distance in both miles and kilometers.
+ *          Returns { miles: 0, kilometers: 0 } if calculation fails.
  */
 export const calculateDistance = (
   latlng1: LatLng,
   latlng2: LatLng,
-  map: Map,
+  map: LeafletMap, // Use alias for clarity
 ): DistanceResult => {
   try {
-    // Use Leaflet's built-in distance calculation for geographic accuracy
+    // map.distance() calculates geodesic distance in METERS
     const distanceMeters = map.distance(latlng1, latlng2);
 
+    // Validate the result from map.distance()
     if (distanceMeters === undefined || isNaN(distanceMeters)) {
-      console.warn('Could not calculate distance between points.');
-      // FIX: Return object matching DistanceResult, remove 'km' property
-      return { miles: 0, kilometers: 0 };
+      console.warn(
+        'Leaflet map.distance() could not calculate distance between points:',
+        latlng1,
+        latlng2,
+      );
+      return { miles: 0, kilometers: 0 }; // Return zero result on failure
     }
 
+    // Convert meters to kilometers
     const kilometers = distanceMeters / 1000;
+
+    // Convert kilometers to miles using the corrected factor
     const miles = kilometers / MILES_TO_KM;
 
-    // FIX: Return object matching DistanceResult, remove 'km' property
+    // Return the result conforming to the DistanceResult type
     return {
       miles: miles,
       kilometers: kilometers,
     };
-  } catch (e) {
-    console.error('Error calculating distance:', e);
-    // FIX: Return object matching DistanceResult, remove 'km' property
+  } catch (error) {
+    console.error('Error occurred during distance calculation:', error);
+    // Return zero result in case of unexpected errors
     return { miles: 0, kilometers: 0 };
   }
 };
 
 /**
- * Calculates scale factor between raw map and display
- * @param map The Leaflet map instance
- * @param config Map configuration object (containing rawWidth, rawHeight, svgWidth, svgHeight)
- * @returns The calculated scale factor
- */
-export const calculateScaleFactor = (map: Map, config: any): number => {
-  // This function seems unrelated to distance calculation and might belong elsewhere.
-  // Also, its implementation using config properties (svgWidth, rawWidth etc.)
-  // doesn't seem directly related to Leaflet's dynamic scaling.
-  // Keeping it as is, but noting potential issues.
-  try {
-    // Use the current display size vs raw map size
-    const mapContainer = map.getContainer();
-    if (!mapContainer) return 1; // Handle case where container isn't ready
-
-    const mapWidth = mapContainer.clientWidth;
-    const mapHeight = mapContainer.clientHeight;
-
-    // Ensure config properties exist before using them
-    if (
-      !config ||
-      !config.svgWidth ||
-      !config.rawWidth ||
-      !config.svgHeight ||
-      !config.rawHeight
-    ) {
-      console.warn('Missing properties in config for calculateScaleFactor');
-      return 1;
-    }
-
-    // Calculate width and height scale factors based on config
-    // This logic might need review depending on what 'scale factor' represents
-    const widthScale = config.svgWidth / config.rawWidth;
-    const heightScale = config.svgHeight / config.rawHeight;
-
-    // Use the smaller scale to maintain proportions
-    return Math.min(widthScale, heightScale);
-  } catch (e) {
-    console.error('Error calculating scale factor:', e);
-    return 1; // Default to 1 on error
-  }
-};
-
-/**
- * Calculates the distance between two LatLng points in screen pixels.
- * @param latlng1 First point
- * @param latlng2 Second point
- * @param map The Leaflet map object
- * @returns Distance in pixels
+ * Calculates the distance between two geographic points in screen pixels
+ * based on the current map view (zoom and position).
+ *
+ * @param latlng1 - The starting geographic point.
+ * @param latlng2 - The ending geographic point.
+ * @param map - The Leaflet map instance.
+ * @returns The distance in screen pixels. Returns 0 if conversion fails.
  */
 export const calculatePixelDistance = (
   latlng1: LatLng,
   latlng2: LatLng,
-  map: Map,
+  map: LeafletMap, // Use alias
 ): number => {
   try {
-    const point1 = map.latLngToContainerPoint(latlng1);
-    const point2 = map.latLngToContainerPoint(latlng2);
+    // Convert LatLng coordinates to pixel coordinates within the map container
+    const point1: Point = map.latLngToContainerPoint(latlng1);
+    const point2: Point = map.latLngToContainerPoint(latlng2);
 
-    if (!point1 || !point2) return 0;
+    // Check if the conversion was successful
+    if (!point1 || !point2) {
+      console.warn(
+        'Could not convert one or both LatLng to container points:',
+        latlng1,
+        latlng2,
+      );
+      return 0;
+    }
 
+    // Calculate the difference in x and y pixel coordinates
     const dx = point2.x - point1.x;
     const dy = point2.y - point1.y;
 
+    // Calculate the straight-line distance using the Pythagorean theorem
     return Math.sqrt(dx * dx + dy * dy);
-  } catch (e) {
-    console.error('Error calculating pixel distance:', e);
-    return 0;
+  } catch (error) {
+    console.error('Error calculating pixel distance:', error);
+    return 0; // Return 0 on error
   }
 };
 
-// FIX: Removed unused showResultToast function that relied on a global 'showToast'
-// const showResultToast = (miles: number, km: number) => {
-//   if (typeof window.showToast === 'function') {
-//     const message = `Total: ${miles.toFixed(2)} mi (${km.toFixed(2)} km)`;
-//     window.showToast(message, 'success', 5000);
-//   } else {
-//     alert(`Total: ${miles.toFixed(2)} mi (${km.toFixed(2)} km)`);
-//   }
-// };
+/**
+ * Calculates a static scale factor based *only* on the provided map configuration's
+ * SVG and raw dimensions.
+ *
+ * Note: This factor represents the ratio between the SVG dimensions and the
+ * 'raw' dimensions defined in the config. It does *not* reflect the dynamic
+ * scaling that occurs due to Leaflet's zooming. Its primary use might be
+ * during initial setup or for calculations independent of the current map view.
+ *
+ * @param config - The MapConfig object containing svgWidth, rawWidth, svgHeight, rawHeight.
+ * @returns The calculated static scale factor (minimum of width/height ratios).
+ *          Returns 1 if config properties are missing or invalid.
+ */
+export const calculateStaticScaleFactor = (config: MapConfig): number => {
+  try {
+    // Validate necessary properties in the config object
+    if (
+      !config ||
+      config.svgWidth === undefined ||
+      config.rawWidth === undefined ||
+      config.svgHeight === undefined ||
+      config.rawHeight === undefined ||
+      config.rawWidth <= 0 || // Prevent division by zero or nonsensical scale
+      config.rawHeight <= 0
+    ) {
+      console.warn(
+        'Missing, invalid, or zero dimension properties in MapConfig for calculateStaticScaleFactor. Defaulting to 1.',
+        {
+          svgW: config?.svgWidth,
+          rawW: config?.rawWidth,
+          svgH: config?.svgHeight,
+          rawH: config?.rawHeight,
+        },
+      );
+      return 1; // Default scale factor
+    }
+
+    // Calculate scale factors based on width and height
+    const widthScale = config.svgWidth / config.rawWidth;
+    const heightScale = config.svgHeight / config.rawHeight;
+
+    // Return the smaller scale factor to ensure content fits if maintaining aspect ratio
+    // If aspect ratio isn't a concern, you might choose widthScale or average them.
+    return Math.min(widthScale, heightScale);
+  } catch (error) {
+    console.error('Error calculating static scale factor:', error);
+    return 1; // Default to 1 on error
+  }
+};
+
+// Removed the unused showResultToast function

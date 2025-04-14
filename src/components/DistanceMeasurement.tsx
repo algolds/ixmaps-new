@@ -1,93 +1,98 @@
 // src/components/DistanceMeasurement.tsx
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-import { MapConfig } from '@/types';
-import { calculateDistance } from '@/lib/DistanceCalculator';
+import React, { useEffect, useRef } from 'react';
+import type { MapConfig } from '@/types'; // Assuming types are defined here
+import { calculateDistance } from '@/lib/DistanceCalculator'; // Use the refined calculator
 
 // Import Leaflet types/base
-import L from 'leaflet';
-// REMOVED: import 'leaflet-draw'; // <-- *** REMOVE THIS LINE ***
-
-// Import the Leaflet Draw CSS ONLY
-import 'leaflet-draw/dist/leaflet.draw.css'; // <-- *** KEEP THIS LINE ***
+import type L from 'leaflet';
+// Import Leaflet Draw CSS ONLY (JS should be loaded globally or via MapComponent)
+import 'leaflet-draw/dist/leaflet.draw.css';
 
 // Define the props interface for this component
 interface DistanceMeasurementProps {
   map: L.Map | null;
-  L: typeof window.L | null; // Or typeof L if you prefer consistency
-  mapConfig: MapConfig | null;
+  L: typeof window.L | null; // Pass the Leaflet instance (L)
+  mapConfig: MapConfig | null; // Pass map config for context/dependency
 }
 
 const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({
   map,
   L: LeafletInstance, // Use the passed L instance
-  mapConfig,
+  mapConfig, // Include mapConfig as a dependency for the effect
 }) => {
+  // Refs to keep track of the draw control and the layer group for drawn items
   const drawnItemsRef = useRef<L.FeatureGroup | null>(null);
   const drawControlRef = useRef<L.Control.Draw | null>(null);
 
-  // Initialize Draw Controls when map/L are ready
+  // Effect to initialize and manage the Leaflet Draw controls
   useEffect(() => {
     // --- Pre-conditions Check ---
-    const LRef = LeafletInstance; // Use the L instance passed from MapComponent
+    const LRef = LeafletInstance; // Use the L instance passed from parent
     if (!map || !LRef) {
       console.log(
-        '[DistanceMeasurement] Skipping draw control initialization (Map or L not ready).',
-        { hasMap: !!map, hasL: !!LRef },
+        '[DistanceMeasurement] Skipping draw init: Map or L not ready.',
       );
-      return;
+      return; // Exit if map or Leaflet instance isn't available
     }
 
-    // Check if L.Control.Draw is available (should be, as import is now in MapComponent)
-    // This check is still good as a safeguard
+    // Check if Leaflet Draw's Control is available on the passed L instance
+    // This ensures Leaflet Draw JS has been loaded before this component runs
     if (!LRef.Control.Draw) {
       console.error(
-        '[DistanceMeasurement] L.Control.Draw not found! Check import order in parent component.',
+        '[DistanceMeasurement] L.Control.Draw not found! Ensure Leaflet Draw JS is loaded globally or in the parent Map component before this component mounts.',
       );
-      return; // Stop if Draw is still missing
+      return; // Stop if Draw control is missing
     }
 
     console.log('[DistanceMeasurement] Initializing draw controls...');
 
-    // --- Cleanup previous instances ---
-    // ... (cleanup code remains the same) ...
-     if (drawControlRef.current) {
+    // --- Cleanup Previous Instances ---
+    // Remove existing draw control from map if it exists
+    if (drawControlRef.current) {
       console.log('[DistanceMeasurement] Removing previous draw control.');
       try {
-        drawControlRef.current.remove();
+        drawControlRef.current.remove(); // Use Leaflet's remove method
       } catch (err) {
         console.warn('Error removing previous draw control:', err);
       }
-      drawControlRef.current = null;
+      drawControlRef.current = null; // Clear the ref
     }
+    // Remove and clear the layer group for previously drawn items
     if (drawnItemsRef.current) {
       console.log('[DistanceMeasurement] Removing previous drawn items layer.');
       try {
-        drawnItemsRef.current.remove();
-        drawnItemsRef.current.clearLayers();
+        drawnItemsRef.current.remove(); // Remove layer from map
+        drawnItemsRef.current.clearLayers(); // Clear features within the layer
       } catch (err) {
-        console.warn('Error removing previous drawn items:', err);
+        console.warn('Error removing/clearing previous drawn items:', err);
       }
-      drawnItemsRef.current = null;
+      drawnItemsRef.current = null; // Clear the ref
     }
 
-
     // --- Initialize ---
+    // Create a new FeatureGroup to hold the items drawn by the user
     drawnItemsRef.current = new LRef.FeatureGroup();
-    map.addLayer(drawnItemsRef.current);
+    map.addLayer(drawnItemsRef.current); // Add this group to the map
 
+    // Create the Draw control instance
     drawControlRef.current = new LRef.Control.Draw({
-      // ... (options remain the same) ...
-       position: 'topleft',
+      position: 'topleft', // Position the control on the map
       draw: {
+        // Configure drawing options
         polyline: {
-          shapeOptions: { color: '#f357a1', weight: 4 },
-          metric: true,
-          feet: false,
-          showLength: true,
-          repeatMode: true,
+          shapeOptions: {
+            // Style for the line being drawn
+            color: '#f357a1', // Pink color
+            weight: 4,
+          },
+          metric: true, // Show distances in kilometers in the default tooltip
+          feet: false, // Do not show distances in feet
+          showLength: true, // Show length tooltip while drawing
+          repeatMode: true, // Allow drawing multiple polylines without re-clicking the button
         },
+        // Disable other drawing tools
         polygon: false,
         rectangle: false,
         circle: false,
@@ -95,71 +100,93 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({
         circlemarker: false,
       },
       edit: {
-        featureGroup: drawnItemsRef.current,
-        remove: true,
+        // Configure editing options
+        featureGroup: drawnItemsRef.current, // Specify the layer group to edit
+        remove: true, // Allow deleting drawn features
       },
     });
-    map.addControl(drawControlRef.current);
+    map.addControl(drawControlRef.current); // Add the control to the map
     console.log('[DistanceMeasurement] Draw controls added to map.');
 
-    // --- Event Handler ---
+    // --- Event Handler for Feature Creation ---
     const handleDrawCreated = (e: L.LeafletEvent) => {
-       // ... (handler code remains the same, using LRef if needed for types) ...
-       const layer = (e as any).layer;
-      const layerType = (e as any).layerType;
+      // Type assertion is often needed with Leaflet Draw events
+      const layer = (e as L.DrawEvents.Created).layer;
+      const layerType = (e as L.DrawEvents.Created).layerType;
 
+      // Check if the created layer is a polyline
       if (layerType === 'polyline' && layer instanceof LRef.Polyline) {
-        const polylineLayer = layer as L.Polyline;
-        const latlngs = polylineLayer.getLatLngs() as L.LatLng[];
+        const polylineLayer = layer as L.Polyline; // Type cast for clarity
+        const latlngs = polylineLayer.getLatLngs() as L.LatLng[]; // Get vertices
 
+        // Ensure there are at least two points to measure a distance
         if (latlngs.length >= 2) {
           let totalDistanceKm = 0;
           let totalDistanceMiles = 0;
 
+          // Calculate distance segment by segment
           for (let i = 1; i < latlngs.length; i++) {
             try {
-              // calculateDistance now expects the map object
-              const dist = calculateDistance(latlngs[i - 1], latlngs[i], map);
-              totalDistanceKm += dist.kilometers;
-              totalDistanceMiles += dist.miles;
+              // Use the imported calculateDistance function, passing map instance
+              const segmentDistance = calculateDistance(
+                latlngs[i - 1],
+                latlngs[i],
+                map, // Pass the map object
+              );
+              totalDistanceKm += segmentDistance.kilometers;
+              totalDistanceMiles += segmentDistance.miles;
             } catch (calcError) {
               console.error('Error calculating distance segment:', calcError);
-              layer.bindPopup('Error calculating distance.').openPopup();
-              return;
+              // Display error in the popup if calculation fails
+              polylineLayer
+                .bindPopup('Error calculating distance for this segment.')
+                .openPopup();
+              // Optionally remove the problematic layer or handle error differently
+              // if (drawnItemsRef.current) drawnItemsRef.current.removeLayer(polylineLayer);
+              return; // Stop processing this polyline on error
             }
           }
 
+          // Format the final distance for the popup
           const popupContent = `Distance:<br>${totalDistanceMiles.toFixed(
             2,
           )} miles<br>${totalDistanceKm.toFixed(2)} km`;
-          layer.bindPopup(popupContent).openPopup();
+
+          // Bind the popup with the total distance to the drawn polyline
+          polylineLayer.bindPopup(popupContent).openPopup();
           console.log(
-            `[DistanceMeasurement] Polyline drawn. Distance: ${totalDistanceKm.toFixed(2)} km`,
+            `[DistanceMeasurement] Polyline drawn. Distance: ${totalDistanceKm.toFixed(2)} km (${totalDistanceMiles.toFixed(2)} miles)`,
           );
         }
       }
+
+      // Add the newly drawn and processed layer to our feature group
       if (drawnItemsRef.current) {
         drawnItemsRef.current.addLayer(layer);
       } else {
+        // This case should ideally not happen if initialization is correct
         console.error(
-          '[DistanceMeasurement] drawnItemsRef is null, cannot add layer.',
+          '[DistanceMeasurement] drawnItemsRef is null when trying to add layer.',
         );
+        // Fallback: add directly to map? Or log error.
+        // map.addLayer(layer);
       }
     };
 
-    // Use LRef here too
+    // Register the event listener for when a feature is created
     map.on(LRef.Draw.Event.CREATED, handleDrawCreated);
     console.log('[DistanceMeasurement] CREATED event listener added.');
 
-    // --- Cleanup for this effect ---
+    // --- Cleanup Function for this Effect ---
+    // This function runs when the component unmounts or dependencies change
     return () => {
-      // ... (cleanup code remains the same, using LRef if needed) ...
-       console.log('[DistanceMeasurement] Cleaning up draw controls effect...');
+      console.log('[DistanceMeasurement] Cleaning up draw controls effect...');
       if (map) {
+        // Remove the event listener to prevent memory leaks
         console.log('[DistanceMeasurement] Removing CREATED event listener.');
-        // Use LRef here too
         map.off(LRef.Draw.Event.CREATED, handleDrawCreated);
 
+        // Remove the draw control from the map
         if (drawControlRef.current) {
           console.log('[DistanceMeasurement] Removing draw control from map.');
           try {
@@ -168,6 +195,7 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({
             console.warn('Error removing draw control on cleanup:', err);
           }
         }
+        // Remove the layer group for drawn items
         if (drawnItemsRef.current) {
           console.log(
             '[DistanceMeasurement] Removing drawn items layer from map.',
@@ -182,12 +210,16 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({
           }
         }
       }
+      // Nullify refs after cleanup
       drawControlRef.current = null;
       drawnItemsRef.current = null;
+      console.log('[DistanceMeasurement] Cleanup complete.');
     };
-  }, [map, LeafletInstance, mapConfig]); // Dependencies remain the same
+    // Dependencies for the useEffect hook:
+    // Re-run the effect if the map instance, Leaflet instance, or mapConfig changes.
+  }, [map, LeafletInstance, mapConfig]);
 
-  // This component doesn't render anything itself
+  // This component manages map controls and layers, it doesn't render any direct UI
   return null;
 };
 
