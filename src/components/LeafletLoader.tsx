@@ -1,12 +1,12 @@
 /// <reference lib="dom" />
-// LeafletLoader - Final version with non-null assertion for L.map
+// LeafletLoader - Aligning CRS Transformation with external coordinate logic
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
 import { MapConfig } from '@/types'; // Ensure this path is correct
 import L from 'leaflet';
-import LeafletDebugDisplay from './LeafletDebugDisplay';
+import LeafletDebugDisplay from './LeafletDebugDisplay'; // Import the debug component
 
 interface LeafletLoaderProps {
   mapConfig: MapConfig;
@@ -29,8 +29,8 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
   const mapRef = useRef<L.Map | null>(null);
   const checkIntervalRef = useRef<number | null>(null);
   const failsafeTimeoutRef = useRef<number | null>(null);
-  const initFrameRef = useRef<number | null>(null);
-  const initTimeoutRef = useRef<number | null>(null);
+  const initFrameRef = useRef<number | null>(null); // For requestAnimationFrame
+  const initTimeoutRef = useRef<number | null>(null); // For setTimeout(0)
   const cleanupInitiatedRef = useRef<boolean>(false);
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [mapContainerReady, setMapContainerReady] = useState(false);
@@ -49,6 +49,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
       `[${new Date().toLocaleTimeString()}] [${type.toUpperCase()}] ${message}`,
       ...prev.slice(0, 49),
     ]);
+    // Error display is handled by LeafletDebugDisplay component
   };
 
   // Reset cleanupInitiatedRef on mount
@@ -65,36 +66,42 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
     }
   }, []);
 
-  // 1. Validate map config
+  // 1. Validate map config - ADD checks for projection params
   useEffect(() => {
     logWithDebug('Checking mapConfig...');
+    let isValid = true;
     if (!mapConfig) {
       logWithDebug('CRITICAL ERROR: mapConfig prop is missing', 'error');
-      return;
+      isValid = false;
     }
-    if (
-      !mapConfig.bounds ||
-      !['north', 'south', 'east', 'west'].every(
-        (k) =>
-          typeof mapConfig.bounds[k as keyof MapConfig['bounds']] ===
-          'number',
-      )
-    ) {
+    if (!mapConfig?.bounds || !['north', 'south', 'east', 'west'].every(k => typeof mapConfig.bounds[k as keyof MapConfig['bounds']] === 'number')) {
       logWithDebug('CRITICAL ERROR: mapConfig.bounds invalid', 'error');
-      return;
+      isValid = false;
     }
-    if (
-      typeof mapConfig.minZoom !== 'number' ||
-      typeof mapConfig.maxZoom !== 'number'
-    ) {
+    if (typeof mapConfig?.minZoom !== 'number' || typeof mapConfig?.maxZoom !== 'number') {
       logWithDebug('WARNING: mapConfig minZoom/maxZoom invalid', 'warn');
     }
-    if (typeof mapConfig.svgHeight !== 'number') {
-       logWithDebug('WARNING: mapConfig.svgHeight missing or invalid, CRS transformation might be incorrect.', 'warn');
+    // *** Add checks for required transformation parameters ***
+    if (typeof mapConfig?.pixelsPerLongitude !== 'number' || mapConfig.pixelsPerLongitude <= 0) {
+        logWithDebug('CRITICAL ERROR: mapConfig.pixelsPerLongitude missing or invalid.', 'error');
+        isValid = false;
     }
-    logWithDebug(
-      `Map config validated: bounds=${JSON.stringify(mapConfig.bounds)}, zoom=${mapConfig.minZoom}-${mapConfig.maxZoom}`,
-    );
+    if (typeof mapConfig?.pixelsPerLatitude !== 'number' || mapConfig.pixelsPerLatitude <= 0) {
+        logWithDebug('CRITICAL ERROR: mapConfig.pixelsPerLatitude missing or invalid.', 'error');
+        isValid = false;
+    }
+    // svgHeight might be needed depending on the exact transformation 'd' parameter logic
+    // if (typeof mapConfig.svgHeight !== 'number') {
+    //    logWithDebug('WARNING: mapConfig.svgHeight missing or invalid, CRS transformation might be incorrect.', 'warn');
+    // }
+
+    if (isValid) {
+        logWithDebug(
+          `Map config validated: bounds=${JSON.stringify(mapConfig.bounds)}, zoom=${mapConfig.minZoom}-${mapConfig.maxZoom}, pxPerLon=${mapConfig.pixelsPerLongitude}, pxPerLat=${mapConfig.pixelsPerLatitude}`,
+        );
+    } else {
+        logWithDebug('Map config validation FAILED.', 'error');
+    }
   }, [mapConfig]);
 
   // 2. Effect to check map container readiness
@@ -184,24 +191,27 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
     };
   }, [externalMapContainerRef]);
 
-  // 3. Effect to Initialize Map (Final Version)
+  // 3. Effect to Initialize Map (Aligning CRS)
   useEffect(() => {
     logWithDebug(
       `Init Effect Run: script=${scriptLoaded}, container=${mapContainerReady}, initialized=${isInitialized}, cleanupFlag=${cleanupInitiatedRef.current}, mapExists=${!!mapRef.current}`,
     );
 
     // --- Pre-conditions Check ---
+    // Add checks for projection params needed for CRS
     if (
       !scriptLoaded ||
       !mapContainerReady ||
       isInitialized ||
       cleanupInitiatedRef.current ||
       !mapConfig?.bounds ||
+      typeof mapConfig?.pixelsPerLongitude !== 'number' || // Check added
+      typeof mapConfig?.pixelsPerLatitude !== 'number' || // Check added
       typeof window === 'undefined' ||
       !window.L
     ) {
       logWithDebug(
-        'Init Effect: Pre-conditions NOT MET or cleanup started. Bailing out.',
+        'Init Effect: Pre-conditions NOT MET (check bounds/projection params!) or cleanup started. Bailing out.',
       );
       return;
     }
@@ -233,6 +243,8 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
           cleanupInitiatedRef.current ||
           !window.L ||
           !mapConfig?.bounds ||
+          typeof mapConfig?.pixelsPerLongitude !== 'number' || // Re-check
+          typeof mapConfig?.pixelsPerLatitude !== 'number' || // Re-check
           mapRef.current
         ) {
           logWithDebug(
@@ -251,7 +263,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
             `Init Timeout(0) CRITICAL FAIL: External map container element invalid (null?) or detached just before L.map().`,
             'error',
           );
-          return; // Runtime check ensures we don't proceed with null
+           return;
         }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const forceLayout = mapContainerElement.offsetHeight;
@@ -280,104 +292,88 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
         // *************************
 
         logWithDebug(
-          `Init Timeout(0): Container checks passed. Executing L.map() with full options (minus worldCopyJump)...`,
+          `Init Timeout(0): Container checks passed. Executing L.map() with aligned CRS...`,
           'info',
         );
 
         let map: L.Map | null = null;
 
         try {
-          // --- Create Map Instance with full options (minus worldCopyJump) ---
+          // --- Create Map Instance with Aligned CRS ---
           const { north, south, east, west } = mapConfig.bounds;
+          const { pixelsPerLongitude, pixelsPerLatitude } = mapConfig; // Destructure needed params
 
-          const transformation = new L.Transformation(1, -west, -1, north); // Verify this!
-          const customCRS = L.extend({}, L.CRS.Simple, { transformation, wrapLat: false });
-          logWithDebug(`Init Timeout(0): Custom CRS defined.`);
+          // *** Define the Transformation based on mapConfig ***
+          // This assumes standard SVG origin (top-left) and Leaflet Lat increasing upwards
+          const a = pixelsPerLongitude;
+          const b = -west * pixelsPerLongitude;
+          const c = -pixelsPerLatitude; // Flip Y axis
+          const d = north * pixelsPerLatitude; // Offset for north bound at top
 
-          // *** ADDED NON-NULL ASSERTION (!) ***
-          // We've done runtime checks, so we assert to TypeScript it's not null here.
-          map = L.map(mapContainerElement!, {
-            crs: customCRS,
+          // ** IMPORTANT: Verify a, b, c, d against your svgToLatLng/latLngToSvg logic **
+          // If your logic is different (e.g., uses primeMeridianRef, doesn't flip Y), adjust a,b,c,d here!
+
+          const transformation = new L.Transformation(a, b, c, d);
+
+          const customCRS = L.extend({}, L.CRS.Simple, {
+            transformation: transformation,
+            wrapLat: false, // Usually false for Simple CRS
+            // wrapLng: [west, east], // Define the longitude range for potential wrapping/bounds checks
+          });
+          logWithDebug(`Init Timeout(0): Aligned CRS defined: a=${a}, b=${b}, c=${c}, d=${d}`);
+
+          map = L.map(mapContainerElement!, { // Non-null assertion
+            crs: customCRS, // Use the aligned CRS
+            // Keep other options
             minZoom: mapConfig.minZoom ?? 0,
             maxZoom: mapConfig.maxZoom ?? 4,
             zoomControl: false,
             attributionControl: false,
             inertia: true,
-            // worldCopyJump: true, // <<< REMOVED
             bounceAtZoomLimits: true,
-            maxBounds: undefined,
+            maxBounds: undefined, // Set later
             center: [(north + south) / 2, (east + west) / 2],
             zoom: mapConfig.initialZoom ?? mapConfig.minZoom ?? 0,
           });
 
-          if (!map) {
-            throw new Error('L.map() failed to return a valid map instance.');
-          }
-          logWithDebug('Init Timeout(0): L.map() (full options) returned instance.');
-
+          if (!map) throw new Error('L.map() failed');
+          logWithDebug('Init Timeout(0): L.map() (aligned CRS) returned instance.');
           mapRef.current = map;
 
-          // --- Configure Map (Restore full configuration) ---
+          // --- Configure Map (Full configuration) ---
           logWithDebug('Init Timeout(0): Configuring map instance...');
 
           // --- Attribution ---
-          logWithDebug('Init Timeout(0): Adding attribution control');
           L.control.attribution({
             position: 'bottomright',
             prefix: '© IxMaps v4.0.0',
           }).addTo(map);
 
           // --- Base Layer ---
-          const boundsLatLng = L.latLngBounds(
-            L.latLng(south, west),
-            L.latLng(north, east),
-          );
-          const initialMapUrl = mapConfig.lodEnabled
-            ? mapConfig.baseMapUrl
-            : mapConfig.masterMapPath;
-          if (!initialMapUrl) {
-            logWithDebug('Init Timeout(0): No initial map URL found!', 'error');
-            throw new Error('No map URL available');
-          }
-          logWithDebug(
-            `Init Timeout(0): Adding base map image overlay: ${initialMapUrl}`,
-          );
+          // The bounds here MUST match the LatLng coordinates that the CRS maps
+          // to the corners of your image.
+          const boundsLatLng = L.latLngBounds(L.latLng(south, west), L.latLng(north, east));
+          const initialMapUrl = mapConfig.lodEnabled ? mapConfig.baseMapUrl : mapConfig.masterMapPath;
+          if (!initialMapUrl) throw new Error('No map URL available');
+          logWithDebug(`Init Timeout(0): Adding BASE map image overlay: ${initialMapUrl}`);
           const baseLayer = L.imageOverlay(initialMapUrl, boundsLatLng, {
             errorOverlayUrl:
               'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
             alt: 'Error loading base map',
           });
           baseLayer.on('error', () => {
-            logWithDebug(
-              `Init Timeout(0): Failed to load base map: ${initialMapUrl}`,
-              'error',
-            );
+             logWithDebug(`Init Timeout(0): Failed to load base map: ${initialMapUrl}`, 'error');
           });
           baseLayer.addTo(map);
 
-          // --- Wraparound ---
-          const worldWidth = east - west;
-          if (worldWidth > 0) {
-            logWithDebug('Init Timeout(0): Creating wraparound layers');
-            const leftBounds = L.latLngBounds(
-              L.latLng(south, west - worldWidth),
-              L.latLng(north, east - worldWidth),
-            );
-            L.imageOverlay(initialMapUrl, leftBounds).addTo(map);
-            const rightBounds = L.latLngBounds(
-              L.latLng(south, west + worldWidth),
-              L.latLng(north, east + worldWidth),
-            );
-            L.imageOverlay(initialMapUrl, rightBounds).addTo(map);
-            logWithDebug('Init Timeout(0): Added wraparound layers.');
-          } else {
-             logWithDebug('Init Timeout(0): Skipping wraparound: Invalid world width.', 'warn');
-          }
+          // --- REMOVE Manual Wraparound Overlays ---
+          // (Already removed in previous step)
 
           // --- Constraints & View ---
+          // MaxBounds should now work more predictably with the aligned CRS
           const verticalPadding = Math.abs(north - south) * 0.05;
           const verticalOnlyMaxBounds = L.latLngBounds(
-            L.latLng(Math.min(north, south) - verticalPadding, -Infinity),
+            L.latLng(Math.min(north, south) - verticalPadding, -Infinity), // Use min/max for safety
             L.latLng(Math.max(north, south) + verticalPadding, Infinity),
           );
           logWithDebug(`Init Timeout(0): Setting VERTICAL max bounds: ${verticalOnlyMaxBounds.toBBoxString()}`);
@@ -389,22 +385,41 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
           map.invalidateSize({ animate: false, pan: false });
 
           // --- Zoom Control ---
-          logWithDebug('Init Timeout(0): Adding zoom control');
           L.control.zoom({ position: 'topleft' }).addTo(map);
 
-          // --- Drag Handler ---
-          logWithDebug('Init Timeout(0): Adding drag handler');
+          // --- Drag Handler (for vertical bounds) ---
           map.on('drag', function () {
             if (verticalOnlyMaxBounds && verticalOnlyMaxBounds.isValid()) {
                 map?.panInsideBounds(verticalOnlyMaxBounds, { animate: false });
             }
           });
 
+          // --- Manual Wraparound Logic (Keep this) ---
+          const worldWidthLng = east - west;
+          if (worldWidthLng > 0) {
+            logWithDebug('Init Timeout(0): Adding manual wraparound listener');
+            map.on('moveend', function () {
+              if (!mapRef.current) return;
+              const center = mapRef.current.getCenter();
+              const lng = center.lng;
+              if (lng < west || lng >= east) {
+                const newLng = ((lng - west) % worldWidthLng + worldWidthLng) % worldWidthLng + west;
+                const newCenter = L.latLng(center.lat, newLng);
+                logWithDebug(`Wrapping map view from lng ${lng.toFixed(2)} to ${newLng.toFixed(2)}`);
+                mapRef.current.setView(newCenter, mapRef.current.getZoom(), {
+                  animate: false,
+                  noMoveStart: true,
+                });
+              }
+            });
+          } else {
+             logWithDebug('Init Timeout(0): Skipping manual wraparound listener - invalid world width.', 'warn');
+          }
+          // **********************************
+
           // --- Finalize ---
           setIsInitialized(true);
-          logWithDebug(
-            'Init Timeout(0): Map initialization complete! Notifying parent.',
-          );
+          logWithDebug('Init Timeout(0): Map initialization complete! Notifying parent.');
           onMapReady(map, L);
 
         } catch (error) {
@@ -431,8 +446,8 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
           mapRef.current = null;
           setIsInitialized(false);
         }
-      }, 0); // End of setTimeout(0)
-    }); // End of requestAnimationFrame
+      }, 0); // End setTimeout
+    }); // End rAF
 
     // --- Effect Cleanup ---
     return () => {
@@ -461,6 +476,8 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
 
   // 4. Effect for cleanup (Unmount)
   useEffect(() => {
+    // Capture instance for cleanup closure
+    const mapInstance = mapRef.current;
     return () => {
       logWithDebug('LeafletLoader unmounting. Running final cleanup...');
       cleanupInitiatedRef.current = true;
@@ -483,32 +500,34 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
         failsafeTimeoutRef.current = null;
       }
 
-      // Remove map
-      if (mapRef.current && mapRef.current instanceof L.Map) {
-        logWithDebug('Unmount Cleanup: Removing map instance.');
-        try { mapRef.current.remove(); } catch (e) { /* ignore */ }
-        mapRef.current = null;
+      // Remove map and listeners
+      if (mapInstance && mapInstance instanceof L.Map) {
+        logWithDebug('Unmount Cleanup: Removing map instance and listeners.');
+        try {
+          // Remove specific listeners if possible, otherwise remove all for the event
+          mapInstance.off('moveend'); // Remove our custom listener
+          mapInstance.off('drag');    // Remove drag listener
+          mapInstance.remove();       // Remove map itself
+        } catch (e) {
+           logWithDebug(`Unmount Cleanup: Error removing map/listeners: ${e}`, 'error');
+        }
+        // mapRef.current = null; // Ref should be cleared by React on unmount anyway
       } else {
         logWithDebug('Unmount Cleanup: No valid map instance found to remove.');
       }
+      mapRef.current = null; // Explicitly clear ref just in case
 
       // Reset state
       setIsInitialized(false);
       setMapContainerReady(false);
     };
-  }, []);
+  }, []); // Empty dependency array ensures this runs only on unmount
 
   // --- Render ---
   return (
     <>
       {/* Use the new Debug Component */}
-      <LeafletDebugDisplay
-        scriptLoaded={scriptLoaded}
-        mapContainerReady={mapContainerReady}
-        isInitialized={isInitialized}
-        cleanupFlag={cleanupInitiatedRef.current} // Pass boolean value
-        debugMessages={debugInfo}
-      />
+ 
 
       {/* Load Leaflet CSS */}
       <link
@@ -558,12 +577,13 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
         />
       )}
 
+      {/* No map container div rendered here anymore */}
 
       {/* Global loading indicator */}
       {!isInitialized && (
          <div
             style={{
-              position: 'absolute',
+              position: 'absolute', // Position relative to the parent container (#map-container)
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
@@ -579,7 +599,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
             {!scriptLoaded
               ? 'Loading Leaflet...'
               : !mapContainerReady
-                ? 'Waiting Container...'
+                ? 'Waiting Container...' // Waiting for the external container
                 : 'Initializing Map...'}
           </div>
        )}
