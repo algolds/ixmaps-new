@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-// LeafletLoader - Trying minimal map options and extra DOM checks
+// LeafletLoader - Testing L.map options: center & zoom
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -191,7 +191,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
     };
   }, [externalMapContainerRef]);
 
-  // 3. Effect to Initialize Map (MODIFIED - Minimal Options & More Checks)
+  // 3. Effect to Initialize Map (MODIFIED - Testing center/zoom options)
   useEffect(() => {
     logWithDebug(
       `Init Effect Run: script=${scriptLoaded}, container=${mapContainerReady}, initialized=${isInitialized}, cleanupFlag=${cleanupInitiatedRef.current}, mapExists=${!!mapRef.current}`,
@@ -203,12 +203,12 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
       !mapContainerReady ||
       isInitialized ||
       cleanupInitiatedRef.current ||
-      // !mapConfig?.bounds || // Relax bounds check for minimal init test
+      !mapConfig?.bounds || // Need bounds for center/zoom test
       typeof window === 'undefined' ||
       !window.L
     ) {
       logWithDebug(
-        'Init Effect: Pre-conditions NOT MET or cleanup started. Bailing out.',
+        'Init Effect: Pre-conditions NOT MET (check bounds!) or cleanup started. Bailing out.',
       );
       return;
     }
@@ -239,7 +239,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
           isInitialized ||
           cleanupInitiatedRef.current ||
           !window.L ||
-          // !mapConfig?.bounds || // Relax bounds check
+          !mapConfig?.bounds || // Re-check bounds
           mapRef.current
         ) {
           logWithDebug(
@@ -303,71 +303,44 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
         // *************************
 
         logWithDebug(
-          `Init Timeout(0): Container checks passed. Executing L.map() with MINIMAL options...`,
+          `Init Timeout(0): Container checks passed. Executing L.map() with center/zoom options...`, // Log message updated
           'info',
         );
 
         let map: L.Map | null = null;
 
         try {
-          // --- Create Map Instance with MINIMAL options ---
-          // Try initializing with just the container first.
-          // If this works, the issue is likely in one of the options below.
-          map = L.map(mapContainerElement); // <<< MINIMAL CALL
+          // --- Create Map Instance with center/zoom options ---
+          const { north, south, east, west } = mapConfig.bounds; // Bounds needed now
 
-          /* --- Temporarily comment out original options ---
-          // Ensure bounds exist before using them
-          if (!mapConfig.bounds) {
-            throw new Error("Map config bounds are missing, cannot initialize map options.");
-          }
-          const { north, south, east, west } = mapConfig.bounds;
-          const customCRS = L.extend({}, L.CRS.Simple, {
-            transformation: new L.Transformation(1, 0, 1, 0),
-            wrapLng: [west - (east - west), east + (east - west)],
-            wrapLat: false,
-          });
           map = L.map(mapContainerElement, {
-            crs: customCRS,
-            minZoom: mapConfig.minZoom ?? 0,
-            maxZoom: mapConfig.maxZoom ?? 4,
-            zoomControl: false,
-            attributionControl: false,
-            inertia: true,
-            worldCopyJump: true,
-            bounceAtZoomLimits: true,
-            maxBounds: undefined,
-            center: [(north + south) / 2, (east + west) / 2],
-            zoom: mapConfig.initialZoom ?? mapConfig.minZoom ?? 0,
+              // Add ONLY center and zoom back for this test
+              center: [(north + south) / 2, (east + west) / 2],
+              zoom: mapConfig.initialZoom ?? mapConfig.minZoom ?? 0,
+              // Keep other potentially problematic options commented out
+              // crs: customCRS,
+               minZoom: mapConfig.minZoom ?? 0,
+              maxZoom: mapConfig.maxZoom ?? 4,
+              // zoomControl: false,
+              // attributionControl: false,
+              // inertia: true,
+              // worldCopyJump: true,
+              // bounceAtZoomLimits: true,
+              // maxBounds: undefined,
           });
-          */ // --- End of commented out options ---
 
           if (!map) {
             throw new Error('L.map() failed to return a valid map instance.');
           }
-          logWithDebug('Init Timeout(0): L.map() (minimal) returned instance.');
+          logWithDebug('Init Timeout(0): L.map() (with center/zoom) returned instance.');
 
           mapRef.current = map;
 
-          // --- Configure Map (Add back step-by-step if minimal call works) ---
+          // --- Configure Map (Minimal for now) ---
           logWithDebug('Init Timeout(0): Configuring map instance (minimal setup)...');
+          // No need to call setView separately if center/zoom options worked
 
-          // If L.map(element) worked, try adding basic view/zoom
-          // You MUST have valid bounds in mapConfig for this
-          if (map && mapConfig.bounds) { // Check if bounds are valid
-             const { north, south, east, west } = mapConfig.bounds;
-             logWithDebug('Init Timeout(0): Setting basic view/zoom...');
-             map.setView([(north + south) / 2, (east + west) / 2], mapConfig.minZoom ?? 0);
-             // Add a basic tile layer to see something (optional, replace with your image overlay later)
-             // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-             //     attribution: '&copy; OpenStreetMap contributors'
-             // }).addTo(map);
-             logWithDebug('Init Timeout(0): Basic view/zoom set.');
-          } else {
-             logWithDebug('Init Timeout(0): Skipping setView/zoom due to missing bounds info.', 'warn');
-          }
-
-
-          // --- Temporarily skip most configuration for this test ---
+          // --- Temporarily skip most configuration ---
           /*
           // --- Attribution ---
           if (map) { // Check map exists before adding controls/layers
@@ -436,16 +409,15 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
           // --- Finalize ---
           setIsInitialized(true);
           logWithDebug(
-            'Init Timeout(0): Map initialization (minimal) complete! Notifying parent.',
+            'Init Timeout(0): Map initialization (with center/zoom) complete! Notifying parent.',
           );
-          // Pass the minimally configured map
           onMapReady(map, L);
 
         } catch (error) {
           const errorMsg =
             error instanceof Error ? error.message : String(error);
           logWithDebug(
-            `Init Timeout(0) ERROR during map initialization (minimal): ${errorMsg}`, // Indicate minimal attempt
+            `Init Timeout(0) ERROR during map initialization (center/zoom test): ${errorMsg}`, // Indicate test
             'error',
           );
           if (error instanceof Error && error.stack) {
@@ -487,7 +459,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
   }, [
     scriptLoaded,
     mapContainerReady,
-    mapConfig, // Keep mapConfig for potential re-adding of options
+    mapConfig,
     onMapReady,
     isInitialized,
     externalMapContainerRef,

@@ -401,8 +401,8 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       style={{
         width: '100%',
         // ***** USE FIXED HEIGHT FOR TESTING *****
-        height: '600px', // Use a fixed pixel height for testing
-        // height: '100vh', // Original line - comment out or remove
+       // height: '600px', // Use a fixed pixel height for testing
+        height: '100vh', // Original line - comment out or remove
         // ***************************************
         backgroundColor: '#D5FFFF', // Example background
         position: 'relative', // Needed for absolute positioning of children
