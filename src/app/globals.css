@@ -39,16 +39,24 @@ html, body {
 
 /* Distance measurement styles */
 .distance-label {
-  background-color: rgba(255, 255, 255, 0.8);
-  border: 1px solid #0078A8;
-  border-radius: 4px;
-  padding: 2px 4px;
+  /* Style for the text box itself (no border by default now based on previous request) */
+  /* background-color: rgba(255, 255, 255, 0.8); */ /* Handled inline now */
+  /* border: 1px solid #0078A8; */ /* Removed based on previous request */
+  /* border-radius: 4px; */ /* Handled inline now */
+  /* padding: 2px 4px; */ /* Handled inline now */
   text-align: center;
   font-size: 12px;
-  font-weight: bold;
-  color: #0078A8;
+  /* font-weight: bold; */ /* Handled inline now */
+  /* color: #0078A8; */ /* Handled inline now */
   white-space: nowrap;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  /* box-shadow: 0 1px 3px rgba(0,0,0,0.3); */ /* Handled inline now */
+  pointer-events: none; /* Added in later step */
+}
+
+.measure-button {
+  /* Base styles for the measure button */
+  background-color: white;
+  border-bottom: 1px solid #ccc; /* Added in later step */
 }
 
 .measure-button:hover {
@@ -56,7 +64,8 @@ html, body {
 }
 
 .measure-control {
-  background-color: white;
+  /* Container for the measure button */
+  background-color: white; /* Added in later step */
 }
 
 /* New styles for enhanced UI elements */
@@ -233,192 +242,167 @@ html, body {
   border: 1px solid #ccc;
 }
 
-/* ---- Improved Control Panel Styles ---- */
+/* ---- Improved Control Panel Styles (REVISED) ---- */
 
 /* Base control panel container */
 .ixmap-control-panel {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 1000;
+  /* position, top, right, z-index are handled by Leaflet Control options */
   background: white;
-  padding: 0;
+  padding: 0; /* No padding on the main container */
   border-radius: 4px;
   box-shadow: 0 1px 5px rgba(0,0,0,0.4);
-  transition: all 0.3s ease;
-  max-width: 250px;
-  max-height: 80vh;
-  overflow: hidden;
+  transition: all 0.2s ease; /* Keep transition */
+  max-width: 250px; /* Max-width for expanded state */
+  max-height: 80vh; /* Max-height for expanded state */
+  overflow: hidden; /* Keep overflow hidden */
   font-family: Arial, sans-serif;
   font-size: 12px;
   color: #333;
+  /* No fixed width/height here - determined by content */
+  /* No border here - added dynamically or by button */
 }
 
-/* Control panel when expanded */
-.ixmap-control-panel.expanded {
-  border: 1px solid rgba(0,0,0,0.2);
-  width: 250px;
-}
-
-/* Control panel when collapsed (looking like a standard Leaflet control) */
-.ixmap-control-panel.collapsed {
-  width: 36px;
-  height: 36px;
-  border: 2px solid rgba(0,0,0,0.2);
-  border-radius: 4px;
-  cursor: pointer;
-  overflow: hidden;
-}
-
-/* Toggle button styling */
+/* Toggle button base styling (used when collapsed) */
 .toggle-button {
-  position: relative;
-  width: 36px;
-  height: 36px;
-  line-height: 36px;
+  width: 34px;  /* Standard Leaflet-like size */
+  height: 34px;
+  line-height: 34px; /* Center content vertically */
   background-color: white;
   color: #333;
-  font-size: 16px;
+  font-size: 20px; /* Icon size */
   text-align: center;
   cursor: pointer;
   user-select: none;
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 2px solid rgba(0,0,0,0.2); /* Standard Leaflet border */
+  border-radius: 4px; /* Match container */
 }
 
 .toggle-button:hover {
   background-color: #f4f4f4;
 }
 
-.toggle-button .cog-icon {
-  font-style: normal;
-  font-size: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
+/* Additional styles for the toggle button when panel is EXPANDED */
+.toggle-button.expanded-state {
+   width: auto; /* Fit text content */
+   height: auto; /* Fit text content */
+   padding: 5px 8px;
+   font-size: 12px; /* Smaller font for text */
+   border: none; /* Remove the button's own border */
+   border-bottom: 1px solid #ccc; /* Add bottom border separator */
+   border-radius: 0; /* No radius when expanded */
+   background-color: #f8f8f8; /* Different background */
+}
+.toggle-button.expanded-state:hover {
+   background-color: #e8e8e8; /* Slightly darker hover */
 }
 
-/* Control content wrapper */
+/* Control content wrapper (visible when expanded) */
 .control-content {
-  display: block;
-  overflow-y: auto;
-  max-height: calc(80vh - 30px);
+  display: block; /* Always block, visibility controlled by parent */
+  overflow-y: auto; /* Scroll if needed */
+  max-height: calc(80vh - 50px); /* Adjust based on button/padding */
+  padding: 10px; /* Padding for the content area */
 }
 
-.control-content.hidden {
-  display: none;
-}
-
-/* Control title */
-.control-title {
-  font-weight: bold;
-  font-size: 14px;
-  padding: 8px 10px;
-  background-color: #f8f8f8;
-  border-bottom: 1px solid #eee;
-  text-align: center;
-}
-
-/* Tab navigation */
+/* Tab navigation container */
 .tab-navigation {
   display: flex;
-  border-bottom: 1px solid #ddd;
+  margin-bottom: 10px; /* Space below tabs */
+  border-bottom: 1px solid #ddd; /* Line separating tabs from content */
 }
 
+/* Individual tab styling */
 .tab {
-  flex: 1;
-  padding: 8px 0;
+  flex: 1; /* Distribute space evenly */
+  padding: 8px 0; /* Vertical padding */
   text-align: center;
   cursor: pointer;
   transition: background-color 0.2s;
-  border-right: 1px solid #eee;
+  border: 1px solid #ddd; /* Border around tabs */
+  border-bottom: none; /* Remove bottom border initially */
+  background-color: #f1f1f1; /* Default background for non-active */
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+  margin-right: -1px; /* Overlap borders */
+  font-size: 12px; /* Match panel font */
 }
 
 .tab:last-child {
-  border-right: none;
+  margin-right: 0;
 }
 
 .tab:hover {
-  background-color: #f0f0f0;
+  background-color: #e9e9e9; /* Hover for non-active */
 }
 
-.tab.active {
-  background-color: #f4f4f4;
+/* Active tab styling */
+.tab.active { /* This class might not be needed if styles are applied directly */
+  background-color: #fff; /* White background for active */
   font-weight: bold;
-  box-shadow: inset 0 -2px 0 rgba(0,0,0,0.2);
+  border-bottom: 1px solid #fff; /* Hide bottom border by matching background */
+  margin-bottom: -1px; /* Pull tab up slightly to cover content border */
 }
 
-/* Tab content sections */
-.tab-content {
+/* Tab content area */
+.tab-content-area {
+  border: 1px solid #ccc; /* Border around the content */
   padding: 10px;
-  display: none;
+  margin-top: -1px; /* Overlap the tab navigation border */
 }
 
-.tab-content.active {
-  display: block;
-}
-
-/* Section styling */
-.control-section, .layer-group {
+/* Section styling within tabs */
+.control-section {
   margin-bottom: 12px;
 }
-
-.section-title, .group-title {
-  font-weight: bold;
-  margin-bottom: 8px;
-  font-size: 13px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid #f0f0f0;
+.control-section:last-child {
+  margin-bottom: 0;
 }
 
-/* Control items with checkbox */
+/* Layer group container */
+.layer-group {
+  margin-bottom: 10px; /* Space between groups */
+}
+.layer-group:last-child {
+  margin-bottom: 0;
+}
+
+/* Group title styling */
+.group-title {
+  font-weight: bold;
+  margin-bottom: 5px;
+  font-size: 13px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid #eee; /* Lighter separator */
+}
+
+/* Control items (checkbox + label) */
 .control-item {
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
-  padding: 4px 0;
+  margin-bottom: 5px; /* Spacing between items */
+  padding: 2px 0; /* Vertical padding */
+  /* margin-left: 0; */ /* Removed - handled by parent padding */
 }
 
 .control-item input[type="checkbox"] {
   margin-right: 8px;
+  flex-shrink: 0; /* Prevent checkbox from shrinking */
 }
 
 .control-item label {
   cursor: pointer;
-  flex: 1;
+  flex: 1; /* Allow label to take remaining space */
   user-select: none;
 }
 
-/* Layer items */
-.layer-item {
-  margin-bottom: 8px;
-  margin-left: 10px;
-}
+/* Layer items (if specific styling needed, but likely covered by .control-item) */
+/* .layer-item { ... } */
 
-/* Control panel when it's collapsed */
-.ixmap-control-panel.collapsed-state {
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-}
 
-/* Adjust the toggle button style when inside the collapsed box */
-.ixmap-control-panel.collapsed-state .toggle-button {
-  margin: 0;
-  padding: 0;
-  line-height: 36px;
-  width: 100%;
-  text-align: center;
-}
-
-/* MapLayerControls */
+/* MapLayerControls (Original - Keep if used elsewhere) */
 .layerControlContainer {
   width: 300px;
   max-height: 600px;
@@ -484,7 +468,7 @@ html, body {
   font-size: 12px;
   font-weight: bold;
   color: #333;
-  text-shadow: 
+  text-shadow:
     -1px -1px 0 #fff,
     1px -1px 0 #fff,
     -1px 1px 0 #fff,
@@ -500,11 +484,11 @@ html, body {
 .country-label:hover {
   transform: scale(1.1);
   color: #0078A8;
-  z-index: 700;
+  z-index: 700; /* Ensure hover label is on top */
 }
 
 .country-label.capital {
-  color: #B22222;
+  color: #B22222; /* Firebrick */
   font-weight: bold;
   font-size: 13px;
 }
@@ -543,14 +527,8 @@ html, body {
   border: none;
 }
 
-/* Ensure tooltip arrow is hidden */
+/* Ensure tooltip arrow is hidden for country ID */
 .country-id-label:before {
   display: none !important;
 }
 
-/* Improve tooltip appearance */
-.leaflet-tooltip {
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}

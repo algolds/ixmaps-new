@@ -120,7 +120,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
     }
   }, [mapConfig]);
 
-  // 2. Effect to check map container readiness (remains the same)
+  // 2. Effect to check map container readiness
   useEffect(() => {
     logWithDebug(
       'Starting map container readiness check (using external ref)...',
@@ -177,7 +177,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
       }
     }, 8000);
     return () => clearTimers();
-  }, [externalMapContainerRef]);
+  }, [externalMapContainerRef]); // Removed logWithDebug
 
   // 3. Effect to Initialize Map (Aligning CRS)
   useEffect(() => {
@@ -280,6 +280,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
         );
 
         let map: L.Map | null = null;
+        let imageOverlayBounds: L.LatLngBounds | null = null; // Define here
 
         try {
           // --- Define Transformation based on coordinates-system.ts logic ---
@@ -293,8 +294,6 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
           } = mapConfig;
 
           // --- *** CRITICAL: Determine Reference Longitude Offset *** ---
-          // This MUST match the offset used in your svgToLatLng function.
-          // Defaulting to 30 if not specified, adjust if your default is 0 or other.
           const referenceLngOffset = mapConfig.primeMeridianReferenceLng ?? 30;
           logWithDebug(
             `Using referenceLngOffset: ${referenceLngOffset} (from mapConfig: ${mapConfig.primeMeridianReferenceLng})`,
@@ -303,11 +302,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
           // --- ****************************************************** ---
 
           // Transformation parameters derived from latLngToSvg:
-          // svgX = pmX + (lng - refLngOffset) * pxPerLng
-          // svgY = eqY - lat * pxPerLat
-          // Leaflet: x = a*lng + b, y = c*lat + d
           const a = pixelsPerLongitude;
-          // *** THIS IS THE CORRECTED CALCULATION FOR 'b' ***
           const b = primeMeridianX - referenceLngOffset * pixelsPerLongitude;
           const c = -pixelsPerLatitude; // Y is inverted
           const d = equatorY;
@@ -319,18 +314,13 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
 
           const customCRS = L.extend({}, L.CRS.Simple, {
             transformation: transformation,
-            // Define project/unproject using the SAME logic and offset
             unproject: function (point: L.Point): L.LatLng {
-              // Inverse of: point.x = a * lng + b
               const lng = (point.x - b) / a;
-              // Inverse of: point.y = c * lat + d
               const lat = (point.y - d) / c;
               return new L.LatLng(lat, lng);
             },
             project: function (latlng: L.LatLng): L.Point {
-              // Matches: svgX = a * lng + b
               const x = a * latlng.lng + b;
-              // Matches: svgY = c * lat + d
               const y = c * latlng.lat + d;
               return new L.Point(x, y);
             },
@@ -340,10 +330,10 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
           });
 
           // --- Calculate Geographic Bounds & Center using svgToLatLng ---
-          // This implicitly uses the offset defined within svgToLatLng
           const topLeftLatLng = svgToLatLng(0, 0, mapConfig);
           const bottomRightLatLng = svgToLatLng(svgWidth, svgHeight, mapConfig);
-          const imageOverlayBounds = L.latLngBounds(
+          // Assign to the outer scope variable
+          imageOverlayBounds = L.latLngBounds(
             L.latLng(bottomRightLatLng.lat, topLeftLatLng.lng), // South-West
             L.latLng(topLeftLatLng.lat, bottomRightLatLng.lng), // North-East
           );
@@ -398,32 +388,71 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
 
           // --- Drag Handler ---
           map.on('drag', function () {
+            // Use the imageOverlayBounds captured in the outer scope
             if (imageOverlayBounds && imageOverlayBounds.isValid()) {
               map?.panInsideBounds(imageOverlayBounds, { animate: false });
             }
           });
 
-          // --- Manual Wraparound Logic ---
-          const westLng = imageOverlayBounds.getWest();
-          const eastLng = imageOverlayBounds.getEast();
-          const worldWidthLng = eastLng - westLng;
-          if (worldWidthLng > 0) {
-            logWithDebug(`Init Timeout(0): Adding manual wraparound listener (West: ${westLng.toFixed(2)}, East: ${eastLng.toFixed(2)}, Width: ${worldWidthLng.toFixed(2)})`);
+          // --- Manual Wraparound Logic (Horizontal & Vertical) ---
+          // Use the imageOverlayBounds captured in the outer scope
+          if (imageOverlayBounds && imageOverlayBounds.isValid()) {
+            const westLng = imageOverlayBounds.getWest();
+            const eastLng = imageOverlayBounds.getEast();
+            const southLat = imageOverlayBounds.getSouth();
+            const northLat = imageOverlayBounds.getNorth();
+            const worldWidthLng = eastLng - westLng;
+            const worldHeightLat = northLat - southLat; // Calculate vertical span
+
+            logWithDebug(`Init Timeout(0): Adding manual wraparound listener (W: ${westLng.toFixed(2)}, E: ${eastLng.toFixed(2)}, S: ${southLat.toFixed(2)}, N: ${northLat.toFixed(2)})`);
+
             map.on('moveend', function () {
               if (!mapRef.current) return;
+
               const center = mapRef.current.getCenter();
-              const currentLng = center.lng;
-              if (currentLng < westLng || currentLng >= eastLng) {
-                const newLng = ((currentLng - westLng) % worldWidthLng + worldWidthLng) % worldWidthLng + westLng;
-                if (Math.abs(newLng - currentLng) > 1e-6) {
-                  const newCenter = L.latLng(center.lat, newLng);
-                  logWithDebug(`Wrapping map view from lng ${currentLng.toFixed(2)} to ${newLng.toFixed(2)}`);
-                  mapRef.current.setView(newCenter, mapRef.current.getZoom(), { animate: false, noMoveStart: true });
+              let currentLat = center.lat;
+              let currentLng = center.lng;
+              let finalLat = currentLat;
+              let finalLng = currentLng;
+              let needsUpdate = false;
+
+              // Horizontal Check
+              if (worldWidthLng > 0) {
+                if (currentLng < westLng || currentLng >= eastLng) {
+                  const newLng = ((currentLng - westLng) % worldWidthLng + worldWidthLng) % worldWidthLng + westLng;
+                  if (Math.abs(newLng - currentLng) > 1e-6) {
+                    logWithDebug(`Wrapping map view horizontally from lng ${currentLng.toFixed(2)} to ${newLng.toFixed(2)}`);
+                    finalLng = newLng;
+                    needsUpdate = true;
+                  }
                 }
+              } else {
+                 // logWithDebug('Skipping horizontal wraparound - invalid geographic world width.', 'warn');
+              }
+
+              // Vertical Check
+              if (worldHeightLat > 0) {
+                if (currentLat < southLat || currentLat >= northLat) { // Check against south/north bounds
+                  const newLat = ((currentLat - southLat) % worldHeightLat + worldHeightLat) % worldHeightLat + southLat;
+                  if (Math.abs(newLat - currentLat) > 1e-6) {
+                    logWithDebug(`Wrapping map view vertically from lat ${currentLat.toFixed(2)} to ${newLat.toFixed(2)}`);
+                    finalLat = newLat; // Update finalLat
+                    needsUpdate = true;
+                  }
+                }
+              } else {
+                 // logWithDebug('Skipping vertical wraparound - invalid geographic world height.', 'warn');
+              }
+
+              // Update View if Needed (handles both horizontal and vertical changes)
+              if (needsUpdate) {
+                const newCenter = L.latLng(finalLat, finalLng);
+                logWithDebug(`Setting wrapped view to Lat: ${finalLat.toFixed(2)}, Lng: ${finalLng.toFixed(2)}`);
+                mapRef.current.setView(newCenter, mapRef.current.getZoom(), { animate: false, noMoveStart: true });
               }
             });
           } else {
-            logWithDebug('Init Timeout(0): Skipping manual wraparound listener - invalid geographic world width.', 'warn');
+            logWithDebug('Init Timeout(0): Skipping manual wraparound listener - invalid imageOverlayBounds.', 'warn');
           }
 
           // --- Finalize ---
@@ -461,9 +490,10 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
     isInitialized,
     externalMapContainerRef,
     // svgToLatLng is used but doesn't need to be a dependency itself
+    // logWithDebug removed as dependency
   ]);
 
-  // 4. Effect for cleanup (Unmount) - (remains the same)
+  // 4. Effect for cleanup (Unmount)
   useEffect(() => {
     const mapInstance = mapRef.current;
     return () => {
@@ -481,6 +511,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
       if (mapInstance && mapInstance instanceof L.Map) {
         logWithDebug('Unmount Cleanup: Removing map instance and listeners.');
         try {
+          // Ensure the moveend listener is removed if it was added
           mapInstance.off('moveend');
           mapInstance.off('drag');
           mapInstance.remove();
@@ -491,6 +522,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
       mapRef.current = null;
       setIsInitialized(false);
       setMapContainerReady(false);
+      // logWithDebug removed as dependency
     };
   }, []); // Empty dependency array
 
