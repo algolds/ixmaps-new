@@ -2,6 +2,10 @@
   {
     "id": "Kagazi",
     "name": "Kagazi",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 647.367431640625,
       "y": 265.735107421875
@@ -10,14 +14,22 @@
   {
     "id": "Ugarit",
     "name": "Ugarit",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
-      "x": 366.6569519042969,
-      "y": 400.3271179199219
+      "x": 372.75,
+      "y": 406.25
     }
   },
   {
     "id": "Rhotia",
     "name": "Rhotia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 487.7271728515625,
       "y": 246.2293701171875
@@ -26,6 +38,10 @@
   {
     "id": "Housatonic",
     "name": "Housatonic",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 44.114261627197266,
       "y": 168.50979614257812
@@ -34,6 +50,10 @@
   {
     "id": "Cao",
     "name": "Cao (DX)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 44.363304138183594,
       "y": 207.78724670410156
@@ -42,6 +62,10 @@
   {
     "id": "Atavia",
     "name": "Atavia (UR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 54.97711944580078,
       "y": 183.82546997070312
@@ -50,6 +74,10 @@
   {
     "id": "New_Harren",
     "name": "New Harren",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 43.693603515625,
       "y": 193.29351806640625
@@ -58,6 +86,10 @@
   {
     "id": "Chenango_Confederacy",
     "name": "Chenango Confederacy",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 51.38886642456055,
       "y": 178.0623016357422
@@ -66,6 +98,10 @@
   {
     "id": "Netansett",
     "name": "Netansett",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 27.65823745727539,
       "y": 191.8734893798828
@@ -74,6 +110,10 @@
   {
     "id": "Porfiria",
     "name": "Porfiria (KR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 27.789297103881836,
       "y": 204.3437957763672
@@ -82,6 +122,10 @@
   {
     "id": "Little_Caldera",
     "name": "Little Caldera",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 5.294861316680908,
       "y": 187.06411743164062
@@ -90,6 +134,10 @@
   {
     "id": "Canespa",
     "name": "Canespa",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 17.841089248657227,
       "y": 192.5762939453125
@@ -98,6 +146,10 @@
   {
     "id": "Thystara",
     "name": "Thystara (KR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 9.066605567932129,
       "y": 168.87400817871094
@@ -106,6 +158,10 @@
   {
     "id": "Borealia",
     "name": "Borealia (NH)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 38.08806610107422,
       "y": 164.29127502441406
@@ -114,6 +170,10 @@
   {
     "id": "Caracua",
     "name": "Caracua",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 23.144990921020508,
       "y": 171.25144958496094
@@ -122,6 +182,10 @@
   {
     "id": "Algosh_Republic",
     "name": "Algosh Republic",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 36.240394592285156,
       "y": 177.64456176757812
@@ -130,6 +194,10 @@
   {
     "id": "Venua_tino",
     "name": "Mandatory Venua'tino",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 79.58761596679688,
       "y": 166.14517211914062
@@ -138,6 +206,10 @@
   {
     "id": "Otisco",
     "name": "Otisco (UR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 78.33340454101562,
       "y": 178.89254760742188
@@ -146,6 +218,10 @@
   {
     "id": "Shenendehowa_Bay",
     "name": "Shenendehowa Bay (CP)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 66.56678771972656,
       "y": 174.99600219726562
@@ -154,6 +230,10 @@
   {
     "id": "nature_preserve",
     "name": "Int'l. Nature Preserve (LoN)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 109.62857818603516,
       "y": 155.82479858398438
@@ -162,6 +242,10 @@
   {
     "id": "East_Arctic_Mandate",
     "name": "East Arctic Mandate",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 133.38291931152344,
       "y": 147.93505859375
@@ -170,6 +254,10 @@
   {
     "id": "Alpachnees",
     "name": "Alpachnees",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 130.147216796875,
       "y": 169.94631958007812
@@ -178,6 +266,10 @@
   {
     "id": "Copake",
     "name": "Copake",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 111.02232360839844,
       "y": 169.86627197265625
@@ -186,6 +278,10 @@
   {
     "id": "Atrassica",
     "name": "Atrassica (KR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 151.8908233642578,
       "y": 191.15682983398438
@@ -194,6 +290,10 @@
   {
     "id": "Quetzenkel",
     "name": "Quetzenkel",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 86.96673583984375,
       "y": 208.15322875976562
@@ -202,6 +302,10 @@
   {
     "id": "New_Veltorina",
     "name": "New Veltorina",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 61.852561950683594,
       "y": 208.93360900878906
@@ -210,6 +314,10 @@
   {
     "id": "Seneca_Islands",
     "name": "Seneca Islands (UR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 53.43492889404297,
       "y": 236.1108856201172
@@ -218,6 +326,10 @@
   {
     "id": "Xisheng",
     "name": "Xisheng (DX)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 105.78562927246094,
       "y": 196.14112854003906
@@ -226,6 +338,10 @@
   {
     "id": "Varshan",
     "name": "Varshan",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 99.62444305419922,
       "y": 230.58120727539062
@@ -234,6 +350,10 @@
   {
     "id": "Mid-Atrassic_States",
     "name": "Mid-Atrassic States",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 132.03048706054688,
       "y": 199.99154663085938
@@ -242,6 +362,10 @@
   {
     "id": "Chakailan",
     "name": "Chakailan",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 137.25599670410156,
       "y": 227.1501922607422
@@ -250,6 +374,10 @@
   {
     "id": "Kelekona",
     "name": "Kelekona",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 144.59471130371094,
       "y": 255.8936309814453
@@ -258,6 +386,10 @@
   {
     "id": "Arcerion",
     "name": "Arcerion",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 164.04978942871094,
       "y": 263.2237243652344
@@ -266,6 +398,10 @@
   {
     "id": "New_Archduchy",
     "name": "New Archduchy",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 170.04074096679688,
       "y": 244.85324096679688
@@ -274,6 +410,10 @@
   {
     "id": "New_Asiland",
     "name": "New Asiland",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 182.44143676757812,
       "y": 260.5252380371094
@@ -282,6 +422,10 @@
   {
     "id": "Paulastra",
     "name": "Paulastra",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 186.8752899169922,
       "y": 269.4735107421875
@@ -290,6 +434,10 @@
   {
     "id": "The_Cape",
     "name": "The Cape",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 196.92344665527344,
       "y": 295.7915344238281
@@ -298,6 +446,10 @@
   {
     "id": "Aeonara",
     "name": "Aeonara (KR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 214.87258911132812,
       "y": 303.4972839355469
@@ -306,6 +458,10 @@
   {
     "id": "Ceylonia",
     "name": "Ceylonia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 176.4947509765625,
       "y": 310.5889587402344
@@ -314,6 +470,10 @@
   {
     "id": "Istrenya",
     "name": "Istrenya",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 147.2834930419922,
       "y": 278.7745361328125
@@ -322,6 +482,10 @@
   {
     "id": "Malentina",
     "name": "Malentina",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 142.73439025878906,
       "y": 271.10784912109375
@@ -330,6 +494,10 @@
   {
     "id": "Tierrador",
     "name": "Tierrador",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 148.555419921875,
       "y": 294.9884033203125
@@ -338,6 +506,10 @@
   {
     "id": "Concordia",
     "name": "Concordia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 121.27043914794922,
       "y": 280.51593017578125
@@ -346,6 +518,10 @@
   {
     "id": "Betlands",
     "name": "Betlands",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 111.5727310180664,
       "y": 280.7633972167969
@@ -354,6 +530,10 @@
   {
     "id": "Porlos",
     "name": "Porlos",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 112.43653106689453,
       "y": 269.73431396484375
@@ -362,6 +542,10 @@
   {
     "id": "Veraise",
     "name": "Veraise (AL)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 108.67748260498047,
       "y": 257.8397521972656
@@ -370,6 +554,10 @@
   {
     "id": "Ormatia",
     "name": "Ormatia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 127.976318359375,
       "y": 260.3851318359375
@@ -378,6 +566,10 @@
   {
     "id": "path74-9",
     "name": "unnamed",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 86.61335754394531,
       "y": 258.87371826171875
@@ -386,6 +578,10 @@
   {
     "id": "Mierria",
     "name": "Mierria (AL)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 87.61238098144531,
       "y": 267.6977844238281
@@ -394,6 +590,10 @@
   {
     "id": "Pur__pec",
     "name": "Purépec (AL)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 86.6911849975586,
       "y": 238.4694366455078
@@ -402,6 +602,10 @@
   {
     "id": "Alstin",
     "name": "Alstin",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 82.55300903320312,
       "y": 298.5220947265625
@@ -410,6 +614,10 @@
   {
     "id": "Sarolasta",
     "name": "Sarolasta (KR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 166.628173828125,
       "y": 339.38531494140625
@@ -418,6 +626,10 @@
   {
     "id": "Solemia",
     "name": "Solemia (CA)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 131.0547637939453,
       "y": 312.9891052246094
@@ -426,6 +638,10 @@
   {
     "id": "Sevaronsa",
     "name": "Sevaronsa (KR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 104.93006134033203,
       "y": 312.6614685058594
@@ -434,6 +650,10 @@
   {
     "id": "Zhijun",
     "name": "Zhijun (DX)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 143.31333923339844,
       "y": 358.7730407714844
@@ -442,6 +662,10 @@
   {
     "id": "Timbia",
     "name": "Timbia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 129.67538452148438,
       "y": 386.2942199707031
@@ -450,6 +674,10 @@
   {
     "id": "Teschego",
     "name": "Teschego (TI)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 141.80393981933594,
       "y": 389.8268127441406
@@ -458,6 +686,10 @@
   {
     "id": "Samalosi",
     "name": "Samalosi (CS)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 129.3944549560547,
       "y": 402.6474914550781
@@ -466,6 +698,10 @@
   {
     "id": "Rototornicia",
     "name": "Rototornicia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 109.53071594238281,
       "y": 398.7395935058594
@@ -474,6 +710,10 @@
   {
     "id": "Tebelvonia",
     "name": "Tebelvonia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 108.58877563476562,
       "y": 416.0606384277344
@@ -482,6 +722,10 @@
   {
     "id": "Freda_Island__PX_",
     "name": "Freda Island (PX)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 135.2556610107422,
       "y": 429.5476989746094
@@ -490,6 +734,10 @@
   {
     "id": "Baclovia",
     "name": "Baclovia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 125.07259368896484,
       "y": 420.6663818359375
@@ -498,6 +746,10 @@
   {
     "id": "Cardo",
     "name": "Cardo",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 106.15937042236328,
       "y": 456.39886474609375
@@ -506,6 +758,10 @@
   {
     "id": "Mavya",
     "name": "Mavya",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 80.45849609375,
       "y": 425.14752197265625
@@ -514,6 +770,10 @@
   {
     "id": "Castadilla",
     "name": "Castadilla",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 287.4005432128906,
       "y": 336.0574951171875
@@ -522,6 +782,10 @@
   {
     "id": "Almadaria",
     "name": "Almadaria",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 268.6864013671875,
       "y": 336.0550842285156
@@ -530,6 +794,10 @@
   {
     "id": "Arona",
     "name": "Arona",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 262.4150085449219,
       "y": 322.52923583984375
@@ -538,6 +806,10 @@
   {
     "id": "Vespera",
     "name": "Vespera",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 272.2151184082031,
       "y": 319.70867919921875
@@ -546,6 +818,10 @@
   {
     "id": "Porta_Bianca",
     "name": "Porta Bianca",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 292.9354248046875,
       "y": 318.4503173828125
@@ -554,6 +830,10 @@
   {
     "id": "Equatorial_Ostiecia",
     "name": "Equatorial Ostiecia (BG)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 279.1014404296875,
       "y": 309.0461120605469
@@ -562,6 +842,10 @@
   {
     "id": "path108-4",
     "name": "Eileada (FA)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 297.50726318359375,
       "y": 291.8927001953125
@@ -570,6 +854,10 @@
   {
     "id": "Vallejar",
     "name": "Vallejar",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 290.3185729980469,
       "y": 364.8431091308594
@@ -578,6 +866,10 @@
   {
     "id": "Takatta_Loa",
     "name": "Takatta Loa",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 266.64044189453125,
       "y": 357.66839599609375
@@ -586,6 +878,10 @@
   {
     "id": "Escal",
     "name": "Escal (CP)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 145.0574493408203,
       "y": 414.4062805175781
@@ -594,6 +890,10 @@
   {
     "id": "path112-6",
     "name": "unnamed",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 178.1311492919922,
       "y": 388.9380187988281
@@ -602,6 +902,10 @@
   {
     "id": "Sudmoll",
     "name": "Sudmoll (BG)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 170.80259704589844,
       "y": 375.7727966308594
@@ -610,6 +914,10 @@
   {
     "id": "Rapa_Rapa",
     "name": "Rapa Rapa (UR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 192.3879852294922,
       "y": 367.7350158691406
@@ -618,6 +926,10 @@
   {
     "id": "Saukhin",
     "name": "Saukhin (TI)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 187.52001953125,
       "y": 361.82415771484375
@@ -626,6 +938,10 @@
   {
     "id": "Truk",
     "name": "Truk (DX)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 207.29942321777344,
       "y": 363.35101318359375
@@ -634,6 +950,10 @@
   {
     "id": "path116-7",
     "name": "unnamed",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 226.4993896484375,
       "y": 363.2079772949219
@@ -642,6 +962,10 @@
   {
     "id": "Krasoa_Islands_",
     "name": "Krasoa Islands (KR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 293.1374206542969,
       "y": 388.9338684082031
@@ -650,6 +974,10 @@
   {
     "id": "Port_de_Vent_",
     "name": "Port de Vent (BG)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 308.4184875488281,
       "y": 383.1405029296875
@@ -658,6 +986,10 @@
   {
     "id": "Lucrecia",
     "name": "Lucrecia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 311.18218994140625,
       "y": 372.9562683105469
@@ -666,6 +998,10 @@
   {
     "id": "Maristella",
     "name": "Maristella (CP)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 324.2406921386719,
       "y": 374.91143798828125
@@ -674,6 +1010,10 @@
   {
     "id": "Puertego",
     "name": "Puertego",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 318.2114562988281,
       "y": 352.71575927734375
@@ -682,6 +1022,10 @@
   {
     "id": "Amaniaris",
     "name": "Amaniaris (CP)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 329.0517578125,
       "y": 337.7048034667969
@@ -690,6 +1034,10 @@
   {
     "id": "St._Kennera___Pribalter",
     "name": "St. Kennera & Pribalter (KR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 335.3865051269531,
       "y": 308.19219970703125
@@ -698,6 +1046,10 @@
   {
     "id": "Ventotene",
     "name": "Ventotene (UR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 327.99993896484375,
       "y": 318.9257507324219
@@ -706,38 +1058,58 @@
   {
     "id": "Cartadania",
     "name": "Cartadania",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
-      "x": 369.96075439453125,
-      "y": 324.0242004394531
+      "x": 360.5,
+      "y": 332.25
     }
   },
   {
     "id": "Lariana",
     "name": "Lariana",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
-      "x": 421.12408447265625,
-      "y": 310.09783935546875
+      "x": 427.25,
+      "y": 317.375
     }
   },
   {
     "id": "Pelaxia",
     "name": "Pelaxia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
-      "x": 357.7850036621094,
-      "y": 370.0038146972656
+      "x": 372.25,
+      "y": 374.75
     }
   },
   {
     "id": "Volonia",
     "name": "Volonia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
-      "x": 390.2947082519531,
-      "y": 372.4181823730469
+      "x": 395.25,
+      "y": 376
     }
   },
   {
     "id": "New_Ardmore_",
     "name": "New Ardmore (KR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 426.646484375,
       "y": 271.6853332519531
@@ -746,6 +1118,10 @@
   {
     "id": "Herciana",
     "name": "Herciana (UR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 441.86468505859375,
       "y": 327.87811279296875
@@ -754,6 +1130,10 @@
   {
     "id": "Halfway",
     "name": "Halfway (UR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 447.51416015625,
       "y": 322.6854553222656
@@ -762,14 +1142,22 @@
   {
     "id": "Urcea",
     "name": "Urcea",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
-      "x": 463.4545593261719,
-      "y": 282.48272705078125
+      "x": 477.5,
+      "y": 280
     }
   },
   {
     "id": "Yonderre",
     "name": "Yonderre",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 453.1622314453125,
       "y": 234.73336791992188
@@ -778,6 +1166,10 @@
   {
     "id": "Hollona",
     "name": "Hollona and Diorisia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 472.1903076171875,
       "y": 238.0390167236328
@@ -786,6 +1178,10 @@
   {
     "id": "Suderavia",
     "name": "Suderavia (KR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 412.3648681640625,
       "y": 192.49525451660156
@@ -794,6 +1190,10 @@
   {
     "id": "Scapa",
     "name": "Scapa (KR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 425.6122131347656,
       "y": 187.1396484375
@@ -802,6 +1202,10 @@
   {
     "id": "Lapody",
     "name": "Lapody",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 500.4161682128906,
       "y": 253.08499145507812
@@ -810,6 +1214,10 @@
   {
     "id": "Hendalarsk",
     "name": "Hendalarsk",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 428.16864013671875,
       "y": 221.66336059570312
@@ -818,6 +1226,10 @@
   {
     "id": "Fiannria",
     "name": "Fiannria",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 487.0289001464844,
       "y": 215.9644012451172
@@ -826,6 +1238,10 @@
   {
     "id": "Caergwynn",
     "name": "Caergwynn",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 463.1438903808594,
       "y": 182.96644592285156
@@ -834,6 +1250,10 @@
   {
     "id": "Sorhaithe",
     "name": "Sorhaithe (FA)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 478.1817932128906,
       "y": 179.90330505371094
@@ -842,6 +1262,10 @@
   {
     "id": "Wintergen",
     "name": "Wintergen (BG)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 424.1905822753906,
       "y": 179.00759887695312
@@ -850,6 +1274,10 @@
   {
     "id": "Gibetia",
     "name": "Gibetia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 435.1220703125,
       "y": 236.1917724609375
@@ -858,6 +1286,10 @@
   {
     "id": "Ardmore",
     "name": "Ardmore",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 434.2025451660156,
       "y": 278.2959289550781
@@ -866,6 +1298,10 @@
   {
     "id": "Carnland",
     "name": "Carnland",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 442.1435852050781,
       "y": 261.485595703125
@@ -874,6 +1310,10 @@
   {
     "id": "Asiland",
     "name": "Asiland",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 414.46868896484375,
       "y": 244.19488525390625
@@ -882,6 +1322,10 @@
   {
     "id": "Cistan",
     "name": "Cistan",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 403.36468505859375,
       "y": 211.04171752929688
@@ -890,6 +1334,10 @@
   {
     "id": "path131-2",
     "name": "unnamed",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 450.14300537109375,
       "y": 141.2214813232422
@@ -898,6 +1346,10 @@
   {
     "id": "Vonein",
     "name": "Vonein (VI)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 482.3489990234375,
       "y": 169.77699279785156
@@ -906,6 +1358,10 @@
   {
     "id": "path130-2",
     "name": "unnamed",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 445.3861389160156,
       "y": 167.8306121826172
@@ -914,6 +1370,10 @@
   {
     "id": "path132-6",
     "name": "unnamed",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 431.4697570800781,
       "y": 139.2427978515625
@@ -922,62 +1382,94 @@
   {
     "id": "Pelia",
     "name": "Pelia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
-      "x": 399.1513366699219,
-      "y": 399.4676208496094
+      "x": 404.5,
+      "y": 405.5
     }
   },
   {
     "id": "Calto",
     "name": "Calto",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
-      "x": 393.6590881347656,
-      "y": 382.36907958984375
+      "x": 397.50000000000006,
+      "y": 390
     }
   },
   {
     "id": "Cogenia",
     "name": "Cogenia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
-      "x": 395.86279296875,
-      "y": 359.5501708984375
+      "x": 413.25000000000006,
+      "y": 390
     }
   },
   {
     "id": "Xelphia",
     "name": "Xelphia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
-      "x": 432.5275573730469,
-      "y": 348.9686279296875
+      "x": 437.125,
+      "y": 356.875
     }
   },
   {
     "id": "Avamax",
     "name": "Avamax",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
-      "x": 436.9987487792969,
-      "y": 367.7338562011719
+      "x": 444.625,
+      "y": 376.5
     }
   },
   {
     "id": "Xalesia",
     "name": "Xalesia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
-      "x": 419.17413330078125,
-      "y": 369.1944274902344
+      "x": 422.75000000000006,
+      "y": 371.75
     }
   },
   {
     "id": "Manuncia",
     "name": "Manuncia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
-      "x": 449.5489196777344,
-      "y": 351.89874267578125
+      "x": 453.75,
+      "y": 357.625
     }
   },
   {
     "id": "Sydona_Islands",
     "name": "Sydona Islands (KR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 455.3497314453125,
       "y": 400.705322265625
@@ -986,30 +1478,46 @@
   {
     "id": "Greater_Salesia",
     "name": "Greater Salesia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
-      "x": 428.330810546875,
-      "y": 383.9760437011719
+      "x": 433.75,
+      "y": 391.375
     }
   },
   {
     "id": "South_Solis",
     "name": "South Solis",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
-      "x": 459.2501525878906,
-      "y": 387.7228088378906
+      "x": 454.125,
+      "y": 392.625
     }
   },
   {
     "id": "North_Solis",
     "name": "North Solis",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
-      "x": 465.95001220703125,
-      "y": 362.0307312011719
+      "x": 464.00000000000006,
+      "y": 376.25
     }
   },
   {
     "id": "Melian_Islands",
     "name": "Melian Islands (KR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 499.5196533203125,
       "y": 342.30841064453125
@@ -1018,6 +1526,10 @@
   {
     "id": "path159-7",
     "name": "unnamed",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 511.0840148925781,
       "y": 354.9792785644531
@@ -1026,6 +1538,10 @@
   {
     "id": "Soirwind",
     "name": "Soirwind",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 630.0565795898438,
       "y": 274.5796203613281
@@ -1034,6 +1550,10 @@
   {
     "id": "Antilles",
     "name": "Antilles (BG)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 611.9235229492188,
       "y": 278.42547607421875
@@ -1042,6 +1562,10 @@
   {
     "id": "Hezikian_Isles",
     "name": "Hezikian Isles (FI)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 590.2097778320312,
       "y": 257.95623779296875
@@ -1050,6 +1574,10 @@
   {
     "id": "Zaclaria",
     "name": "Zaclaria",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 626.637451171875,
       "y": 291.5814514160156
@@ -1058,6 +1586,10 @@
   {
     "id": "Alcairet",
     "name": "Alcairet (BG)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 615.3128051757812,
       "y": 308.17327880859375
@@ -1066,6 +1598,10 @@
   {
     "id": "Sacatia",
     "name": "Sacatia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 633.3302001953125,
       "y": 259.6413269042969
@@ -1074,6 +1610,10 @@
   {
     "id": "Jazee",
     "name": "Jazee",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 672.8511352539062,
       "y": 267.9836730957031
@@ -1082,6 +1622,10 @@
   {
     "id": "Devonta",
     "name": "Devonta",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 684.7653198242188,
       "y": 289.0227355957031
@@ -1090,6 +1634,10 @@
   {
     "id": "Argaea",
     "name": "Argaea (BG)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 578.9576416015625,
       "y": 456.3147888183594
@@ -1098,6 +1646,10 @@
   {
     "id": "Thervala",
     "name": "Thervala",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 712.5130004882812,
       "y": 280.4122314453125
@@ -1106,6 +1658,10 @@
   {
     "id": "Oyashima",
     "name": "Oyashima",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 739.1376342773438,
       "y": 268.6937561035156
@@ -1114,6 +1670,10 @@
   {
     "id": "Metzetta",
     "name": "Metzetta",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 737.7830200195312,
       "y": 290.8766784667969
@@ -1122,6 +1682,10 @@
   {
     "id": "Nauta_Normand",
     "name": "Nauta Normand (BG)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 297.5945739746094,
       "y": 152.2477569580078
@@ -1130,6 +1694,10 @@
   {
     "id": "Eusa",
     "name": "Eusa (KR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 333.1539306640625,
       "y": 245.38998413085938
@@ -1138,14 +1706,22 @@
   {
     "id": "Kiravia",
     "name": "Kiravia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
-      "x": 297.99755859375,
-      "y": 185.26036071777344
+      "x": 295.125,
+      "y": 194.625
     }
   },
   {
     "id": "Daxia",
     "name": "Daxia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 716.709228515625,
       "y": 326.5069274902344
@@ -1154,6 +1730,10 @@
   {
     "id": "Huoxia",
     "name": "Huoxia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 720.4053344726562,
       "y": 309.1432800292969
@@ -1162,6 +1742,10 @@
   {
     "id": "Canbei",
     "name": "Canbei",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 705.0875854492188,
       "y": 311.5249938964844
@@ -1170,6 +1754,10 @@
   {
     "id": "Ankivara",
     "name": "Ankivara",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 703.8007202148438,
       "y": 307.97900390625
@@ -1178,6 +1766,10 @@
   {
     "id": "Rusana",
     "name": "Rusana",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 683.9854736328125,
       "y": 333.1016540527344
@@ -1186,6 +1778,10 @@
   {
     "id": "The_Holding",
     "name": "The Holding",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 668.2844848632812,
       "y": 327.57000732421875
@@ -1194,6 +1790,10 @@
   {
     "id": "Dhavastu",
     "name": "Dhavastu",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 651.9268188476562,
       "y": 336.1404113769531
@@ -1202,6 +1802,10 @@
   {
     "id": "Tapakdore",
     "name": "Tapakdore",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 633.9507446289062,
       "y": 322.8501281738281
@@ -1210,6 +1814,10 @@
   {
     "id": "Kandara",
     "name": "Kandara",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 659.1015014648438,
       "y": 293.97198486328125
@@ -1218,6 +1826,10 @@
   {
     "id": "Pukhgandi",
     "name": "Pukhgandi",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 648.8408203125,
       "y": 318.9526672363281
@@ -1226,6 +1838,10 @@
   {
     "id": "Umardwal",
     "name": "Umardwal",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 616.0281372070312,
       "y": 341.1475830078125
@@ -1234,6 +1850,10 @@
   {
     "id": "Pukhtunistan",
     "name": "Pukhtunistan",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 637.0126342773438,
       "y": 349.61614990234375
@@ -1242,6 +1862,10 @@
   {
     "id": "Yanuban",
     "name": "Yanuban",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 613.6195678710938,
       "y": 366.6618347167969
@@ -1250,6 +1874,10 @@
   {
     "id": "Bulkh",
     "name": "Bulkh",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 592.8305053710938,
       "y": 345.0324401855469
@@ -1258,6 +1886,10 @@
   {
     "id": "Battganuur",
     "name": "Battganuur",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 595.22802734375,
       "y": 328.8310241699219
@@ -1266,6 +1898,10 @@
   {
     "id": "Chaukhira",
     "name": "Chaukhira (BG)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 567.3574829101562,
       "y": 344.6185607910156
@@ -1274,6 +1910,10 @@
   {
     "id": "Sotsial",
     "name": "Sotsial (AL)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 768.3726806640625,
       "y": 250.00491333007812
@@ -1282,6 +1922,10 @@
   {
     "id": "Isidar",
     "name": "Isidar (AL)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 766.7476196289062,
       "y": 239.780029296875
@@ -1290,6 +1934,10 @@
   {
     "id": "path188-4",
     "name": "unnamed",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 768.10546875,
       "y": 231.19149780273438
@@ -1298,6 +1946,10 @@
   {
     "id": "Iles_Evangeline",
     "name": "Iles Evangeline (BG)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 774.5245971679688,
       "y": 238.9113006591797
@@ -1306,6 +1958,10 @@
   {
     "id": "Huadao",
     "name": "Huadao (UR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 727.587646484375,
       "y": 424.3130187988281
@@ -1314,6 +1970,10 @@
   {
     "id": "path190-4",
     "name": "unnamed",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 709.2401123046875,
       "y": 394.184814453125
@@ -1322,6 +1982,10 @@
   {
     "id": "Sakhalins",
     "name": "Sakhalins (KR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 372.1091003417969,
       "y": 446.5965576171875
@@ -1330,6 +1994,10 @@
   {
     "id": "Jinju",
     "name": "Jinju (MZ)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 92.4442138671875,
       "y": 374.93359375
@@ -1338,6 +2006,10 @@
   {
     "id": "path193-5",
     "name": "unnamed",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 275.371337890625,
       "y": 250.66578674316406
@@ -1346,6 +2018,10 @@
   {
     "id": "Howland_Governorate",
     "name": "Howland Governorate (AR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 162.0495147705078,
       "y": 157.3624267578125
@@ -1354,6 +2030,10 @@
   {
     "id": "Lotoa",
     "name": "Lotoa (CA)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 192.02664184570312,
       "y": 388.7899169921875
@@ -1362,6 +2042,10 @@
   {
     "id": "Burgundie",
     "name": "Burgundie",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 504.8946533203125,
       "y": 273.7970275878906
@@ -1370,6 +2054,10 @@
   {
     "id": "Torlen",
     "name": "Torlen (BG)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 545.2664184570312,
       "y": 246.44754028320312
@@ -1378,6 +2066,10 @@
   {
     "id": "Orenstia",
     "name": "Orenstia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 514.627197265625,
       "y": 223.6497802734375
@@ -1386,6 +2078,10 @@
   {
     "id": "unnamed",
     "name": "unnamed",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 589.6275634765625,
       "y": 161.30113220214844
@@ -1394,6 +2090,10 @@
   {
     "id": "Eileada",
     "name": "Eileada (FA)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 297.50726318359375,
       "y": 291.8927001953125
@@ -1402,6 +2102,10 @@
   {
     "id": "Medimeria",
     "name": "Medimeria (UR)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 669.2989501953125,
       "y": 184.4700927734375
@@ -1410,6 +2114,10 @@
   {
     "id": "Titechaxha",
     "name": "Titechaxha",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 155.97134399414062,
       "y": 242.34620666503906
@@ -1418,6 +2126,10 @@
   {
     "id": "Telonaticolan",
     "name": "Telonaticolan",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 143.99183654785156,
       "y": 216.5670928955078
@@ -1426,14 +2138,22 @@
   {
     "id": "Caphiria",
     "name": "Caphiria",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
-      "x": 400.5189514160156,
-      "y": 338.19305419921875
+      "x": 398,
+      "y": 345.5
     }
   },
   {
     "id": "Avonia",
     "name": "Avonia",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 463.4308166503906,
       "y": 247.18638610839844
@@ -1442,6 +2162,10 @@
   {
     "id": "Faneria",
     "name": "Faneria",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 451.67626953125,
       "y": 214.87615966796875
@@ -1450,6 +2174,10 @@
   {
     "id": "Int_l_Canal_Zone",
     "name": "Int'l Canal Zone",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 423.61773681640625,
       "y": 203.16163635253906
@@ -1458,6 +2186,10 @@
   {
     "id": "path18-6",
     "name": "Telokona",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 127.54423522949219,
       "y": 249.90011596679688
@@ -1466,6 +2198,10 @@
   {
     "id": "Alba_Concordia__LoN_",
     "name": "Alba Concordia (LoN)",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 512.837646484375,
       "y": 247.866455078125
@@ -1474,6 +2210,10 @@
   {
     "id": "Pursat",
     "name": "Pursat",
+    "layerId": "political",
+    "tagName": "path",
+    "continent": null,
+    "type": null,
     "position": {
       "x": 597.918212890625,
       "y": 357.6643371582031

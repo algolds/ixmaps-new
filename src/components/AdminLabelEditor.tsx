@@ -8,7 +8,7 @@ import React, {
   useCallback,
   useMemo,
 } from 'react';
-import { MapConfig, LatLng as CustomLatLng } from '@/types'; // Use your specific LatLng type if needed
+import { MapConfig } from '@/types'; // Use your specific LatLng type if needed
 import { latLngToSvg, svgToLatLng } from '@/lib/coordinates-system'; // Import both conversion functions
 import L from 'leaflet'; // Import Leaflet type
 
@@ -21,6 +21,10 @@ interface CountryPositionData {
     x: number; // SVG X coordinate
     y: number; // SVG Y coordinate
   };
+  // Add other potential fields from your JSON if needed for type safety
+  tagName?: string;
+  continent?: string | null;
+  type?: string | null;
 }
 
 // Props for the component
@@ -29,17 +33,22 @@ interface AdminLabelEditorProps {
   L: typeof L | null; // Leaflet library instance
   mapConfig: MapConfig; // Map configuration for coordinate conversion
   isVisible: boolean; // Controls whether the editor is active and visible
+  onSaveSuccess: () => void; // Callback function prop for successful save
 }
 
 // --- TARGET LAYER ID ---
 // Set this to the ID of the layer group you want to edit (e.g., 'political')
 const TARGET_LAYER_ID = 'political';
+// --- FILENAME TO LOAD/SAVE ---
+// Ensure this matches the file your API writes to!
+const DATA_FILE_PATH = '/data/country_positions_ctm.json';
 
 const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
   map,
   L,
   mapConfig,
   isVisible,
+  onSaveSuccess, // Destructure the new prop
 }) => {
   const layerGroupRef = useRef<L.LayerGroup | null>(null);
   // State to hold ALL positions fetched from the file
@@ -57,17 +66,18 @@ const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
 
   // --- Fetch Initial Data ---
   const fetchData = useCallback(async () => {
-    if (!isVisible) return; // Only fetch if becoming visible
-    console.log('[AdminEditor] Fetching initial positions...');
+    // Fetch logic is now independent of isVisible, called explicitly
+    console.log(`[AdminEditor] Fetching positions from ${DATA_FILE_PATH}...`);
     setIsLoading(true);
     setError(null);
-    setSaveStatus('idle');
-    setStatusMessage('');
+    // Reset status only when initiating a fresh fetch, not necessarily on every call
+    // setSaveStatus('idle');
+    // setStatusMessage('');
     setAllPositions([]); // Clear previous full data
     setEditablePositions([]); // Clear previous editable data
     try {
       // Ensure cache is bypassed, especially during development
-      const response = await fetch('/data/country_positions_ctm.json', {
+      const response = await fetch(DATA_FILE_PATH, {
         cache: 'no-store',
       });
       if (!response.ok) {
@@ -78,12 +88,13 @@ const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
         throw new Error('Fetched data is not an array.');
       }
 
-      // Validate ALL fetched data (including checking for layerId, though it can be null)
+      // Validate ALL fetched data
       const validData = data.filter(
         (item) =>
           item &&
-          item.id &&
-          item.name &&
+          typeof item.id === 'string' && // Ensure ID is a non-empty string
+          item.id.length > 0 &&
+          typeof item.name === 'string' && // Name is a string (can be empty)
           // layerId is allowed to be null or string
           (item.layerId === null || typeof item.layerId === 'string') &&
           typeof item.position?.x === 'number' &&
@@ -92,7 +103,9 @@ const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
           !isNaN(item.position.y), // Explicit NaN check
       );
       setAllPositions(validData); // Store all valid fetched positions
-      console.log(`[AdminEditor] Loaded ${validData.length} total valid positions.`);
+      console.log(
+        `[AdminEditor] Loaded ${validData.length} total valid positions.`,
+      );
 
       // --- FILTER DATA for the target layer ---
       const filteredData = validData.filter(
@@ -110,41 +123,58 @@ const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [isVisible]); // Re-fetch if visibility changes
+  }, []); // No dependencies, fetchData function reference is stable
 
+  // Effect to fetch data only when the component becomes visible
   useEffect(() => {
-    fetchData();
-  }, [fetchData]); // Run fetch data when the function reference changes (i.e., when isVisible changes)
+    if (isVisible) {
+      console.log('[AdminEditor] Visibility changed to true, fetching data...');
+      // Reset status when becoming visible after being hidden
+      setSaveStatus('idle');
+      setStatusMessage('');
+      fetchData();
+    }
+    // Intentionally not including fetchData in deps here,
+    // we call it manually when visibility changes to true.
+  }, [isVisible, fetchData]); // Include fetchData in dependencies
 
   // --- Memoize Draggable Icon Style ---
   const draggableIcon = useMemo(() => {
     if (!L) return null;
-    return L.divIcon({
+    // Use L! here as the check above ensures it's not null
+    return L!.divIcon({
       className: 'admin-draggable-label', // CSS class for styling
       html: `<span>Edit Me</span>`, // Placeholder, replaced per marker
       iconSize: undefined, // Let CSS control size
-      iconAnchor: [15, 5], // Adjust anchor point for better drag feel
+      iconAnchor: [15, 5], // Adjust anchor point for better drag feel (centers roughly under cursor)
     });
   }, [L]);
 
   // --- Update Marker Position in State ---
   const handleMarkerDragEnd = useCallback(
     (event: L.DragEndEvent) => {
-      if (!mapConfig) return;
+      if (!mapConfig) {
+        console.warn(
+          '[AdminEditor] mapConfig not available for coordinate conversion.',
+        );
+        return;
+      }
 
-      const marker = event.target as L.Marker; // Cast to Marker
+      const marker = event.target as L.Marker;
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore Accessing custom property added after creation
-      const countryId = marker.options.countryId; // Get ID stored in marker options
+      const countryId = marker.options.countryId;
       const finalLatLng = marker.getLatLng();
 
       if (!countryId) {
-        console.warn('[AdminEditor] DragEnd event missing countryId in marker options.');
+        console.warn(
+          '[AdminEditor] DragEnd event missing countryId in marker options.',
+        );
         return;
       }
 
       try {
-        // Convert Leaflet LatLng back to SVG coordinates using the library function
+        // Convert Leaflet LatLng back to SVG coordinates
         const newSvgPos = latLngToSvg(
           finalLatLng.lat,
           finalLatLng.lng,
@@ -152,7 +182,6 @@ const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
         );
 
         // --- IMPORTANT: Update BOTH state arrays immutably ---
-        // Update the filtered list (editablePositions) for immediate UI feedback
         setEditablePositions((currentPositions) =>
           currentPositions.map((country) =>
             country.id === countryId
@@ -160,7 +189,6 @@ const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
               : country,
           ),
         );
-        // Update the main list (allPositions) which will be saved
         setAllPositions((currentAllPositions) =>
           currentAllPositions.map((country) =>
             country.id === countryId
@@ -172,7 +200,7 @@ const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
 
         // Update status for user feedback
         setSaveStatus('idle'); // Reset save status as changes are pending
-        setStatusMessage('Position updated locally.');
+        setStatusMessage('Position updated locally. Click Save to persist.');
         console.log(
           `[AdminEditor] Updated ${countryId} to SVG: ${newSvgPos.x.toFixed(2)}, ${newSvgPos.y.toFixed(2)}`,
         );
@@ -181,8 +209,8 @@ const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
           `[AdminEditor] Error converting LatLng to SVG for ${countryId}:`,
           e,
         );
-        // Optionally revert marker position visually or show an error message
-        // Example: marker.setLatLng(originalLatLng); // Requires storing original position
+        setStatusMessage(`Error updating ${countryId}. See console.`);
+        // Optionally revert marker position visually or show a more prominent error
       }
     },
     [mapConfig], // mapConfig is a dependency for latLngToSvg
@@ -195,7 +223,16 @@ const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
     if (!isVisible || !map || !L || isLoading || error || !draggableIcon) {
       // Cleanup if becoming invisible or prerequisites lost
       if (layerGroupRef.current) {
-        console.log('[AdminEditor] Cleaning up editor markers (visibility/prereqs).');
+        console.log(
+          '[AdminEditor] Cleaning up editor markers (visibility/prereqs).',
+        );
+        // Remove event listeners before removing the layer group
+        layerGroupRef.current.eachLayer((layer) => {
+          // Use L! here as well inside the cleanup check if needed
+          if (layer instanceof L!.Marker) {
+            layer.off('dragend', handleMarkerDragEnd); // Detach listener safely
+          }
+        });
         layerGroupRef.current.remove();
         layerGroupRef.current = null;
       }
@@ -203,20 +240,28 @@ const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
     }
 
     // --- Clear previous layer group ---
+    // (Handles cases where editablePositions changes while visible)
     if (layerGroupRef.current) {
+      console.log('[AdminEditor] Clearing existing markers before redraw.');
+      layerGroupRef.current.eachLayer((layer) => {
+        // Use L! here too
+        if (layer instanceof L!.Marker) {
+          layer.off('dragend', handleMarkerDragEnd);
+        }
+      });
       layerGroupRef.current.remove();
+      layerGroupRef.current = null; // Ensure we create a new one
     }
 
     // --- Create and add new layer group for editable markers ---
-    // Use the filtered 'editablePositions' state to create markers
     console.log(
       `[AdminEditor] Creating ${editablePositions.length} draggable markers for layer '${TARGET_LAYER_ID}'...`,
     );
-    layerGroupRef.current = L.layerGroup(); // Create a fresh layer group
+    // Apply L! here
+    layerGroupRef.current = L!.layerGroup();
     const markers: L.Marker[] = []; // Array to hold created markers
 
     editablePositions.forEach((country) => {
-      // Iterate over only the positions filtered for the target layer
       try {
         // Convert initial SVG position to Leaflet LatLng
         const initialLatLng = svgToLatLng(
@@ -225,21 +270,21 @@ const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
           mapConfig,
         );
 
-        // Create Leaflet LatLng object
-        const markerLatLng = L.latLng(initialLatLng.lat, initialLatLng.lng);
+        // Apply L! here
+        const markerLatLng = L!.latLng(initialLatLng.lat, initialLatLng.lng);
 
         // Clone the base draggable icon and set the specific HTML content
-        const icon = L.divIcon({
+        // Apply L! here
+        const icon = L!.divIcon({
           ...draggableIcon.options, // Inherit base style/anchor
           html: `<span title="ID: ${country.id}">${country.name}</span>`, // Show name, ID on hover
         });
 
-        // Create the draggable marker instance
-        const marker = L.marker(markerLatLng, {
+        // Apply L! here
+        const marker = L!.marker(markerLatLng, {
           icon: icon,
-          draggable: true, // Make it draggable
+          draggable: true,
           zIndexOffset: 1000, // Ensure markers are above other map elements
-          // Do NOT add countryId directly in options here due to TypeScript types
         });
 
         // --- Add custom property AFTER marker creation ---
@@ -248,22 +293,21 @@ const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
         marker.options.countryId = country.id;
         // --- End custom property addition ---
 
-        // Attach the dragend event handler
         marker.on('dragend', handleMarkerDragEnd);
-
-        markers.push(marker); // Add the created marker to the array
+        markers.push(marker);
       } catch (e) {
         console.error(
           `[AdminEditor] Error creating marker for ${country.name} (ID: ${country.id}):`,
           e,
         );
+        // Optionally add placeholder or skip marker
       }
     });
 
     // Add all created markers to the layer group
     markers.forEach((marker) => layerGroupRef.current?.addLayer(marker));
     // Add the layer group to the map
-    layerGroupRef.current.addTo(map);
+    layerGroupRef.current?.addTo(map); // Add null check for safety
     console.log(
       `[AdminEditor] Added ${markers.length} markers to map for layer '${TARGET_LAYER_ID}'.`,
     );
@@ -272,9 +316,9 @@ const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
     return () => {
       console.log('[AdminEditor] Cleaning up editor markers (effect cleanup).');
       if (layerGroupRef.current) {
-        // Remove event listeners from each marker before removing the layer group
         layerGroupRef.current.eachLayer((layer) => {
-          if (layer instanceof L.Marker) {
+          // Apply L! here
+          if (layer instanceof L!.Marker) {
             layer.off('dragend', handleMarkerDragEnd); // Detach listener
           }
         });
@@ -298,24 +342,29 @@ const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
   // --- Save Handler ---
   const handleSave = async () => {
     // --- IMPORTANT: Save the *entire* `allPositions` array ---
-    // This ensures positions for other layers are not lost when saving.
     if (allPositions.length === 0) {
       setStatusMessage('No positions loaded to save.');
       return;
     }
-    console.log(`[AdminEditor] Attempting to save all ${allPositions.length} positions...`);
+    console.log(
+      `[AdminEditor] Attempting to save all ${allPositions.length} positions...`,
+    );
+    // Log a sample of the data being sent
+    console.log(
+      '[AdminEditor] Data sample being sent:',
+      JSON.stringify(allPositions.slice(0, 5), null, 2),
+    );
     setSaveStatus('saving');
     setStatusMessage('Saving...');
     setError(null);
 
     try {
-      // *** Make sure '/api/save-label-positions' is your correct API endpoint ***
+      // *** API endpoint for saving ***
       const response = await fetch('/api/save-label-positions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Add authentication headers here if your API requires them
-          // e.g., 'Authorization': `Bearer ${yourAuthToken}`
+          // Add authentication headers if needed
         },
         body: JSON.stringify(allPositions), // Send the complete, updated data
       });
@@ -323,17 +372,14 @@ const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
       if (!response.ok) {
         let errorMsg = `HTTP error! status: ${response.status}`;
         try {
-          // Try to parse a more specific error message from the backend response
           const errorData = await response.json();
           errorMsg += ` - ${errorData.message || 'Unknown server error'}`;
         } catch (e) {
-          // If response body isn't JSON or parsing fails, use status text
           errorMsg += ` - ${response.statusText}`;
         }
         throw new Error(errorMsg); // Throw error to be caught below
       }
 
-      // Assuming backend sends { success: true, message: '...', count: ... }
       const result = await response.json();
       setSaveStatus('success');
       setStatusMessage(
@@ -341,16 +387,24 @@ const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
           `Saved ${result.count ?? allPositions.length} positions successfully!`,
       );
       console.log('[AdminEditor] Save successful:', result);
+
+      // --- Notify parent component on success ---
+      if (onSaveSuccess) {
+        onSaveSuccess(); // Trigger parent to hide editor, refresh data, etc.
+      }
+      // --- End notification ---
+
     } catch (e: any) {
       console.error('[AdminEditor] Save error:', e);
       setError(e.message || 'Failed to save positions');
       setSaveStatus('error');
       setStatusMessage(`Error: ${e.message || 'Failed to save'}`);
     }
+    // Note: We don't call fetchData here anymore, the parent component
+    // should handle data refreshing if needed after onSaveSuccess is called.
   };
 
   // --- Render Save Button and Status UI ---
-  // This UI element is positioned absolutely on the map
   if (!isVisible) {
     return null; // Don't render the editor UI if not visible
   }
@@ -372,6 +426,7 @@ const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
         gap: '8px', // Space between elements
         fontSize: '12px', // Base font size
         fontFamily: 'Arial, sans-serif', // Consistent font
+        minWidth: '150px', // Give it a minimum width
       }}
     >
       <h4 style={{ margin: '0 0 5px 0', textAlign: 'center' }}>Label Editor</h4>
@@ -387,29 +442,32 @@ const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
             disabled={saveStatus === 'saving'} // Disable button while saving
             style={{
               padding: '5px 10px',
-              cursor: saveStatus === 'saving' ? 'wait' : 'pointer', // Change cursor while saving
-              backgroundColor: saveStatus === 'saving' ? '#ccc' : '#4CAF50', // Grey out when disabled
+              cursor: saveStatus === 'saving' ? 'wait' : 'pointer',
+              backgroundColor: saveStatus === 'saving' ? '#ccc' : '#4CAF50',
               color: 'white',
               border: 'none',
               borderRadius: '3px',
-              opacity: saveStatus === 'saving' ? 0.7 : 1, // Reduce opacity when disabled
+              opacity: saveStatus === 'saving' ? 0.7 : 1,
             }}
           >
             {saveStatus === 'saving' ? 'Saving...' : 'Save Positions'}
           </button>
-          {/* Display status messages (e.g., "Saving...", "Success!", "Error: ...") */}
+          {/* Display status messages */}
           {statusMessage && (
             <div
               style={{
                 marginTop: '5px',
                 textAlign: 'center',
-                // Change color based on status
                 color:
                   saveStatus === 'error'
                     ? 'red'
                     : saveStatus === 'success'
                       ? 'green'
-                      : 'black',
+                      : 'black', // Default color for idle/info messages
+                fontWeight:
+                  saveStatus === 'error' || saveStatus === 'success'
+                    ? 'bold'
+                    : 'normal',
               }}
             >
               {statusMessage}

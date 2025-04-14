@@ -90,7 +90,7 @@ export default async function handler(
       process.cwd(), // Gets the root directory of the Next.js project
       'public',
       'data',
-      'country_positions_ctm.json',
+      'political_layer_shapes_ctm.json',
     );
     console.log(`[API Save Labels] Target file path: ${filePath}`);
 

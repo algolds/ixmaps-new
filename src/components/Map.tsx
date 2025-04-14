@@ -126,6 +126,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   // --- Callbacks ---
   const addDebugMessage = useCallback(
     (message: string, type: 'info' | 'warn' | 'error' = 'info') => {
+      // Basic console logging, replace with a more robust logger if needed
       console[type](`[MapComponent] ${message}`);
     },
     [],
@@ -265,7 +266,12 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       }
     };
     fetchAndParseSVG();
-  }, [isMapReady, mapConfig.masterMapPath, mapConfig.initialLayerVisibility, addDebugMessage]);
+  }, [
+    isMapReady,
+    mapConfig.masterMapPath,
+    mapConfig.initialLayerVisibility,
+    addDebugMessage,
+  ]);
 
   // --- Toggle Handlers ---
   const handleToggleGrid = (visible: boolean) => setShowGrid(visible);
@@ -298,6 +304,37 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
     },
     [addDebugMessage],
   );
+
+  // --- Admin Mode Handlers ---
+  const handleToggleAdminMode = useCallback(() => {
+    setIsAdminMode((prev) => {
+      const nextState = !prev;
+      addDebugMessage(`Toggling Admin Mode to: ${nextState}`);
+      if (nextState) {
+        // Entering admin mode - hide regular labels if they were shown
+        setShowCountryLabels(false);
+        if (typeof showToast === 'function')
+          showToast('Label Editor Activated', 'info');
+      } else {
+        // Exiting admin mode - potentially show regular labels again based on config default
+        setShowCountryLabels(mapConfig.showCountryLabels ?? true);
+        if (typeof showToast === 'function')
+          showToast('Label Editor Deactivated', 'info');
+      }
+      return nextState;
+    });
+  }, [addDebugMessage, mapConfig.showCountryLabels]);
+
+  const handleAdminSaveSuccess = useCallback(() => {
+    addDebugMessage('Admin save successful, exiting admin mode.');
+    if (typeof showToast === 'function')
+      showToast('Label positions saved!', 'success');
+    setIsAdminMode(false); // Exit admin mode
+    // Optionally re-enable default labels after exiting
+    setShowCountryLabels(mapConfig.showCountryLabels ?? true);
+    // Note: AdminLabelEditor's internal fetchData will run again when it becomes visible next time.
+    // If you needed immediate refresh of CountryLabelsComponent, you'd need a way to trigger its fetch.
+  }, [addDebugMessage, mapConfig.showCountryLabels]);
 
   // --- Render ---
   return (
@@ -371,12 +408,14 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
             onToggleLayer={handleToggleLayer}
             isLoadingLayers={isLoadingSvg}
             layerError={svgError}
-            // --- ADD Admin Mode Toggle ---
+            // --- Pass Admin Mode Toggle ---
             isAdminMode={isAdminMode}
-            onToggleAdminMode={() => setIsAdminMode((prev) => !prev)}
+            onToggleAdminMode={handleToggleAdminMode} // Pass the handler
           />
 
           {/* --- Conditional Rendering for Labels/Editor --- */}
+
+          {/* Show regular labels only if NOT in admin mode AND labels are toggled on */}
           {!isAdminMode && (
             <CountryLabelsComponent
               map={map}
@@ -386,12 +425,14 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
             />
           )}
 
+          {/* Show admin editor only if IN admin mode */}
           {isAdminMode && (
             <AdminLabelEditor
               map={map}
               L={leaflet}
               mapConfig={mapConfig}
               isVisible={isAdminMode} // Pass admin mode state
+              onSaveSuccess={handleAdminSaveSuccess} // Pass the success callback
             />
           )}
         </>
