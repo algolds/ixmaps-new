@@ -1,0 +1,19 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  postgres_db:
+    image: postgres:15 # Or your preferred PostgreSQL version
+    container_name: ixmaps_postgres_db
+    environment:
+      POSTGRES_USER: ixmapsuser        # Choose a username
+      POSTGRES_PASSWORD: ghantisghont448 # !!! CHANGE THIS to a strong password !!!
+      POSTGRES_DB: ixmapsdb          # Choose a database name
+    ports:
+      - "5432:5432" # Map local port 5432 to container port 5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persist data
+    restart: unless-stopped
+
+volumes:
+  postgres_data: # Defines the named volume
