@@ -42,10 +42,10 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
-  isAdmin       Boolean   @default(false) // <-- ADDED: For admin role check
+  isAdmin       Boolean   @default(false)
   accounts      Account[]
   sessions      Session[]
-  auditLogs     AuditLog[] // <-- ADDED: Relation to audit logs
+  auditLogs     AuditLog[] // Relation to audit logs
 }
 
 model VerificationToken {
@@ -56,13 +56,15 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// --- ADDED: Model for Audit Logging ---
+// --- Model for Audit Logging ---
 model AuditLog {
   id        String   @id @default(cuid())
   timestamp DateTime @default(now())
   action    String   // e.g., "Updated Label Positions"
   details   String?  // e.g., "Saved N positions" or potentially JSON diff
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade) // Relation back to the user
-}
 
+  // --- MODIFIED LINES ---
+  userId    String?  // Made optional: Can be null if no specific user performed the action
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade) // Relation is now optional
+  // --- END MODIFIED LINES ---
+}

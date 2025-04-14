@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
-import { auth } from '@/auth'; // Import the auth utility from NextAuth.js setup
+// Removed: import { auth } from '@/auth'; // Authentication is removed
 import { db } from '@/lib/db'; // Import your Prisma client instance
 
 // Define the expected structure of individual position objects in the request body
@@ -30,37 +30,13 @@ type ResponseData = {
 
 // Use App Router Route Handler signature for POST method
 export async function POST(req: Request): Promise<NextResponse<ResponseData>> {
-  // --- 1. Authentication & Authorization Check ---
-  const session = await auth(); // Get the server-side session
-
-  // Check if user is logged in
-  if (!session?.user?.id) {
-    console.warn('[API Save Labels] Unauthorized attempt: No session found.');
-    return NextResponse.json(
-      { success: false, message: 'Unauthorized: Not signed in.' },
-      { status: 401 },
-    );
-  }
-
-  // Check if the logged-in user has the admin flag (set during sign-in callback)
-  if (!session.user.isAdmin) {
-    console.warn(
-      `[API Save Labels] Forbidden attempt: User ${session.user.id} is not admin.`,
-    );
-    return NextResponse.json(
-      { success: false, message: 'Forbidden: Admin role required.' },
-      { status: 403 },
-    );
-  }
-  // --- End Authorization Check ---
-
-  // --- 2. Method Check (Implicitly handled by POST function name) ---
+  // --- Authentication & Authorization Removed ---
 
   try {
     // Get request body
     const positions: PositionData[] = await req.json();
 
-    // --- 3. Data Validation ---
+    // --- Data Validation ---
     if (!Array.isArray(positions)) {
       console.warn('[API Save Labels] Invalid data: Expected an array.');
       return NextResponse.json(
@@ -69,14 +45,13 @@ export async function POST(req: Request): Promise<NextResponse<ResponseData>> {
       );
     }
 
-    // More detailed validation (ensure this matches the actual data structure)
     const isValidData = positions.every(
       (p) =>
         p &&
         typeof p.id === 'string' &&
         p.id.length > 0 &&
         typeof p.name === 'string' &&
-        (p.layerId === null || typeof p.layerId === 'string') && // Check layerId
+        (p.layerId === null || typeof p.layerId === 'string') &&
         typeof p.position === 'object' &&
         p.position !== null &&
         typeof p.position.x === 'number' &&
@@ -96,58 +71,57 @@ export async function POST(req: Request): Promise<NextResponse<ResponseData>> {
       );
     }
 
-    // --- 4. Define File Path ---
-    // Ensure this filename matches what AdminLabelEditor READS from
+    // --- Define File Path ---
     const filePath = path.resolve(
       process.cwd(),
       'public',
       'data',
-      'country_positions_ctm.json', // Make sure this is the correct file
+      'country_positions_ctm.json',
     );
     console.log(`[API Save Labels] Target file path: ${filePath}`);
 
-    // --- 5. Write to File ---
+    // --- Write to File ---
     const jsonData = JSON.stringify(positions, null, 2);
+    // Removed user ID from log message
     console.log(
-      `[API Save Labels] Attempting to write ${positions.length} positions by User ID: ${session.user.id}...`,
+      `[API Save Labels] Attempting to write ${positions.length} positions...`,
     );
     await fs.promises.writeFile(filePath, jsonData, 'utf8');
     console.log(
       `[API Save Labels] Successfully completed writeFile operation for ${filePath}.`,
     );
 
-    // --- 6. *** ADD AUDIT LOG *** ---
+    // --- *** ADD AUDIT LOG (Corrected) *** ---
     try {
+      // NOTE: Since auth is removed and userId is optional in the schema,
+      // we omit the userId field entirely here. Prisma will handle it.
       const logEntry = await db.auditLog.create({
         data: {
           action: 'Updated Label Positions',
-          details: `Saved ${positions.length} positions to ${path.basename(filePath)}.`, // Include filename for clarity
-          userId: session.user.id, // Link to the user who performed the action
-          // user: { connect: { id: session.user.id } } // Alternative way to link
+          details: `Saved ${positions.length} positions to ${path.basename(filePath)}.`,
+          // userId field is omitted entirely because it's optional in the schema
+          // and we don't have a user context here.
         },
       });
-      console.log(
-        `[API Save Labels] Audit log created (ID: ${logEntry.id}) for user ${session.user.id}.`,
-      );
+      // Removed user ID from log message as it's not available
+      console.log(`[API Save Labels] Audit log created (ID: ${logEntry.id}).`);
     } catch (logError) {
       console.error('[API Save Labels] Failed to create audit log:', logError);
       // Decide if this should cause the main request to fail.
       // Usually, logging failures are logged but don't block the primary action.
-      // You could potentially return a success response but include a warning.
     }
     // --- *** END AUDIT LOG *** ---
 
-    // --- 7. Success Response ---
+    // --- Success Response ---
     return NextResponse.json({
       success: true,
       message: `Successfully saved ${positions.length} label positions.`,
       count: positions.length,
     });
   } catch (error: any) {
-    // --- 8. Error Handling ---
+    // --- Error Handling ---
     console.error('[API Save Labels] Error processing request:', error);
 
-    // Check for specific file system errors
     let statusCode = 500;
     let errorMessage = 'Internal Server Error saving positions.';
     if (error.code === 'ENOENT') {
