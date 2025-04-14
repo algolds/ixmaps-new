@@ -400,9 +400,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       id="map-container"
       style={{
         width: '100%',
-        // ***** USE FIXED HEIGHT FOR TESTING *****
-       // height: '600px', // Use a fixed pixel height for testing
-        height: '100vh', // Original line - comment out or remove
+        height: '100vh', 
         // ***************************************
         backgroundColor: '#D5FFFF', // Example background
         position: 'relative', // Needed for absolute positioning of children
@@ -410,58 +408,7 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
         border: '3px solid red', // Make border more prominent for visual debugging
       }}
     >
-      {/* Debug Panel (Development Only) */}
-      {process.env.NODE_ENV === 'development' && (
-        <div
-          id="map-debug-panel"
-          style={{
-            position: 'absolute',
-            left: '10px',
-            top: '10px',
-            padding: '10px',
-            backgroundColor: 'rgba(255, 255, 255, 0.85)',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            maxWidth: '400px',
-            maxHeight: '250px',
-            overflowY: 'auto',
-            zIndex: 1500,
-            fontSize: '11px',
-            fontFamily: 'monospace',
-            boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-          }}
-        >
-          <h4 style={{ margin: '0 0 5px 0', fontSize: '13px' }}>
-            Map Debug Info:
-          </h4>
-          <p style={{ margin: '2px 0' }}>
-            Map Ready: {isMapReady ? '✅ Yes' : '⏳ No'}
-          </p>
-          <p style={{ margin: '2px 0' }}>
-            SVG Loading: {isLoadingSvg ? '⏳ Yes' : '✅ No'}
-          </p>
-          <p style={{ margin: '2px 0' }}>
-            SVG Error: {svgError ? `❌ ${svgError}` : '✅ None'}
-          </p>
-          <p style={{ margin: '2px 0' }}>
-            SVG Layers: {Object.keys(svgLayers).length}
-          </p>
-          <p style={{ margin: '2px 0' }}>
-            PM SVG Origin: {JSON.stringify(primeMeridianSvg)}
-          </p>
-          <hr style={{ margin: '5px 0' }} />
-          <div>
-            <h5 style={{ margin: '5px 0 2px 0' }}>Log:</h5>
-            <div
-              style={{ maxHeight: '100px', overflowY: 'auto', paddingRight: '5px' }}
-            >
-              {debugMessages.map((msg, i) => (
-                <div key={i} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{msg}</div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+     
 
       {/* Leaflet Loader - Pass the container ref */}
       {/* Render LeafletLoader unconditionally, let it handle its checks */}

@@ -1,11 +1,12 @@
 /// <reference lib="dom" />
-// LeafletLoader - Refining customCRS transformation and restoring options
+// LeafletLoader - Final version with non-null assertion for L.map
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
 import { MapConfig } from '@/types'; // Ensure this path is correct
 import L from 'leaflet';
+import LeafletDebugDisplay from './LeafletDebugDisplay';
 
 interface LeafletLoaderProps {
   mapConfig: MapConfig;
@@ -28,8 +29,8 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
   const mapRef = useRef<L.Map | null>(null);
   const checkIntervalRef = useRef<number | null>(null);
   const failsafeTimeoutRef = useRef<number | null>(null);
-  const initFrameRef = useRef<number | null>(null); // For requestAnimationFrame
-  const initTimeoutRef = useRef<number | null>(null); // For setTimeout(0)
+  const initFrameRef = useRef<number | null>(null);
+  const initTimeoutRef = useRef<number | null>(null);
   const cleanupInitiatedRef = useRef<boolean>(false);
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [mapContainerReady, setMapContainerReady] = useState(false);
@@ -48,16 +49,6 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
       `[${new Date().toLocaleTimeString()}] [${type.toUpperCase()}] ${message}`,
       ...prev.slice(0, 49),
     ]);
-
-    if (type === 'error' && typeof document !== 'undefined') {
-      const debugEl = document.getElementById('leaflet-debug-content');
-      if (debugEl) {
-        const msgEl = document.createElement('p');
-        msgEl.style.color = 'red';
-        msgEl.textContent = `ERROR: ${message}`;
-        debugEl.insertBefore(msgEl, debugEl.firstChild);
-      }
-    }
   };
 
   // Reset cleanupInitiatedRef on mount
@@ -90,7 +81,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
       )
     ) {
       logWithDebug('CRITICAL ERROR: mapConfig.bounds invalid', 'error');
-      return; // Return here as bounds are essential for full init
+      return;
     }
     if (
       typeof mapConfig.minZoom !== 'number' ||
@@ -98,7 +89,6 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
     ) {
       logWithDebug('WARNING: mapConfig minZoom/maxZoom invalid', 'warn');
     }
-    // Need svgHeight for transformation calculation check
     if (typeof mapConfig.svgHeight !== 'number') {
        logWithDebug('WARNING: mapConfig.svgHeight missing or invalid, CRS transformation might be incorrect.', 'warn');
     }
@@ -194,7 +184,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
     };
   }, [externalMapContainerRef]);
 
-  // 3. Effect to Initialize Map (Final Version - Refined CRS, Restored Options)
+  // 3. Effect to Initialize Map (Final Version)
   useEffect(() => {
     logWithDebug(
       `Init Effect Run: script=${scriptLoaded}, container=${mapContainerReady}, initialized=${isInitialized}, cleanupFlag=${cleanupInitiatedRef.current}, mapExists=${!!mapRef.current}`,
@@ -206,13 +196,12 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
       !mapContainerReady ||
       isInitialized ||
       cleanupInitiatedRef.current ||
-      !mapConfig?.bounds || // Bounds are needed for full init
-      // !mapConfig.svgHeight || // Keep check if transformation relies on it
+      !mapConfig?.bounds ||
       typeof window === 'undefined' ||
       !window.L
     ) {
       logWithDebug(
-        'Init Effect: Pre-conditions NOT MET (check bounds/svgHeight!) or cleanup started. Bailing out.',
+        'Init Effect: Pre-conditions NOT MET or cleanup started. Bailing out.',
       );
       return;
     }
@@ -244,7 +233,6 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
           cleanupInitiatedRef.current ||
           !window.L ||
           !mapConfig?.bounds ||
-          // !mapConfig.svgHeight || // Re-check if needed
           mapRef.current
         ) {
           logWithDebug(
@@ -263,7 +251,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
             `Init Timeout(0) CRITICAL FAIL: External map container element invalid (null?) or detached just before L.map().`,
             'error',
           );
-          return;
+          return; // Runtime check ensures we don't proceed with null
         }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const forceLayout = mapContainerElement.offsetHeight;
@@ -302,26 +290,13 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
           // --- Create Map Instance with full options (minus worldCopyJump) ---
           const { north, south, east, west } = mapConfig.bounds;
 
-          // *** Define the Transformation ***
-          // This needs to match your coordinate system logic (e.g., latLngToSvg)
-          // Example assuming top-left SVG origin and Y-axis flip needed for Leaflet:
-          const transformation = new L.Transformation(
-              1,                  // a: scale X
-              -west,              // b: offset X
-              -1,                 // c: scale Y (flips Y)
-              north               // d: offset Y (adjust so lat=north is y=0 AFTER flip)
-              // If your north bound isn't 0, you might need: north + (south-north) or mapConfig.svgHeight etc.
-              // VERIFY THIS BASED ON YOUR latLngToSvg FUNCTION!
-          );
+          const transformation = new L.Transformation(1, -west, -1, north); // Verify this!
+          const customCRS = L.extend({}, L.CRS.Simple, { transformation, wrapLat: false });
+          logWithDebug(`Init Timeout(0): Custom CRS defined.`);
 
-          const customCRS = L.extend({}, L.CRS.Simple, {
-            transformation: transformation,
-            // wrapLng: [west - (east - west), east + (east - west)], // Removed, handle manually
-            wrapLat: false,
-          });
-          logWithDebug(`Init Timeout(0): Custom CRS: a=${transformation.a}, b=${transformation.b}, c=${transformation.c}, d=${transformation.d}`);
-
-          map = L.map(mapContainerElement, {
+          // *** ADDED NON-NULL ASSERTION (!) ***
+          // We've done runtime checks, so we assert to TypeScript it's not null here.
+          map = L.map(mapContainerElement!, {
             crs: customCRS,
             minZoom: mapConfig.minZoom ?? 0,
             maxZoom: mapConfig.maxZoom ?? 4,
@@ -330,7 +305,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
             inertia: true,
             // worldCopyJump: true, // <<< REMOVED
             bounceAtZoomLimits: true,
-            maxBounds: undefined, // Set later
+            maxBounds: undefined,
             center: [(north + south) / 2, (east + west) / 2],
             zoom: mapConfig.initialZoom ?? mapConfig.minZoom ?? 0,
           });
@@ -526,54 +501,14 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
   // --- Render ---
   return (
     <>
-      {/* Debug info display */}
-      {process.env.NODE_ENV === 'development' && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '10px',
-            right: '10px',
-            zIndex: 10000,
-            backgroundColor: 'rgba(255,255,255,0.9)',
-            padding: '10px',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            maxHeight: '300px',
-            maxWidth: '350px',
-            overflowY: 'auto',
-            fontSize: '10px',
-            fontFamily: 'monospace',
-            display: 'block',
-            boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-          }}
-        >
-          <h4 style={{ margin: '0 0 5px 0', fontSize: '12px' }}>
-            Leaflet Loader Debug (External Ref Mode):
-          </h4>
-          <div id="leaflet-status">
-            <p>Script Loaded: {scriptLoaded ? '✅ Yes' : '⏳ No'}</p>
-            <p>Container Ready: {mapContainerReady ? '✅ Yes' : '⏳ No'}</p>
-            <p>Map Initialized: {isInitialized ? '✅ Yes' : '⏳ No'}</p>
-            <p>
-              Cleanup Flag: {cleanupInitiatedRef.current ? '🚫 Yes' : '✅ No'}
-            </p>
-            <hr style={{ margin: '5px 0' }} />
-          </div>
-          <div
-            id="leaflet-debug-content"
-            style={{
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-all',
-              maxHeight: '200px',
-              overflowY: 'auto',
-            }}
-          >
-            {debugInfo.map((msg, i) => (
-              <div key={i}>{msg}</div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Use the new Debug Component */}
+      <LeafletDebugDisplay
+        scriptLoaded={scriptLoaded}
+        mapContainerReady={mapContainerReady}
+        isInitialized={isInitialized}
+        cleanupFlag={cleanupInitiatedRef.current} // Pass boolean value
+        debugMessages={debugInfo}
+      />
 
       {/* Load Leaflet CSS */}
       <link
@@ -623,13 +558,12 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
         />
       )}
 
-      {/* No map container div rendered here anymore */}
 
-      {/* Display a global loading indicator if map isn't initialized */}
+      {/* Global loading indicator */}
       {!isInitialized && (
          <div
             style={{
-              position: 'absolute', // Position relative to the parent container (#map-container)
+              position: 'absolute',
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
@@ -645,7 +579,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
             {!scriptLoaded
               ? 'Loading Leaflet...'
               : !mapContainerReady
-                ? 'Waiting Container...' // Waiting for the external container
+                ? 'Waiting Container...'
                 : 'Initializing Map...'}
           </div>
        )}
