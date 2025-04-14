@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import getConfig from 'next/config'; // <--- 1. Import getConfig
 import { svgToLatLng } from '@/lib/coordinates-system';
 import { MapConfig } from '@/types';
 
@@ -23,6 +24,11 @@ interface CountryLabelsProps {
   mapConfig: MapConfig;
 }
 
+// --- 2. Get publicRuntimeConfig and basePath ---
+// It's generally safe to call getConfig outside the component if the config doesn't change dynamically
+const { publicRuntimeConfig } = getConfig() || {}; // Add fallback for safety
+const basePath = publicRuntimeConfig?.basePath || ''; // Default to empty string if not found
+
 const CountryLabelsComponent: React.FC<CountryLabelsProps> = ({
   map,
   L,
@@ -37,11 +43,13 @@ const CountryLabelsComponent: React.FC<CountryLabelsProps> = ({
   // --- Effect 1: Fetch data ---
   useEffect(() => {
     const fetchData = async () => {
-      console.log('[Labels] Effect 1: Starting data fetch...'); // Log fetch start
+      // --- 3. Construct the URL using basePath ---
+      const dataUrl = `${basePath}/data/political_layer_shapes_ctm.json`;
+      console.log('[Labels] Effect 1: Starting data fetch from:', dataUrl); // Log fetch start with full URL
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch('/data/political_layer_shapes_ctm.json');
+        const response = await fetch(dataUrl); // Use the constructed URL
         console.log(`[Labels] Effect 1: Fetch response status: ${response.status}`); // Log status
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -186,6 +194,7 @@ const CountryLabelsComponent: React.FC<CountryLabelsProps> = ({
 
         // --- Log Coordinates (Sample every 20 or for specific countries) ---
         if (index % 20 === 0 || country.id === 'Kagazi') {
+          // Example specific ID check
           console.log(
             `[Labels] Effect 2: [${index}] ${country.name} (ID: ${country.id}) - SVG: ${country.position.x.toFixed(2)},${country.position.y.toFixed(2)} -> Adj SVG: ${adjustedX.toFixed(2)},${adjustedY.toFixed(2)} -> LatLng: ${customLatLng.lat.toFixed(4)}, ${customLatLng.lng.toFixed(4)}`,
           );
@@ -195,14 +204,14 @@ const CountryLabelsComponent: React.FC<CountryLabelsProps> = ({
         const labelIcon = L.divIcon({
           className: mapConfig.labelClassName || 'country-label-icon',
           html: `<span>${country.name}</span>`,
-          iconSize: undefined,
+          iconSize: undefined, // Let CSS handle size
         });
 
         const marker = L.marker(markerLatLng, {
           icon: labelIcon,
-          zIndexOffset: 500,
-          interactive: false,
-          title: country.name,
+          zIndexOffset: 500, // Ensure labels are above most layers
+          interactive: false, // Labels usually aren't interactive
+          title: country.name, // Tooltip on hover
         });
 
         markers.push(marker);
