@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-// LeafletLoader - Testing L.map options: center & zoom
+// LeafletLoader - Refining customCRS transformation and restoring options
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -90,14 +90,17 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
       )
     ) {
       logWithDebug('CRITICAL ERROR: mapConfig.bounds invalid', 'error');
-      // Don't return here if we want to try minimal init later
-      // return;
+      return; // Return here as bounds are essential for full init
     }
     if (
       typeof mapConfig.minZoom !== 'number' ||
       typeof mapConfig.maxZoom !== 'number'
     ) {
       logWithDebug('WARNING: mapConfig minZoom/maxZoom invalid', 'warn');
+    }
+    // Need svgHeight for transformation calculation check
+    if (typeof mapConfig.svgHeight !== 'number') {
+       logWithDebug('WARNING: mapConfig.svgHeight missing or invalid, CRS transformation might be incorrect.', 'warn');
     }
     logWithDebug(
       `Map config validated: bounds=${JSON.stringify(mapConfig.bounds)}, zoom=${mapConfig.minZoom}-${mapConfig.maxZoom}`,
@@ -191,7 +194,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
     };
   }, [externalMapContainerRef]);
 
-  // 3. Effect to Initialize Map (MODIFIED - Testing center/zoom options)
+  // 3. Effect to Initialize Map (Final Version - Refined CRS, Restored Options)
   useEffect(() => {
     logWithDebug(
       `Init Effect Run: script=${scriptLoaded}, container=${mapContainerReady}, initialized=${isInitialized}, cleanupFlag=${cleanupInitiatedRef.current}, mapExists=${!!mapRef.current}`,
@@ -203,12 +206,13 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
       !mapContainerReady ||
       isInitialized ||
       cleanupInitiatedRef.current ||
-      !mapConfig?.bounds || // Need bounds for center/zoom test
+      !mapConfig?.bounds || // Bounds are needed for full init
+      // !mapConfig.svgHeight || // Keep check if transformation relies on it
       typeof window === 'undefined' ||
       !window.L
     ) {
       logWithDebug(
-        'Init Effect: Pre-conditions NOT MET (check bounds!) or cleanup started. Bailing out.',
+        'Init Effect: Pre-conditions NOT MET (check bounds/svgHeight!) or cleanup started. Bailing out.',
       );
       return;
     }
@@ -239,7 +243,8 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
           isInitialized ||
           cleanupInitiatedRef.current ||
           !window.L ||
-          !mapConfig?.bounds || // Re-check bounds
+          !mapConfig?.bounds ||
+          // !mapConfig.svgHeight || // Re-check if needed
           mapRef.current
         ) {
           logWithDebug(
@@ -260,13 +265,9 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
           );
           return;
         }
-
-        // Force Reflow
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const forceLayout = mapContainerElement.offsetHeight;
         logWithDebug(`Init Timeout(0): Forced layout calculation.`);
-
-        // Dimension Checks
         const currentWidth = mapContainerElement.clientWidth;
         const currentHeight = mapContainerElement.clientHeight;
         if (currentHeight === 0 || currentWidth === 0) {
@@ -276,140 +277,158 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
           );
           return;
         }
-
-        // *** EXTRA DOM CHECKS ***
         const computedStyle = window.getComputedStyle(mapContainerElement);
         const display = computedStyle.display;
         const visibility = computedStyle.visibility;
-        const contains = document.body.contains(mapContainerElement); // Re-check contains just in case
-
+        const contains = document.body.contains(mapContainerElement);
         logWithDebug(
           `Init Timeout(0): Pre-L.map Checks: W=${currentWidth}, H=${currentHeight}, Display=${display}, Visibility=${visibility}, In DOM=${contains}`,
           'info',
         );
-
-        if (display === 'none') {
-            logWithDebug(`Init Timeout(0) CRITICAL FAIL: Container display is 'none'.`, 'error');
-            return;
-        }
-         if (visibility === 'hidden') {
-            logWithDebug(`Init Timeout(0) CRITICAL FAIL: Container visibility is 'hidden'.`, 'error');
-            return;
-        }
-        if (!contains) {
-             logWithDebug(`Init Timeout(0) CRITICAL FAIL: Container detached from DOM just before L.map().`, 'error');
-            return;
+        if (display === 'none' || visibility === 'hidden' || !contains) {
+           logWithDebug(`Init Timeout(0) CRITICAL FAIL: Container state invalid (display=${display}, visibility=${visibility}, contains=${contains}).`, 'error');
+           return;
         }
         // *************************
 
         logWithDebug(
-          `Init Timeout(0): Container checks passed. Executing L.map() with center/zoom options...`, // Log message updated
+          `Init Timeout(0): Container checks passed. Executing L.map() with full options (minus worldCopyJump)...`,
           'info',
         );
 
         let map: L.Map | null = null;
 
         try {
-          // --- Create Map Instance with center/zoom options ---
-          const { north, south, east, west } = mapConfig.bounds; // Bounds needed now
+          // --- Create Map Instance with full options (minus worldCopyJump) ---
+          const { north, south, east, west } = mapConfig.bounds;
+
+          // *** Define the Transformation ***
+          // This needs to match your coordinate system logic (e.g., latLngToSvg)
+          // Example assuming top-left SVG origin and Y-axis flip needed for Leaflet:
+          const transformation = new L.Transformation(
+              1,                  // a: scale X
+              -west,              // b: offset X
+              -1,                 // c: scale Y (flips Y)
+              north               // d: offset Y (adjust so lat=north is y=0 AFTER flip)
+              // If your north bound isn't 0, you might need: north + (south-north) or mapConfig.svgHeight etc.
+              // VERIFY THIS BASED ON YOUR latLngToSvg FUNCTION!
+          );
+
+          const customCRS = L.extend({}, L.CRS.Simple, {
+            transformation: transformation,
+            // wrapLng: [west - (east - west), east + (east - west)], // Removed, handle manually
+            wrapLat: false,
+          });
+          logWithDebug(`Init Timeout(0): Custom CRS: a=${transformation.a}, b=${transformation.b}, c=${transformation.c}, d=${transformation.d}`);
 
           map = L.map(mapContainerElement, {
-              // Add ONLY center and zoom back for this test
-              center: [(north + south) / 2, (east + west) / 2],
-              zoom: mapConfig.initialZoom ?? mapConfig.minZoom ?? 0,
-              // Keep other potentially problematic options commented out
-              // crs: customCRS,
-               minZoom: mapConfig.minZoom ?? 0,
-              maxZoom: mapConfig.maxZoom ?? 4,
-              // zoomControl: false,
-              // attributionControl: false,
-              // inertia: true,
-              // worldCopyJump: true,
-              // bounceAtZoomLimits: true,
-              // maxBounds: undefined,
+            crs: customCRS,
+            minZoom: mapConfig.minZoom ?? 0,
+            maxZoom: mapConfig.maxZoom ?? 4,
+            zoomControl: false,
+            attributionControl: false,
+            inertia: true,
+            // worldCopyJump: true, // <<< REMOVED
+            bounceAtZoomLimits: true,
+            maxBounds: undefined, // Set later
+            center: [(north + south) / 2, (east + west) / 2],
+            zoom: mapConfig.initialZoom ?? mapConfig.minZoom ?? 0,
           });
 
           if (!map) {
             throw new Error('L.map() failed to return a valid map instance.');
           }
-          logWithDebug('Init Timeout(0): L.map() (with center/zoom) returned instance.');
+          logWithDebug('Init Timeout(0): L.map() (full options) returned instance.');
 
           mapRef.current = map;
 
-          // --- Configure Map (Minimal for now) ---
-          logWithDebug('Init Timeout(0): Configuring map instance (minimal setup)...');
-          // No need to call setView separately if center/zoom options worked
+          // --- Configure Map (Restore full configuration) ---
+          logWithDebug('Init Timeout(0): Configuring map instance...');
 
-          // --- Temporarily skip most configuration ---
-          /*
           // --- Attribution ---
-          if (map) { // Check map exists before adding controls/layers
-            L.control.attribution({
-              position: 'bottomright',
-              prefix: '© IxMaps v4.0.0',
-            }).addTo(map);
+          logWithDebug('Init Timeout(0): Adding attribution control');
+          L.control.attribution({
+            position: 'bottomright',
+            prefix: '© IxMaps v4.0.0',
+          }).addTo(map);
 
-            // --- Base Layer ---
-            if (mapConfig.bounds) {
-              const { north, south, east, west } = mapConfig.bounds;
-              const bounds = L.latLngBounds(
-                L.latLng(south, west),
-                L.latLng(north, east),
-              );
-              const initialMapUrl = mapConfig.lodEnabled
-                ? mapConfig.baseMapUrl
-                : mapConfig.masterMapPath;
-              if (initialMapUrl) {
-                const baseLayer = L.imageOverlay(initialMapUrl, bounds, {
-                  errorOverlayUrl: 'data:image/png;base64,...', // Keep placeholder
-                  alt: 'Error loading base map',
-                });
-                baseLayer.on('error', () => logWithDebug('Base map load error', 'error'));
-                baseLayer.addTo(map);
-
-                // --- Wraparound ---
-                const worldWidth = east - west;
-                if (worldWidth > 0) {
-                  const leftBounds = L.latLngBounds(L.latLng(south, west - worldWidth), L.latLng(north, east - worldWidth));
-                  L.imageOverlay(initialMapUrl, leftBounds).addTo(map);
-                  const rightBounds = L.latLngBounds(L.latLng(south, west + worldWidth), L.latLng(north, east + worldWidth));
-                  L.imageOverlay(initialMapUrl, rightBounds).addTo(map);
-                }
-              } else {
-                 logWithDebug('Skipping base layer/wraparound - no URL', 'warn');
-              }
-
-              // --- Constraints & View ---
-              const verticalPadding = (north - south) * 0.05;
-              const verticalOnlyMaxBounds = L.latLngBounds(
-                L.latLng(south - verticalPadding, -Infinity),
-                L.latLng(north + verticalPadding, Infinity),
-              );
-              map.setMaxBounds(verticalOnlyMaxBounds);
-              // setView already attempted above
-
-              // --- invalidateSize ---
-              map.invalidateSize({ animate: false, pan: false });
-
-              // --- Zoom Control ---
-              L.control.zoom({ position: 'topleft' }).addTo(map);
-
-              // --- Drag Handler ---
-              map.on('drag', function () {
-                map?.panInsideBounds(verticalOnlyMaxBounds, { animate: false });
-              });
-            } else {
-               logWithDebug('Skipping further config - bounds missing', 'warn');
-            }
+          // --- Base Layer ---
+          const boundsLatLng = L.latLngBounds(
+            L.latLng(south, west),
+            L.latLng(north, east),
+          );
+          const initialMapUrl = mapConfig.lodEnabled
+            ? mapConfig.baseMapUrl
+            : mapConfig.masterMapPath;
+          if (!initialMapUrl) {
+            logWithDebug('Init Timeout(0): No initial map URL found!', 'error');
+            throw new Error('No map URL available');
           }
-          */
-          // --- End of skipped configuration ---
+          logWithDebug(
+            `Init Timeout(0): Adding base map image overlay: ${initialMapUrl}`,
+          );
+          const baseLayer = L.imageOverlay(initialMapUrl, boundsLatLng, {
+            errorOverlayUrl:
+              'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+            alt: 'Error loading base map',
+          });
+          baseLayer.on('error', () => {
+            logWithDebug(
+              `Init Timeout(0): Failed to load base map: ${initialMapUrl}`,
+              'error',
+            );
+          });
+          baseLayer.addTo(map);
 
+          // --- Wraparound ---
+          const worldWidth = east - west;
+          if (worldWidth > 0) {
+            logWithDebug('Init Timeout(0): Creating wraparound layers');
+            const leftBounds = L.latLngBounds(
+              L.latLng(south, west - worldWidth),
+              L.latLng(north, east - worldWidth),
+            );
+            L.imageOverlay(initialMapUrl, leftBounds).addTo(map);
+            const rightBounds = L.latLngBounds(
+              L.latLng(south, west + worldWidth),
+              L.latLng(north, east + worldWidth),
+            );
+            L.imageOverlay(initialMapUrl, rightBounds).addTo(map);
+            logWithDebug('Init Timeout(0): Added wraparound layers.');
+          } else {
+             logWithDebug('Init Timeout(0): Skipping wraparound: Invalid world width.', 'warn');
+          }
+
+          // --- Constraints & View ---
+          const verticalPadding = Math.abs(north - south) * 0.05;
+          const verticalOnlyMaxBounds = L.latLngBounds(
+            L.latLng(Math.min(north, south) - verticalPadding, -Infinity),
+            L.latLng(Math.max(north, south) + verticalPadding, Infinity),
+          );
+          logWithDebug(`Init Timeout(0): Setting VERTICAL max bounds: ${verticalOnlyMaxBounds.toBBoxString()}`);
+          map.setMaxBounds(verticalOnlyMaxBounds);
+          // setView is handled by L.map options
+
+          // --- invalidateSize ---
+          logWithDebug('Init Timeout(0): Calling invalidateSize() AFTER setup.');
+          map.invalidateSize({ animate: false, pan: false });
+
+          // --- Zoom Control ---
+          logWithDebug('Init Timeout(0): Adding zoom control');
+          L.control.zoom({ position: 'topleft' }).addTo(map);
+
+          // --- Drag Handler ---
+          logWithDebug('Init Timeout(0): Adding drag handler');
+          map.on('drag', function () {
+            if (verticalOnlyMaxBounds && verticalOnlyMaxBounds.isValid()) {
+                map?.panInsideBounds(verticalOnlyMaxBounds, { animate: false });
+            }
+          });
 
           // --- Finalize ---
           setIsInitialized(true);
           logWithDebug(
-            'Init Timeout(0): Map initialization (with center/zoom) complete! Notifying parent.',
+            'Init Timeout(0): Map initialization complete! Notifying parent.',
           );
           onMapReady(map, L);
 
@@ -417,7 +436,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
           const errorMsg =
             error instanceof Error ? error.message : String(error);
           logWithDebug(
-            `Init Timeout(0) ERROR during map initialization (center/zoom test): ${errorMsg}`, // Indicate test
+            `Init Timeout(0) ERROR during map initialization: ${errorMsg}`,
             'error',
           );
           if (error instanceof Error && error.stack) {
