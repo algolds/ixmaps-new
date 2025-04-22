@@ -17,7 +17,6 @@ export default function RootLayout({
 }) {
   return (
     // Wrap the entire html content with ClerkProvider
-    <ClerkProvider>
       <html lang="en">
         <head>
           {/* Suppress hydration warnings */}
@@ -46,6 +45,5 @@ export default function RootLayout({
           {children}
         </body>
       </html>
-    </ClerkProvider>
   );
 }

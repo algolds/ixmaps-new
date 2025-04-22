@@ -13,6 +13,11 @@ import { latLngToSvg, svgToLatLng } from '@/lib/coordinates-system'; // Import b
 import L from 'leaflet'; // Import Leaflet type
 import getConfig from 'next/config';
 
+// Get basePath from publicRuntimeConfig
+const { publicRuntimeConfig } = getConfig() || {};
+const basePath = publicRuntimeConfig?.basePath || '';
+console.log('[AdminEditor] Component Scope: basePath from getConfig:', basePath);
+
 // Interface for the position data - includes optional layerId
 interface CountryPositionData {
   id: string;
@@ -42,7 +47,7 @@ interface AdminLabelEditorProps {
 const TARGET_LAYER_ID = 'political';
 // --- FILENAME TO LOAD/SAVE ---
 // Ensure this matches the file your API writes to!
-const DATA_FILE_PATH = '/projects/ixmaps/data/country_positions_ctm.json';
+const DATA_FILE_PATH = `${basePath}/data/country_positions_ctm.json`;
 
 const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
   map,

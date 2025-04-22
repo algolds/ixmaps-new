@@ -1,11 +1,10 @@
-// src/components/MapComponent.tsx
+// src/components/Map.tsx
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import L, { Map as LeafletMap } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
-// Removed Clerk import: useAuth
 
 import { MapConfig, SvgPoint, SVGLayer, MapBounds } from '@/types';
 import {
@@ -16,6 +15,9 @@ import { latLngToSvg } from '@/lib/coordinates-system';
 import { parseSVGLayers } from '@/lib/SVGLayerParser';
 import { initToasts, showToast } from '@/lib/Toast';
 import dynamic from 'next/dynamic';
+
+// Import PoliticalLayerComponent directly (not dynamically loaded)
+import PoliticalLayerComponent from './PoliticalLayerComponent';
 
 // --- Dynamic Imports ---
 const GridComponent = dynamic(() => import('./GridComponent'), { ssr: false });
@@ -32,12 +34,8 @@ interface MapProps {
 }
 
 const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
-  // --- Removed Clerk Auth State ---
-  // const { isLoaded, isSignedIn, userId, sessionClaims } = useAuth();
-
   // --- Map Configuration State ---
   const [mapConfig, setMapConfig] = useState<MapConfig>(() => {
-    // ... (config logic remains the same)
     const overrides = configOverrides || {};
     let initialBounds: MapBounds;
     if (
@@ -83,11 +81,11 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const [showCountryLabels, setShowCountryLabels] = useState<boolean>(mapConfig.showCountryLabels ?? true);
   const [showPrimeMeridian, setShowPrimeMeridian] = useState<boolean>(true);
   const [showPositionDisplay, setShowPositionDisplay] = useState<boolean>(true);
-  // --- Admin Mode State (Now independent of auth) ---
-  // Decide if you still want an admin mode toggle at all.
-  // If yes, keep this state. If no, remove it and related components/props.
-  // For now, let's assume we keep a simple toggle for dev purposes.
   const [isAdminMode, setIsAdminMode] = useState<boolean>(false);
+  
+  // --- Political Vector Layer State ---
+  const [showPoliticalVectors, setShowPoliticalVectors] = useState<boolean>(false);
+  const [highlightedCountry, setHighlightedCountry] = useState<string | null>(null);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
@@ -97,7 +95,6 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   }, []);
 
   const handleMapReady = useCallback(async (mapInstance: LeafletMap, LInstance: typeof L) => {
-    // ... (map ready logic remains the same)
     addDebugMessage('handleMapReady called...');
     setMap(mapInstance);
     setLeaflet(LInstance);
@@ -131,7 +128,6 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   }, [addDebugMessage]);
 
   useEffect(() => {
-    // ... (fetch SVG logic remains the same)
     const fetchAndParseSVG = async () => {
       if (!isMapReady || !mapConfig.masterMapPath) return;
       setIsLoadingSvg(true); setSvgError(null); setSvgLayers({});
@@ -170,28 +166,60 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   const handleToggleCountryLabels = (visible: boolean) => setShowCountryLabels(visible);
   const handleTogglePrimeMeridian = (visible: boolean) => setShowPrimeMeridian(visible);
   const handleTogglePosition = (visible: boolean) => setShowPositionDisplay(visible);
+  
   const handleToggleLayer = useCallback((layerId: string, isVisible: boolean) => {
-      setLayerVisibility((prev) => {
-        const newState = { ...prev, [layerId]: isVisible };
-        const hasPolitical = newState['political'] !== undefined; const hasAltitude = newState['altitude-layers'] !== undefined;
-        if (hasPolitical && hasAltitude) {
-          if (layerId === 'political' && isVisible) newState['altitude-layers'] = false;
-          else if (layerId === 'altitude-layers' && isVisible) newState['political'] = false;
-        }
-        return newState;
-      });
+    setLayerVisibility((prev) => {
+      const newState = { ...prev, [layerId]: isVisible };
+      const hasPolitical = newState['political'] !== undefined; 
+      const hasAltitude = newState['altitude-layers'] !== undefined;
+      
+      if (hasPolitical && hasAltitude) {
+        if (layerId === 'political' && isVisible) newState['altitude-layers'] = false;
+        else if (layerId === 'altitude-layers' && isVisible) newState['political'] = false;
+      }
+      
+      // Turn off vector layer if enabling SVG political layer
+      if (layerId === 'political' && isVisible) {
+        setShowPoliticalVectors(false);
+      }
+      
+      return newState;
+    });
   }, []);
 
-  // --- Admin Mode Logic (Simplified) ---
-  // Removed userIsAdmin and isAdminToggleDisabled calculations
+  // --- Political Vector Layer Toggle Handler ---
+  const handleTogglePoliticalVectors = useCallback((visible: boolean) => {
+    setShowPoliticalVectors(visible);
+    
+    // When enabling vector layer, turn off the SVG overlay political layer
+    if (visible) {
+      setLayerVisibility(prev => ({
+        ...prev,
+        political: false
+      }));
+    }
+  }, []);
 
-  // Simple toggle function if keeping the admin mode concept without auth
+  // --- Country Click Handler ---
+  const handleCountryClick = useCallback((id: string, name: string, e: L.LeafletMouseEvent) => {
+    addDebugMessage(`Clicked on country: ${name} (${id})`);
+    
+    // Toggle highlight for the clicked country
+    setHighlightedCountry(prevId => prevId === id ? null : id);
+    
+    // Show a toast with the country name
+    if (typeof showToast === 'function') {
+      showToast(`Selected: ${name}`, 'info', 2000);
+    }
+  }, [addDebugMessage]);
+
+  // --- Admin Mode Logic ---
   const handleToggleAdminMode = useCallback(() => {
     setIsAdminMode((prev) => {
       const nextState = !prev;
       addDebugMessage(`Toggling Admin Mode to: ${nextState}`);
       if (nextState) {
-        setShowCountryLabels(false); // Still hide labels in admin mode
+        setShowCountryLabels(false); // Hide labels in admin mode
         if (typeof showToast === 'function') showToast('Label Editor Activated', 'info');
       } else {
         setShowCountryLabels(mapConfig.showCountryLabels ?? true);
@@ -199,9 +227,9 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
       }
       return nextState;
     });
-  }, [addDebugMessage, mapConfig.showCountryLabels]); // Removed auth dependencies
+  }, [addDebugMessage, mapConfig.showCountryLabels]);
 
-  // Callback for when admin save succeeds (logic remains the same)
+  // --- Admin Save Success Handler ---
   const handleAdminSaveSuccess = useCallback(() => {
     addDebugMessage('Admin save successful, exiting admin mode.');
     if (typeof showToast === 'function') showToast('Label positions saved!', 'success');
@@ -210,8 +238,6 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
   }, [addDebugMessage, mapConfig.showCountryLabels]);
 
   // --- Render ---
-  // Removed Clerk's isLoaded check
-
   return (
     <div ref={mapContainerRef} id="map-container" style={{ width: '100%', height: '100vh', backgroundColor: '#D5FFFF', position: 'relative', overflow: 'hidden' }}>
       <LeafletLoader mapConfig={mapConfig} onMapReady={handleMapReady} externalMapContainerRef={mapContainerRef} />
@@ -221,35 +247,66 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
           {!isLoadingSvg && Object.keys(svgLayers).length > 0 && (
             <SvgLayerManager map={map} L={leaflet} mapConfig={mapConfig} layers={svgLayers} visibility={layerVisibility} isLoading={false} error={svgError} />
           )}
+          
+          {/* Interactive Political Vector Layer */}
+          <PoliticalLayerComponent 
+            map={map} 
+            L={leaflet} 
+            visible={showPoliticalVectors}
+            mapConfig={mapConfig}
+            highlight={highlightedCountry}
+            onClick={handleCountryClick}
+          />
+          
           <GridComponent map={map} L={leaflet} mapConfig={mapConfig} primeMeridianSvg={primeMeridianSvg} showGrid={showGrid} showPrimeMeridian={showPrimeMeridian} showPositionDisplay={showPositionDisplay} />
           <MapScale map={map} L={leaflet} mapConfig={mapConfig} />
           {leafletDrawLoadedRef.current && <DistanceMeasurement map={map} L={leaflet} mapConfig={mapConfig} />}
 
           <ControlPanel
-            map={map} L={leaflet}
-            showGrid={showGrid} showCountryLabels={showCountryLabels} showPrimeMeridian={showPrimeMeridian} showPosition={showPositionDisplay}
-            onToggleGrid={handleToggleGrid} onToggleCountryLabels={handleToggleCountryLabels} onTogglePrimeMeridian={handleTogglePrimeMeridian} onTogglePosition={handleTogglePosition}
-            layers={svgLayers} layerVisibility={layerVisibility} onToggleLayer={handleToggleLayer} isLoadingLayers={isLoadingSvg} layerError={svgError}
-            // Pass simplified admin state/handlers if keeping the feature
+            map={map} 
+            L={leaflet}
+            showGrid={showGrid} 
+            showCountryLabels={showCountryLabels} 
+            showPrimeMeridian={showPrimeMeridian} 
+            showPosition={showPositionDisplay}
+            showPoliticalVectors={showPoliticalVectors}
+            onToggleGrid={handleToggleGrid} 
+            onToggleCountryLabels={handleToggleCountryLabels} 
+            onTogglePrimeMeridian={handleTogglePrimeMeridian} 
+            onTogglePosition={handleTogglePosition}
+            onTogglePoliticalVectors={handleTogglePoliticalVectors}
+            layers={svgLayers} 
+            layerVisibility={layerVisibility} 
+            onToggleLayer={handleToggleLayer} 
+            isLoadingLayers={isLoadingSvg} 
+            layerError={svgError}
             isAdminMode={isAdminMode}
             onToggleAdminMode={handleToggleAdminMode}
-            isAdminToggleDisabled={false} // Toggle is never disabled without auth
+            isAdminToggleDisabled={false}
           />
 
           {/* Show labels unless explicitly in admin mode */}
           {!isAdminMode && <CountryLabelsComponent map={map} L={leaflet} visible={showCountryLabels} mapConfig={mapConfig} />}
 
           {/* Render AdminLabelEditor only when isAdminMode is true */}
-          {/* Removed isSignedIn and userIsAdmin checks */}
           {isAdminMode && (
             <AdminLabelEditor map={map} L={leaflet} mapConfig={mapConfig} isVisible={isAdminMode} onSaveSuccess={handleAdminSaveSuccess} />
           )}
         </>
       )}
 
-      {/* Loading/Error indicators remain the same */}
-      {isLoadingSvg && ( <div style={{ position: 'absolute', bottom: '10px', left: '10px', zIndex: 1001, backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', padding: '5px 10px', borderRadius: '3px', fontSize: '12px' }}>Loading Map Layers...</div> )}
-      {svgError && !isLoadingSvg && ( <div style={{ position: 'absolute', bottom: '10px', left: '10px', zIndex: 1001, backgroundColor: 'rgba(200,0,0,0.7)', color: 'white', padding: '5px 10px', borderRadius: '3px', fontSize: '12px' }}>Error loading SVG layers: {svgError}</div> )}
+      {/* Loading/Error indicators */}
+      {isLoadingSvg && (
+        <div style={{ position: 'absolute', bottom: '10px', left: '10px', zIndex: 1001, backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', padding: '5px 10px', borderRadius: '3px', fontSize: '12px' }}>
+          Loading Map Layers...
+        </div>
+      )}
+      
+      {svgError && !isLoadingSvg && (
+        <div style={{ position: 'absolute', bottom: '10px', left: '10px', zIndex: 1001, backgroundColor: 'rgba(200,0,0,0.7)', color: 'white', padding: '5px 10px', borderRadius: '3px', fontSize: '12px' }}>
+          Error loading SVG layers: {svgError}
+        </div>
+      )}
     </div>
   );
 };

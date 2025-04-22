@@ -13,17 +13,19 @@ interface ControlPanelProps {
   showCountryLabels: boolean;
   showPrimeMeridian: boolean;
   showPosition: boolean;
+  showPoliticalVectors: boolean; // New prop for political vector layer
   onToggleGrid: (visible: boolean) => void;
   onToggleCountryLabels: (visible: boolean) => void;
   onTogglePrimeMeridian: (visible: boolean) => void;
   onTogglePosition: (visible: boolean) => void;
+  onTogglePoliticalVectors: (visible: boolean) => void; // New toggle handler
   // Layer Toggles Props
   layers: Record<string, SVGLayer>;
   layerVisibility: Record<string, boolean>;
   onToggleLayer: (layerId: string, isVisible: boolean) => void;
   isLoadingLayers: boolean;
   layerError: string | null;
-  // Admin Mode Props (Simplified or Removed - Assuming kept for now)
+  // Admin Mode Props
   isAdminMode: boolean;
   onToggleAdminMode: () => void;
   isAdminToggleDisabled: boolean;
@@ -37,10 +39,12 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   showCountryLabels,
   showPrimeMeridian,
   showPosition,
+  showPoliticalVectors, // New prop
   onToggleGrid,
   onToggleCountryLabels,
   onTogglePrimeMeridian,
   onTogglePosition,
+  onTogglePoliticalVectors, // New toggle handler
   // Layer Props
   layers,
   layerVisibility,
@@ -128,7 +132,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       label.style.fontSize = '13px'; // Slightly larger label text
       if (disabled) {
         label.style.opacity = '0.6'; // Style disabled label
-        // label.title = 'Admin access required'; // Removed admin-specific tooltip
       }
 
       return itemDiv;
@@ -196,10 +199,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       // --- RENDER EXPANDED STATE ---
       L.DomUtil.addClass(container, 'expanded');
       // Reset flex styles applied in collapsed state (already done at the top)
-      // container.style.display = '';
-      // container.style.alignItems = '';
-      // container.style.justifyContent = '';
-      // container.style.padding = '';
 
       // Apply expanded styles (making the container visible again)
       container.style.width = ''; // Let CSS handle max-width
@@ -280,21 +279,57 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
           'control-section display-section',
           tabContentArea,
         );
+        
+        // Create section for map features
+        const mapFeaturesTitle = L.DomUtil.create('div', 'section-title', displaySection);
+        mapFeaturesTitle.textContent = 'Map Features';
+        mapFeaturesTitle.style.fontWeight = 'bold';
+        mapFeaturesTitle.style.marginBottom = '8px';
+        mapFeaturesTitle.style.borderBottom = '1px solid #eee';
+        mapFeaturesTitle.style.paddingBottom = '4px';
+        
         // Standard Display Toggles
         createCheckboxItem(displaySection, 'pos', 'Show Position', showPosition, onTogglePosition);
         createCheckboxItem(displaySection, 'grid', 'Show Grid', showGrid, onToggleGrid);
-        // Country labels no longer disabled by admin mode
         createCheckboxItem(displaySection, 'country-labels', 'Show Country Labels', showCountryLabels, onToggleCountryLabels);
         createCheckboxItem(displaySection, 'pm', 'Show Prime Meridian', showPrimeMeridian, onTogglePrimeMeridian);
+        
+        // Create section for country display
+        const countrySection = L.DomUtil.create('div', 'control-section country-section', tabContentArea);
+        const countrySectionTitle = L.DomUtil.create('div', 'section-title', countrySection);
+        countrySectionTitle.textContent = 'Country Display';
+        countrySectionTitle.style.fontWeight = 'bold';
+        countrySectionTitle.style.marginBottom = '8px';
+        countrySectionTitle.style.marginTop = '15px';
+        countrySectionTitle.style.borderBottom = '1px solid #eee';
+        countrySectionTitle.style.paddingBottom = '4px';
+        
+        // Political Vector Layer Toggle
+        createCheckboxItem(
+          countrySection,
+          'political-vectors',
+          'Interactive Country Borders',
+          showPoliticalVectors,
+          onTogglePoliticalVectors
+        );
+        
+        // Add description for the interactive borders
+        const vectorDescription = L.DomUtil.create('div', 'feature-description', countrySection);
+        vectorDescription.textContent = 'Enable clickable, interactive country shapes with hover effects';
+        vectorDescription.style.fontSize = '11px';
+        vectorDescription.style.fontStyle = 'italic';
+        vectorDescription.style.color = '#666';
+        vectorDescription.style.marginLeft = '20px';
+        vectorDescription.style.marginBottom = '10px';
 
-        // --- Simplified Admin Mode Toggle Section (if keeping the feature) ---
-        if (onToggleAdminMode) { // Check if the prop exists (optional check)
+        // --- Admin Mode Toggle Section ---
+        if (onToggleAdminMode) {
             const adminSection = L.DomUtil.create('div', 'control-section admin-section', tabContentArea);
             adminSection.style.marginTop = '15px';
             adminSection.style.paddingTop = '10px';
             adminSection.style.borderTop = '1px dashed #ccc';
             const groupTitle = L.DomUtil.create('div', 'group-title', adminSection);
-            groupTitle.textContent = 'Dev Tools'; // Rename if desired
+            groupTitle.textContent = 'Dev Tools'; 
             groupTitle.style.marginBottom = '5px';
             groupTitle.style.fontWeight = 'bold';
             groupTitle.style.fontSize = '1.1em';
@@ -304,7 +339,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
               'Label Editor Mode',
               isAdminMode,
               onToggleAdminMode,
-              isAdminToggleDisabled, // Pass disabled state (likely always false now)
+              isAdminToggleDisabled
             );
         }
       }
@@ -327,7 +362,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
           layersSection.textContent = 'No layers available.';
           Object.assign(layersSection.style, { fontStyle: 'italic', color: '#666' });
         } else {
-          // Grouping and rendering logic (remains the same)
+          // Grouping and rendering logic
           const currentLayerGroups = layerGroups();
           const groupedRenderedKeys: Record<string, string[]> = {};
           const otherRenderedKeys: string[] = [];
@@ -376,13 +411,19 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                 if (layerInfo) {
                   const name = layerInfo.name || layerId;
                   const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, ' ');
+                  
+                  // Add a note for political layer when vector layer is active
+                  const labelText = layerId === 'political' && showPoliticalVectors
+                    ? `${capitalizedName} (Use interactive borders instead)`
+                    : capitalizedName;
+                  
                   createCheckboxItem(
                     groupContainer,
                     layerId,
-                    capitalizedName,
+                    labelText,
                     layerVisibility[layerId] ?? false,
                     (checked) => onToggleLayer(layerId, checked),
-                    isLoadingLayers,
+                    isLoadingLayers || (layerId === 'political' && showPoliticalVectors), // Disable political layer if vectors active
                   );
                 }
               });
@@ -391,11 +432,13 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       }
     } // End of expanded state rendering
   }, [
-    // Dependencies remain the same
+    // Dependencies
     L, isExpanded, activeTab, showGrid, showCountryLabels, showPrimeMeridian,
-    showPosition, layers, layerVisibility, isLoadingLayers, layerError,
+    showPosition, showPoliticalVectors, // Added new dependency
+    layers, layerVisibility, isLoadingLayers, layerError,
     isAdminMode, isAdminToggleDisabled, onToggleGrid, onToggleCountryLabels,
-    onTogglePrimeMeridian, onTogglePosition, onToggleLayer, onToggleAdminMode,
+    onTogglePrimeMeridian, onTogglePosition, onTogglePoliticalVectors, // Added new toggle handler
+    onToggleLayer, onToggleAdminMode,
     createCheckboxItem, layerGroups,
   ]);
 
@@ -429,7 +472,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       map.addControl(controlRef.current);
     } else {
       // If control exists, ensure container ref is set and update UI
-      // (Handles potential HMR scenarios where component re-renders but map/control persist)
       if (!controlContainerRef.current && controlRef.current.getContainer) {
         controlContainerRef.current = controlRef.current.getContainer() ?? null;
       }
