@@ -1,30 +1,25 @@
 // src/components/PoliticalLayerComponent.tsx
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import L from 'leaflet';
+import * as d3 from 'd3'; // Import d3 for better path parsing
 import { MapConfig } from '@/types';
 import { svgToLatLng } from '@/lib/coordinates-system';
 
 // Define interfaces for the political layer data
-interface PathData {
+interface CountryBoundaryData {
   id: string;
   name: string;
   path: string; // SVG path data
-  element: SVGElement | null;
-}
-
-interface PositionData {
-  id: string;
-  name: string;
   position: {
     x: number;
     y: number;
   };
-  layerId: string;
-  tagName: string;
-  continent: string | null;
-  type: string | null;
+  points?: {
+    x: number;
+    y: number;
+  }[] | null; // Pre-computed points from d3 (if available)
 }
 
 interface PoliticalLayerProps {
@@ -36,160 +31,80 @@ interface PoliticalLayerProps {
   onClick?: (id: string, name: string, e: L.LeafletMouseEvent) => void;
 }
 
-const PoliticalLayerComponent = ({
+// Helper function to log without flooding console
+const log = (message: string, ...args: any[]) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[PoliticalLayer] ${message}`, ...args);
+  }
+};
+
+const PoliticalLayerComponent: React.FC<PoliticalLayerProps> = ({
   map,
   L,
   visible,
   mapConfig,
   highlight,
   onClick
-}: PoliticalLayerProps) => {
-  const [countryData, setCountryData] = useState<Record<string, PathData>>({});
-  const [positionData, setPositionData] = useState<Record<string, PositionData>>({});
+}) => {
+  const [countryData, setCountryData] = useState<Record<string, CountryBoundaryData>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const layerGroupRef = useRef<L.LayerGroup | null>(null);
+  const countryPolygonsRef = useRef<Record<string, L.Polygon>>({});
+  
+  // Create a new pane name for vectors that can be referenced consistently
+  const paneName = 'political-vector-pane';
 
-  // Fetch the position data from the JSON file
+  // Fetch boundary data - try the enhanced data first, fallback to original if needed
   useEffect(() => {
-    const fetchPositionData = async () => {
+    const fetchBoundaryData = async () => {
       try {
-        console.log('[PoliticalLayer] Fetching positions data...');
-        const response = await fetch('/data/political_layer_shapes_ctm.json');
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data: PositionData[] = await response.json();
-        
-        // Convert to a record for easier lookup
-        const dataRecord: Record<string, PositionData> = {};
-        data.forEach(item => {
-          dataRecord[item.id] = item;
-        });
-        
-        console.log(`[PoliticalLayer] Loaded ${Object.keys(dataRecord).length} country positions`);
-        setPositionData(dataRecord);
-      } catch (e: any) {
-        console.error('[PoliticalLayer] Error fetching position data:', e);
-        setError(`Failed to load country positions: ${e.message}`);
-      }
-    };
-    
-    fetchPositionData();
-  }, []);
-
-  // Fetch and parse the SVG to extract country paths
-  useEffect(() => {
-    const fetchSvgData = async () => {
-      if (!mapConfig?.masterMapPath) {
-        setError('Map config or master SVG path is missing');
-        return;
-      }
-      
-      try {
-        console.log(`[PoliticalLayer] Fetching SVG from ${mapConfig.masterMapPath}...`);
+        log('Fetching political boundary data...');
         setIsLoading(true);
         
-        const response = await fetch(mapConfig.masterMapPath);
+        // Try to fetch the enhanced boundary data first
+        let response = await fetch('/data/political_boundaries_essential.json');
         
+        // If that fails, try the original format
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const svgText = await response.text();
-        const parser = new DOMParser();
-        const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
-        
-        // Find the political layer
-        const politicalLayer = svgDoc.getElementById('political');
-        
-        if (!politicalLayer) {
-          throw new Error('Political layer not found in SVG');
-        }
-        
-        // Extract all shapes (path, polygon, etc.) from the political layer
-        const shapes: Record<string, PathData> = {};
-        
-        // Process path elements
-        const paths = politicalLayer.getElementsByTagName('path');
-        for (let i = 0; i < paths.length; i++) {
-          const path = paths[i];
-          const id = path.getAttribute('id');
+          log('Enhanced boundary data not found, trying original data format...');
+          response = await fetch('/data/political_layer_shapes_ctm.json');
           
-          if (id) {
-            const name = path.getAttribute('inkscape:label') || id;
-            const d = path.getAttribute('d');
-            
-            if (d) {
-              shapes[id] = {
-                id,
-                name: name || id,
-                path: d,
-                element: path.cloneNode(true) as SVGElement
-              };
-            }
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
           }
         }
         
-        // Process polygon elements (if any)
-        const polygons = politicalLayer.getElementsByTagName('polygon');
-        for (let i = 0; i < polygons.length; i++) {
-          const polygon = polygons[i];
-          const id = polygon.getAttribute('id');
-          
-          if (id) {
-            const name = polygon.getAttribute('inkscape:label') || id;
-            const points = polygon.getAttribute('points');
-            
-            if (points) {
-              // Convert polygon points to a path
-              const pathData = `M${points.trim().replace(/\s+/g, 'L')}z`;
-              shapes[id] = {
-                id,
-                name: name || id,
-                path: pathData,
-                element: polygon.cloneNode(true) as SVGElement
-              };
-            }
-          }
-        }
+        const data = await response.json();
         
-        console.log(`[PoliticalLayer] Extracted ${Object.keys(shapes).length} country shapes`);
-        setCountryData(shapes);
+        // Process and convert to a record for easier lookup
+        const dataRecord: Record<string, CountryBoundaryData> = {};
+        data.forEach((item: any) => {
+          // Validate data has required properties
+          if (item && item.id && (item.path || item.points)) {
+            dataRecord[item.id] = item;
+          }
+        });
+        
+        log(`Loaded ${Object.keys(dataRecord).length} country boundaries`);
+        setCountryData(dataRecord);
+        setError(null);
       } catch (e: any) {
-        console.error('[PoliticalLayer] Error fetching or parsing SVG:', e);
-        setError(`Failed to load or parse SVG: ${e.message}`);
+        console.error('Error fetching boundary data:', e);
+        setError(`Failed to load country boundaries: ${e.message}`);
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchSvgData();
-  }, [mapConfig]);
+    fetchBoundaryData();
+  }, []);
 
-  // Create Leaflet vector layers from SVG paths
+  // Create or update the custom pane when the map changes
   useEffect(() => {
-    if (!map || !L || !visible || isLoading || error || !mapConfig) {
-      // Clean up if any condition is not met
-      if (layerGroupRef.current) {
-        layerGroupRef.current.remove();
-        layerGroupRef.current = null;
-      }
-      return;
-    }
-    
-    // Create a new layer group if it doesn't exist
-    if (!layerGroupRef.current) {
-      layerGroupRef.current = L.layerGroup().addTo(map);
-    } else {
-      // Clear existing layers
-      layerGroupRef.current.clearLayers();
-    }
-    
-    // Create a pane for the political layer
-    const paneName = 'political-vector-pane';
+    if (!map) return;
+
+    // Create the custom pane if it doesn't exist
     if (!map.getPane(paneName)) {
       map.createPane(paneName);
       const pane = map.getPane(paneName);
@@ -197,41 +112,251 @@ const PoliticalLayerComponent = ({
         pane.style.zIndex = '450'; // Above base layers, below labels
         pane.style.pointerEvents = 'auto'; // Enable interaction
       }
+      log('Created political vector pane');
+    }
+  }, [map]);
+
+  // Parse SVG path data into Leaflet polyline points using d3
+  const parsePathToPoints = useCallback((pathData: string): [number, number][] => {
+    if (!pathData) return [];
+    
+    try {
+      // Use d3 path parsing if available in the browser environment
+      if (typeof document !== 'undefined' && d3) {
+        // Create a temporary SVG with a path element to parse the path data
+        const svg = d3.create('svg');
+        const path = svg.append('path').attr('d', pathData).node();
+        
+        if (!path) return [];
+        
+        // Get the total length of the path
+        const pathLength = path.getTotalLength();
+        
+        // Sample points along the path (more points for complex paths)
+        const samplingCount = Math.max(50, Math.min(500, Math.ceil(pathLength / 10)));
+        
+        const points: [number, number][] = [];
+        for (let i = 0; i < samplingCount; i++) {
+          const point = path.getPointAtLength(pathLength * i / (samplingCount - 1));
+          points.push([point.x, point.y]);
+        }
+        
+        return points;
+      }
+    } catch (e) {
+      console.warn('Error using d3 for path parsing, falling back to basic parser:', e);
     }
     
-    console.log('[PoliticalLayer] Creating country vector layers...');
+    // Fallback to the basic path parser
+    return basicPathToPoints(pathData);
+  }, []);
+
+  // Basic SVG path parser (fallback if d3 is not available)
+  const basicPathToPoints = (pathData: string): [number, number][] => {
+    const points: [number, number][] = [];
+    const commands = pathData.match(/[A-Za-z][^A-Za-z]*/g) || [];
+    
+    let currentX = 0;
+    let currentY = 0;
+    let firstX = 0;
+    let firstY = 0;
+    
+    for (const cmd of commands) {
+      const type = cmd[0];
+      const args = cmd.slice(1).trim().split(/[\s,]+/).map(parseFloat);
+      
+      switch (type) {
+        case 'M': // Move to (absolute)
+          currentX = args[0];
+          currentY = args[1];
+          firstX = currentX;
+          firstY = currentY;
+          points.push([currentX, currentY]);
+          
+          // Additional points after the first pair are treated as line commands
+          for (let i = 2; i < args.length; i += 2) {
+            if (i + 1 < args.length) {
+              currentX = args[i];
+              currentY = args[i + 1];
+              points.push([currentX, currentY]);
+            }
+          }
+          break;
+          
+        case 'm': // Move to (relative)
+          if (points.length === 0) {
+            // First command is relative to 0,0
+            currentX = args[0];
+            currentY = args[1];
+          } else {
+            currentX += args[0];
+            currentY += args[1];
+          }
+          firstX = currentX;
+          firstY = currentY;
+          points.push([currentX, currentY]);
+          
+          // Additional points after the first pair are treated as line commands
+          for (let i = 2; i < args.length; i += 2) {
+            if (i + 1 < args.length) {
+              currentX += args[i];
+              currentY += args[i + 1];
+              points.push([currentX, currentY]);
+            }
+          }
+          break;
+          
+        case 'L': // Line to (absolute)
+          for (let i = 0; i < args.length; i += 2) {
+            if (i + 1 < args.length) {
+              currentX = args[i];
+              currentY = args[i + 1];
+              points.push([currentX, currentY]);
+            }
+          }
+          break;
+          
+        case 'l': // Line to (relative)
+          for (let i = 0; i < args.length; i += 2) {
+            if (i + 1 < args.length) {
+              currentX += args[i];
+              currentY += args[i + 1];
+              points.push([currentX, currentY]);
+            }
+          }
+          break;
+          
+        case 'H': // Horizontal line to (absolute)
+          for (const x of args) {
+            currentX = x;
+            points.push([currentX, currentY]);
+          }
+          break;
+          
+        case 'h': // Horizontal line to (relative)
+          for (const dx of args) {
+            currentX += dx;
+            points.push([currentX, currentY]);
+          }
+          break;
+          
+        case 'V': // Vertical line to (absolute)
+          for (const y of args) {
+            currentY = y;
+            points.push([currentX, currentY]);
+          }
+          break;
+          
+        case 'v': // Vertical line to (relative)
+          for (const dy of args) {
+            currentY += dy;
+            points.push([currentX, currentY]);
+          }
+          break;
+          
+        case 'Z':
+        case 'z': // Close path
+          if (points.length > 0 && (currentX !== firstX || currentY !== firstY)) {
+            currentX = firstX;
+            currentY = firstY;
+            points.push([firstX, firstY]);
+          }
+          break;
+          
+        // Note: This basic parser doesn't handle curves (C, c, S, s, Q, q, T, t, A, a)
+        // which is why we use d3 when available for better accuracy
+        default:
+          // Silently ignore unsupported commands
+          break;
+      }
+    }
+    
+    return points;
+  };
+
+  // Convert SVG coordinates to geographic coordinates
+  const svgPointsToLatLng = useCallback((svgPoints: [number, number][]) => {
+    if (!mapConfig) return [];
+    
+    return svgPoints.map(([x, y]) => {
+      try {
+        const latLng = svgToLatLng(x, y, mapConfig);
+        return [latLng.lat, latLng.lng] as L.LatLngExpression;
+      } catch (e) {
+        console.warn('Error converting SVG point to LatLng:', e);
+        return null;
+      }
+    }).filter(Boolean) as L.LatLngExpression[];
+  }, [mapConfig]);
+
+  // Effect to create Leaflet layers from boundary data
+  useEffect(() => {
+    if (!map || !L || !visible || isLoading || error || !mapConfig) {
+      // Clean up if any condition is not met
+      if (layerGroupRef.current) {
+        layerGroupRef.current.remove();
+        layerGroupRef.current = null;
+      }
+      countryPolygonsRef.current = {};
+      return;
+    }
+    
+    // Create a new layer group if it doesn't exist
+    if (!layerGroupRef.current) {
+      layerGroupRef.current = L.layerGroup().addTo(map);
+      log('Created new layer group');
+    } else {
+      // Clear existing layers
+      layerGroupRef.current.clearLayers();
+      log('Cleared existing layers');
+    }
+    
+    // Get the pane or create it if it doesn't exist
+    if (!map.getPane(paneName)) {
+      map.createPane(paneName);
+      const pane = map.getPane(paneName);
+      if (pane) {
+        pane.style.zIndex = '450';
+        pane.style.pointerEvents = 'auto';
+      }
+    }
+    
+    log('Creating country vector layers...');
+    let processedCount = 0;
+    let errorCount = 0;
+    countryPolygonsRef.current = {};
     
     try {
       // Process each country shape
       Object.values(countryData).forEach(country => {
-        const pathData = country.path;
-        if (!pathData) return;
-        
-        // Get the position data for this country if available
-        const position = positionData[country.id];
-        
-        // Convert SVG path to Leaflet polygon points
         try {
-          // Parse the SVG path data
-          const pathSvgPoints = parseSvgPath(pathData);
+          let geoPoints: L.LatLngExpression[] = [];
           
-          // Convert SVG points to geographic coordinates
-          const geoPoints: L.LatLngExpression[] = pathSvgPoints.map(point => {
-            const latLng = svgToLatLng(point.x, point.y, mapConfig);
-            return [latLng.lat, latLng.lng];
-          });
+          // Use pre-computed points if available
+          if (country.points && country.points.length > 2) {
+            geoPoints = country.points.map(pt => {
+              const latLng = svgToLatLng(pt.x, pt.y, mapConfig);
+              return [latLng.lat, latLng.lng] as L.LatLngExpression;
+            });
+          } 
+          // Otherwise parse the path data
+          else if (country.path) {
+            const svgPoints = parsePathToPoints(country.path);
+            geoPoints = svgPointsToLatLng(svgPoints);
+          }
           
-          // Create the polygon
+          // Create polygon if we have enough points
           if (geoPoints.length > 2) {
+            const isHighlighted = highlight === country.id;
+            
             const polygon = L.polygon(geoPoints, {
               pane: paneName,
-              color: '#3388ff',
-              weight: 1.5,
+              color: isHighlighted ? '#ff4500' : '#3388ff',
+              weight: isHighlighted ? 2 : 1.5,
               opacity: 0.8,
-              fillColor: '#3388ff',
-              fillOpacity: 0.1,
-              // Add highlight effect if this is the highlighted country
-              className: highlight === country.id ? 'highlighted-country' : '',
+              fillColor: isHighlighted ? '#ff4500' : '#3388ff',
+              fillOpacity: isHighlighted ? 0.2 : 0.1,
+              className: isHighlighted ? 'highlighted-country' : '',
             });
             
             // Add data to the polygon
@@ -240,28 +365,29 @@ const PoliticalLayerComponent = ({
             
             // Add event handlers
             polygon.on('mouseover', (e) => {
-              const target = e.target as L.Polygon;
-              target.setStyle({
-                weight: 2.5,
-                color: '#ff4500',
-                fillOpacity: 0.2,
-              });
+              if (highlight !== country.id) {
+                const target = e.target as L.Polygon;
+                target.setStyle({
+                  weight: 2.5,
+                  color: '#ff4500',
+                  fillOpacity: 0.2,
+                });
+              }
               
               if (L.Browser.ie || L.Browser.opera || L.Browser.edge) {
-                target.bringToFront();
+                (e.target as L.Polygon).bringToFront();
               }
             });
             
             polygon.on('mouseout', (e) => {
-              const target = e.target as L.Polygon;
-              const isHighlighted = highlight === country.id;
-              
-              polygon.setStyle({
-                weight: isHighlighted ? 2 : 1.5,
-                color: isHighlighted ? '#ff4500' : '#3388ff',
-                fillColor: isHighlighted ? '#ff4500' : '#3388ff',
-                fillOpacity: isHighlighted ? 0.2 : 0.1,
-              });
+              if (highlight !== country.id) {
+                const target = e.target as L.Polygon;
+                target.setStyle({
+                  weight: 1.5,
+                  color: '#3388ff',
+                  fillOpacity: 0.1,
+                });
+              }
             });
             
             // Add click handler
@@ -278,17 +404,20 @@ const PoliticalLayerComponent = ({
               className: 'country-tooltip',
             });
             
-            // Add the polygon to the layer group
+            // Add the polygon to the layer group and reference
             layerGroupRef.current?.addLayer(polygon);
+            countryPolygonsRef.current[country.id] = polygon;
+            processedCount++;
           }
-        } catch (pathError) {
-          console.warn(`[PoliticalLayer] Error converting path for ${country.id}:`, pathError);
+        } catch (err) {
+          console.warn(`Error processing country ${country.id} (${country.name}):`, err);
+          errorCount++;
         }
       });
       
-      console.log('[PoliticalLayer] Vector layers created successfully');
+      log(`Created ${processedCount} country polygons (${errorCount} errors)`);
     } catch (e) {
-      console.error('[PoliticalLayer] Error creating vector layers:', e);
+      console.error('Error creating vector layers:', e);
       setError(`Failed to create vector layers: ${e}`);
     }
     
@@ -298,10 +427,46 @@ const PoliticalLayerComponent = ({
         layerGroupRef.current.remove();
         layerGroupRef.current = null;
       }
+      countryPolygonsRef.current = {};
     };
-  }, [map, L, visible, isLoading, error, countryData, positionData, mapConfig, highlight, onClick]);
+  }, [
+    map, 
+    L, 
+    visible, 
+    isLoading, 
+    error, 
+    countryData, 
+    mapConfig, 
+    highlight, 
+    onClick, 
+    parsePathToPoints, 
+    svgPointsToLatLng
+  ]);
 
-  // Add CSS styles for highlights
+  // Effect to update styles when highlight changes
+  useEffect(() => {
+    if (!layerGroupRef.current || Object.keys(countryPolygonsRef.current).length === 0) {
+      return;
+    }
+    
+    // Reset all polygons to default style
+    Object.entries(countryPolygonsRef.current).forEach(([id, polygon]) => {
+      const isHighlighted = id === highlight;
+      
+      polygon.setStyle({
+        color: isHighlighted ? '#ff4500' : '#3388ff',
+        weight: isHighlighted ? 2 : 1.5,
+        fillColor: isHighlighted ? '#ff4500' : '#3388ff',
+        fillOpacity: isHighlighted ? 0.2 : 0.1,
+      });
+      
+      if (isHighlighted && (L.Browser.ie || L.Browser.opera || L.Browser.edge)) {
+        polygon.bringToFront();
+      }
+    });
+  }, [highlight]);
+
+  // Add CSS styles for highlights and tooltips
   useEffect(() => {
     if (typeof document === 'undefined') return;
     
@@ -323,9 +488,12 @@ const PoliticalLayerComponent = ({
           font-weight: bold;
           padding: 5px 10px;
           border-radius: 3px;
+          font-size: 12px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
       `;
       document.head.appendChild(style);
+      log('Added country styles to document');
     }
     
     return () => {
@@ -336,125 +504,8 @@ const PoliticalLayerComponent = ({
     };
   }, []);
 
-  return null; // This component doesn't render any DOM elements directly
+  // This component doesn't render any DOM elements directly
+  return null;
 };
-
-// Simple SVG path parser function
-// This is a basic implementation and might need enhancement for complex SVG paths
-interface Point {
-  x: number;
-  y: number;
-}
-
-// A basic SVG path parser
-function parseSvgPath(pathData: string): Point[] {
-  const points: Point[] = [];
-  const commands = pathData.match(/[A-Za-z][^A-Za-z]*/g) || [];
-  
-  let currentX = 0;
-  let currentY = 0;
-  
-  for (const cmd of commands) {
-    const type = cmd[0];
-    const args = cmd.slice(1).trim().split(/[\s,]+/).map(parseFloat);
-    
-    switch (type) {
-      case 'M': // Move to (absolute)
-        currentX = args[0];
-        currentY = args[1];
-        points.push({ x: currentX, y: currentY });
-        
-        // If there are more points after the first pair, they are treated as line commands
-        for (let i = 2; i < args.length; i += 2) {
-          if (i + 1 < args.length) {
-            currentX = args[i];
-            currentY = args[i + 1];
-            points.push({ x: currentX, y: currentY });
-          }
-        }
-        break;
-        
-      case 'm': // Move to (relative)
-        currentX += args[0];
-        currentY += args[1];
-        points.push({ x: currentX, y: currentY });
-        
-        // If there are more points after the first pair, they are treated as line commands
-        for (let i = 2; i < args.length; i += 2) {
-          if (i + 1 < args.length) {
-            currentX += args[i];
-            currentY += args[i + 1];
-            points.push({ x: currentX, y: currentY });
-          }
-        }
-        break;
-        
-      case 'L': // Line to (absolute)
-        for (let i = 0; i < args.length; i += 2) {
-          if (i + 1 < args.length) {
-            currentX = args[i];
-            currentY = args[i + 1];
-            points.push({ x: currentX, y: currentY });
-          }
-        }
-        break;
-        
-      case 'l': // Line to (relative)
-        for (let i = 0; i < args.length; i += 2) {
-          if (i + 1 < args.length) {
-            currentX += args[i];
-            currentY += args[i + 1];
-            points.push({ x: currentX, y: currentY });
-          }
-        }
-        break;
-        
-      case 'H': // Horizontal line to (absolute)
-        for (const arg of args) {
-          currentX = arg;
-          points.push({ x: currentX, y: currentY });
-        }
-        break;
-        
-      case 'h': // Horizontal line to (relative)
-        for (const arg of args) {
-          currentX += arg;
-          points.push({ x: currentX, y: currentY });
-        }
-        break;
-        
-      case 'V': // Vertical line to (absolute)
-        for (const arg of args) {
-          currentY = arg;
-          points.push({ x: currentX, y: currentY });
-        }
-        break;
-        
-      case 'v': // Vertical line to (relative)
-        for (const arg of args) {
-          currentY += arg;
-          points.push({ x: currentX, y: currentY });
-        }
-        break;
-        
-      case 'Z':
-      case 'z': // Close path - return to the first point
-        if (points.length > 0) {
-          const firstPoint = points[0];
-          if (currentX !== firstPoint.x || currentY !== firstPoint.y) {
-            points.push({ x: firstPoint.x, y: firstPoint.y });
-          }
-        }
-        break;
-        
-      // Note: Curves (C, c, S, s, Q, q, T, t, A, a) are not properly handled in this basic implementation
-      default:
-        console.warn(`[PoliticalLayer] Unsupported SVG path command: ${type}`);
-        break;
-    }
-  }
-  
-  return points;
-}
 
 export default PoliticalLayerComponent;

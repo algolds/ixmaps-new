@@ -5,6 +5,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import L, { Map as LeafletMap } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
+import * as d3 from 'd3';
 
 import { MapConfig, SvgPoint, SVGLayer, MapBounds } from '@/types';
 import {
@@ -250,13 +251,13 @@ const MapComponent: React.FC<MapProps> = ({ mapConfig: configOverrides }) => {
           
           {/* Interactive Political Vector Layer */}
           <PoliticalLayerComponent 
-            map={map} 
-            L={leaflet} 
-            visible={showPoliticalVectors}
-            mapConfig={mapConfig}
-            highlight={highlightedCountry}
-            onClick={handleCountryClick}
-          />
+  map={map} 
+  L={leaflet} 
+  visible={showPoliticalVectors}
+  mapConfig={mapConfig}
+  highlight={highlightedCountry}
+  onClick={handleCountryClick}
+/>
           
           <GridComponent map={map} L={leaflet} mapConfig={mapConfig} primeMeridianSvg={primeMeridianSvg} showGrid={showGrid} showPrimeMeridian={showPrimeMeridian} showPositionDisplay={showPositionDisplay} />
           <MapScale map={map} L={leaflet} mapConfig={mapConfig} />
