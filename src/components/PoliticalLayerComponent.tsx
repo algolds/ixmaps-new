@@ -68,7 +68,7 @@ const PoliticalLayerComponent: React.FC<PoliticalLayerProps> = ({
         // If that fails, try the original format
         if (!response.ok) {
           log('Enhanced boundary data not found, trying original data format...');
-          response = await fetch('/data/political_layer_shapes_ctm.json');
+          response = await fetch('/projects/ixmaps/data/political_layer_shapes_ctm.json');
           
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -460,7 +460,7 @@ const PoliticalLayerComponent: React.FC<PoliticalLayerProps> = ({
         fillOpacity: isHighlighted ? 0.2 : 0.1,
       });
       
-      if (isHighlighted && (L.Browser.ie || L.Browser.opera || L.Browser.edge)) {
+      if (isHighlighted && L && (L.Browser.ie || L.Browser.opera || L.Browser.edge)) {
         polygon.bringToFront();
       }
     });

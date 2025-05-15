@@ -45,7 +45,7 @@ const CountryLabelsComponent: React.FC<CountryLabelsProps> = ({
   useEffect(() => {
     const fetchData = async () => {
       // Construct the URL using the basePath from publicRuntimeConfig
-      const dataUrl = `${basePath}/data/political_layer_shapes_ctm.json`;
+      const dataUrl = `/data/political_layer_shapes_ctm.json`;
 
       console.log('[Labels] Effect 1: Starting data fetch from:', dataUrl);
       setIsLoading(true);
