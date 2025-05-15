@@ -63,12 +63,12 @@ const PoliticalLayerComponent: React.FC<PoliticalLayerProps> = ({
         setIsLoading(true);
         
         // Try to fetch the enhanced boundary data first
-        let response = await fetch('/data/political_boundaries_essential.json');
+        let response = await fetch('/maps/data/political_boundaries_essential.json');
         
         // If that fails, try the original format
         if (!response.ok) {
           log('Enhanced boundary data not found, trying original data format...');
-          response = await fetch('/projects/ixmaps/data/political_layer_shapes_ctm.json');
+          response = await fetch('/maps/data/political_layer_shapes_ctm.json');
           
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);

@@ -3,7 +3,7 @@ import getConfig from 'next/config';
 
 // Direct access to environment for critical path construction
 const ENV_IS_PROD = process.env.NODE_ENV === 'production';
-const PROD_BASE_PATH = '/projects/ixmaps';
+const PROD_BASE_PATH = '';
 
 // Export the base path directly from environment
 export const basePath = ENV_IS_PROD ? PROD_BASE_PATH : '';
