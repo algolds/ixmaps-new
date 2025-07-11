@@ -38,6 +38,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
   const initTimeoutRef = useRef<number | null>(null);
   const cleanupInitiatedRef = useRef<boolean>(false);
   const isProgrammaticMoveRef = useRef<boolean>(false); // Flag to prevent moveend recursion
+  const moveEndHandlerRef = useRef<((this: L.Map) => void) | null>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [mapContainerReady, setMapContainerReady] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -460,7 +461,7 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
           L.control.zoom({ position: 'topleft' }).addTo(map);
 
           // --- REFINED Manual Wraparound and Vertical Constraint Logic ---
-          map.on('moveend', function () {
+          moveEndHandlerRef.current = function () {
             const currentMapInstance = mapRef.current;
             if (!currentMapInstance) {
               logWithDebug('MoveEnd: Map instance is null, exiting.', 'warn');
@@ -518,7 +519,8 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
             } else {
                  logWithDebug('MoveEnd: No clamping or wrapping needed.');
             }
-          });
+          };
+          map.on('moveend', moveEndHandlerRef.current);
           logWithDebug(
             'Init Timeout(0): Added REFINED moveend listener for vertical clamping and longitude center reset.',
           );
@@ -611,7 +613,9 @@ const LeafletLoader: React.FC<LeafletLoaderProps> = ({
         logWithDebug('Unmount Cleanup: Removing map instance and listeners.');
         try {
           // Remove specific listeners added
-          mapInstance.off('moveend'); // Remove the wraparound/clamp listener
+          if (moveEndHandlerRef.current) {
+            mapInstance.off('moveend', moveEndHandlerRef.current);
+          }
           mapInstance.remove(); // This should remove all internal listeners and the container
         } catch (e) {
           logWithDebug(
