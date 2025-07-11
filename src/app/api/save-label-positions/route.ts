@@ -1,7 +1,9 @@
 // src/app/api/save-label-positions/route.ts
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { getAuth } from '@clerk/nextjs/server';
+import { clerkClient } from '@clerk/clerk-sdk-node';
 // Removed: import { auth } from '@/auth'; // Authentication is removed
 import { db } from '@/lib/db'; // Import your Prisma client instance
 
@@ -29,8 +31,18 @@ type ResponseData = {
 };
 
 // Use App Router Route Handler signature for POST method
-export async function POST(req: Request): Promise<NextResponse<ResponseData>> {
-  // --- Authentication & Authorization Removed ---
+export async function POST(req: NextRequest): Promise<NextResponse<ResponseData>> {
+  // --- Clerk Authentication & Authorization ---
+  const { userId } = getAuth(req);
+  if (!userId) {
+    return NextResponse.json({ success: false, message: 'Unauthorized: You must be signed in.' }, { status: 401 });
+  }
+  // Fetch user and check for admin role
+  const user = await clerkClient.users.getUser(userId);
+  const isAdmin = user.publicMetadata?.role === 'admin' || user.privateMetadata?.role === 'admin';
+  if (!isAdmin) {
+    return NextResponse.json({ success: false, message: 'Forbidden: Admins only.' }, { status: 403 });
+  }
 
   try {
     // Get request body
