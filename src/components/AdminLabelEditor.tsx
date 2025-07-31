@@ -42,7 +42,7 @@ interface AdminLabelEditorProps {
 const TARGET_LAYER_ID = 'political';
 // --- FILENAME TO LOAD/SAVE ---
 // Ensure this matches the file your API writes to!
-const DATA_FILE_PATH = '/projects/ixmaps/data/country_positions_ctm.json';
+const DATA_FILE_PATH = '/data/country_positions_ctm.json';
 
 const AdminLabelEditor: React.FC<AdminLabelEditorProps> = ({
   map,

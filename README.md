@@ -1,104 +1,151 @@
-# IxMaps Version 4.0.0
+# IxMaps Interactive Mapping System
 
-## Overview
+A modern, full-featured mapping platform for IxWiki, built with React, Next.js, and Leaflet. Includes advanced map editing, custom projections, and robust server management.
 
-This is the IxMaps Interactive Mapping System. The project uses modern React with TypeScript and implements the same functionality as the original project but with improved architecture and performance.
+---
 
-## Features
-
+## 🚀 Features
 - Interactive map visualization with Leaflet.js
 - Custom coordinate system with grid and prime meridian
 - Layer management for different map features
 - Distance calculation tools
-- Responsive design
-- Server-side rendering support (where appropriate)
+- Responsive design with SSR support
 - API routes for map data
+- PostgreSQL/Prisma integration
+- Robust process management with PM2
 
-## Getting Started
+---
 
-### Prerequisites
+## ⚡ Quick Start
 
-- Node.js 14.x or higher
-- npm or yarn
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-username/ixmaps-next.git
-   cd ixmaps-next
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
-
-3. Start the development server:
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
-
-4. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
-
-## Project Structure
-
-```
-/src
-  /app                  # Next.js app directory
-    /api                # API routes
-    layout.tsx          # Root layout
-    page.tsx            # Main page
-    globals.css         # Global styles
-  /components           # React components
-    Map.tsx             # Main map component
-    LeafletLoader.tsx   # Dynamic Leaflet loader
-    LayerManager.tsx    # Layer management
-  /lib                  # Utility functions
-    distanceCalculator.ts
-    mapConfig.ts
-    svgLoader.ts
-    toastUtils.ts
-  /types                # TypeScript type definitions
-    index.ts
-/public                 # Static files
-  /master-map.svg       # Base map SVG
+### 1. **Navigate to Project & Install**
+```bash
+cd /ixwiki/public/maps/ixmaps-new
+npm install
 ```
 
-## Building for Production
+### 2. **Initial Setup**
+```bash
+node setup.js
+```
+- Follows prompts to configure database, authentication, and environment variables.
+- Automatically starts PostgreSQL with Docker Compose if selected.
+- Creates `.env.local` file with your configuration.
 
+### 3. **Configure Environment (Alternative)**
+- **Database Setup:** Use the included Docker Compose for PostgreSQL:
+  ```bash
+  docker compose up -d
+  ```
+- **Environment Variables:** Set required secrets as environment variables (see ecosystem.config.js):
+  ```bash
+  export DATABASE_URL="postgresql://ixmapsuser:ghantisghont448@localhost:5432/ixmapsdb?schema=public"
+  export AUTH_SECRET="your-auth-secret"
+  export AUTH_DISCORD_ID="your-discord-id"
+  export AUTH_DISCORD_SECRET="your-discord-secret"
+  export CLERK_SECRET_KEY="your-clerk-secret"
+  export NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="your-clerk-publishable-key"
+  ```
+
+### 4. **Database Setup**
+```bash
+npm run prisma:dev
+```
+- Runs migrations and seeds the database.
+
+### 5. **Build & Start the App (PM2)**
 ```bash
 npm run build
-# or
-yarn build
+pm2 start ecosystem.config.js --env production
 ```
 
-Then start the production server:
+**Note:** PM2 runs a single instance (not cluster mode) for optimal resource usage.
 
+---
+
+## 🛠️ Management Commands (PM2)
 ```bash
-npm run start
-# or
-yarn start
+pm2 start ecosystem.config.js      # Start app
+pm2 stop ixmaps                   # Stop app  
+pm2 restart ixmaps                # Restart app
+pm2 reload ixmaps                 # Graceful restart
+pm2 status                        # Show all processes
+pm2 logs ixmaps                   # Live logs
+pm2 monit                         # Real-time monitor
 ```
 
-## Key Differences from Original Version
+---
 
-1. **Framework**: Uses Next.js instead of a custom Express + TypeScript setup
-2. **Component-Based Architecture**: Follows React component patterns
-3. **SSR Awareness**: Avoids SSR for client-only features like Leaflet
-4. **API Routes**: Uses Next.js API routes instead of Express routes
-5. **Better Type Safety**: Improved TypeScript integration
-6. **Enhanced Performance**: Better code splitting and loading optimization
+## 🌐 API Endpoints
+- **Web App:** `http://localhost:3003` (default port)
+- **API Routes:** `/api/*` (see `/src/app/api`)
+- **Health Check:** Next.js responds if running (no explicit `/health` endpoint)
+- **Default Port:** `3003` (set via `PORT` env var or ecosystem config)
 
-## License
+---
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+## 📁 Important Paths
+- **App Directory:** `/ixwiki/public/maps/ixmaps-new/`
+- **Config Files:** `ecosystem.config.js`, `next.config.js`
+- **PM2 Config:** `/ixwiki/public/maps/ixmaps-new/ecosystem.config.js`
+- **Logs:** `/ixwiki/public/maps/ixmaps-new/logs/ixmaps-*.log`
+- **Database:** PostgreSQL via Docker Compose
 
-## Credits
+---
 
-- Original IxMaps system developers
-- Leaflet.js team
+## 🧑‍💻 Troubleshooting
+```bash
+pm2 describe ixmaps               # Detailed info
+pm2 logs ixmaps --err             # Error logs only
+curl http://localhost:3003        # Test web server
+pm2 monit                         # Check memory usage
+pm2 restart ixmaps                # Restart if needed
+```
+
+- **App not responding?** Check logs and database connection.
+- **Database errors?** Ensure PostgreSQL is running: `docker compose ps`
+- **Environment errors?** Run `node setup.js` to configure missing variables.
+- **Port in use?**
+  ```bash
+  netstat -tlnp | grep 3003
+  lsof -i :3003
+  ```
+- **Build errors?** Check Node.js version (requires 14.x+)
+
+---
+
+## 🔄 Auto-Startup (One-time setup)
+```bash
+pm2 startup                        # Generate startup script
+# Run the sudo command it shows you
+pm2 save                          # Save current processes
+```
+
+---
+
+## 🚨 Emergency Commands
+```bash
+pm2 delete ixmaps                  # Remove from PM2
+pm2 start ecosystem.config.js      # Fresh start
+pm2 kill                           # Kill PM2 daemon
+pm2 resurrect                      # Restore saved processes
+```
+
+---
+
+## 🛡️ Security & Contribution
+- **Never commit your secrets or environment variables.**
+- Database credentials and auth secrets are in `.gitignore` by default.
+- For contributions, open a pull request and follow project guidelines.
+
+---
+
+## 📚 Further Reading
+- [Next.js Documentation](https://nextjs.org/)
+- [Leaflet.js Documentation](https://leafletjs.com/)
+- [PM2 Documentation](https://pm2.keymetrics.io/)
+- [Prisma Documentation](https://www.prisma.io/docs/)
+
+---
+
+**Maintained by the IxWiki Team.**

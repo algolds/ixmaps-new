@@ -7,16 +7,14 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   // --- Conditional Base Path & Asset Prefix ---
-  // When NODE_ENV is 'production' (set by PM2), use the subpath.
-  // Otherwise (in development), use the root path ('').
-  basePath: process.env.NODE_ENV === 'production' ? '/projects/ixmaps' : '',
-  assetPrefix: process.env.NODE_ENV === 'production' ? '/projects/ixmaps' : '',
+  // No basePath when proxied through Apache domain
+  // Use basePath only for direct access via ixwiki.com/public/maps/ixmaps-new
+  basePath: '',
+  assetPrefix: '',
 
   // --- publicRuntimeConfig ---
-  // This makes the calculated basePath available on the client-side via getConfig()
-  // Although often not needed if you fetch relative paths correctly (see point 3)
   publicRuntimeConfig: {
-    basePath: process.env.NODE_ENV === 'production' ? '/projects/ixmaps' : '',
+    basePath: '',
     environment: process.env.NODE_ENV,
   },
 };

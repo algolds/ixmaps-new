@@ -1,13 +1,13 @@
-// /wiki/prod/v14/projects/ixmaps/ecosystem.config.js
+// /ixwiki/public/maps/ixmaps-new/ecosystem.config.js
 module.exports = {
   apps: [
     {
       name: 'ixmaps',
-      cwd: '/wiki/prod/v14/projects/ixmaps', // Project root directory
+      cwd: '/ixwiki/public/maps/ixmaps-new', // Project root directory
       script: 'node_modules/.bin/next', // More direct path to next executable
-      args: 'start -p 3003', // Use '-p' to specify the port
+      args: 'start -p 3002', // Use '-p' to specify the port
       exec_mode: 'cluster',
-      instances: 'max',
+      instances: 1,
       watch: false,
       max_memory_restart: '512M',
       log_date_format: 'YYYY-MM-DD HH:mm:ss',
@@ -17,7 +17,7 @@ module.exports = {
       env_production: {
         // --- VITAL ---
         NODE_ENV: 'production', // Tells next.config.js to use production settings
-        PORT: 3003, // Port Next.js listens on (matches args)
+        PORT: 3002, // Port Next.js listens on (matches args)
 
         // --- Production Environment Variables ---
         // Load sensitive variables from the server environment if possible
@@ -29,7 +29,7 @@ module.exports = {
         // --- CRITICAL for Auth ---
         // This MUST be the public URL where your app is accessed
         NEXTAUTH_URL:
-          process.env.NEXTAUTH_URL || 'https://ixwiki.com/projects/ixmaps',
+          process.env.NEXTAUTH_URL || 'https://maps.ixwiki.com',
         AUTH_SECRET: process.env.AUTH_SECRET, // Load from server env!
         AUTH_DISCORD_ID: process.env.AUTH_DISCORD_ID, // Load from server env!
         AUTH_DISCORD_SECRET: process.env.AUTH_DISCORD_SECRET, // Load from server env!

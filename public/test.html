@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Page</title>
+</head>
+<body>
+    <h1>Test Page - Direct Access Working</h1>
+    <p>If you can see this page, the server is working correctly.</p>
+    <p>Current URL: <span id="url"></span></p>
+    <script>
+        document.getElementById('url').textContent = window.location.href;
+    </script>
+</body>
+</html>
